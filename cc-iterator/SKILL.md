@@ -40,8 +40,16 @@ exec pty:true background:true workdir:/data/code/github.com/openlinkos/agent com
 ## Failure Detection
 
 - Runtime < 2 min + minimal output = CC didn't start (API issue) → retry
+- Exit code 143 (SIGTERM) = killed, check if timed out
+- No output after 25+ min = likely hung → kill and retry
 - Check `git status` to confirm no code changes before retrying
 - If CC partially completed: check `git log`, continue from breakpoint
+
+## Lessons Learned
+
+- CC 自检不会发现 CI 环境差异（本地有 dist 缓存，CI 没有）
+- 自检 prompt 应包含：检查 CI workflow 步骤顺序
+- 简单修复（如调换 CI 步骤顺序）直接手动改，不需要启动 CC
 
 ## Review Cadence
 
