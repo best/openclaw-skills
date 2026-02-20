@@ -8,13 +8,14 @@ description: Autonomous CC (Claude Code) iteration loop for OpenLinkOS project. 
 
 Drive OpenLinkOS project forward by managing CC (Claude Code) background tasks.
 
-## Core Loop
+## Core Loop (拉式驱动)
 
 1. **Check** — `process action:list` for active CC sessions
-2. **Harvest** — If CC completed: `process action:log sessionId:xxx`, verify with `pnpm test`
-3. **Push** — `git push origin master` in project dir
-4. **Next** — `gh issue list --state open` → pick highest priority → start CC
-5. **Create** — If no open issues: create next issue based on project roadmap, then start CC
+2. **Harvest** — If CC completed: verify with `pnpm test`, `git push`, close issue
+3. **Next** — `gh issue list --state open` → has open issue → start CC
+4. **Wait** — No open issues → HEARTBEAT_OK（不自主创建 issue）
+
+Issue 来源：讨论产生的需求、用户反馈、bug 发现。巡逻只负责执行，不负责决策。
 
 ## Starting CC
 
