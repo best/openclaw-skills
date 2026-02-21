@@ -8,14 +8,14 @@ description: "Autonomous CC (Claude Code) iteration loop. Manages background cod
 
 Drive OpenLinkOS project forward by managing CC (Claude Code) background tasks.
 
-## Core Loop (拉式驱动)
+## Core Loop (Pull-based)
 
 1. **Check** — `process action:list` for active CC sessions
 2. **Harvest** — If CC completed: verify with `pnpm test`, `git push`, close issue
 3. **Next** — `gh issue list --state open` → has open issue → start CC
-4. **Wait** — No open issues → HEARTBEAT_OK（不自主创建 issue）
+4. **Wait** — No open issues → HEARTBEAT_OK (never auto-create issues)
 
-Issue 来源：讨论产生的需求、用户反馈、bug 发现。巡逻只负责执行，不负责决策。
+Issues come from discussions, user feedback, or bug reports. Patrol executes, it does not decide.
 
 ## Starting CC
 
@@ -47,9 +47,9 @@ exec pty:true background:true workdir:/data/code/github.com/openlinkos/agent com
 
 ## Lessons Learned
 
-- CC 自检不会发现 CI 环境差异（本地有 dist 缓存，CI 没有）
-- 自检 prompt 应包含：检查 CI workflow 步骤顺序
-- 简单修复（如调换 CI 步骤顺序）直接手动改，不需要启动 CC
+- CC self-check won't catch CI environment differences (local has dist cache, CI doesn't)
+- Self-check prompt should include: verify CI workflow step ordering
+- Simple fixes (e.g. reordering CI steps) can be done manually, no need to spawn CC
 
 ## Review Cadence
 

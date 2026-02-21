@@ -15,14 +15,14 @@ Drive continuous improvement of workflows, capabilities, and best practices.
 3. **Evolve** — Make one concrete improvement
 4. **Commit** — Update capability tree / MEMORY.md / workflow files
 
-## Active Period (有 CC/issue 活动)
+## Active Period
 
 - Review recent CC iterations for patterns
 - Abstract repeated patterns into templates
 - Update capability tree with new learnings
 - Frequency: every 3 hours
 
-## Idle Period (无 CC/issue 活动)
+## Idle Period
 
 - Lightweight checks only:
   - `pnpm test` — code health

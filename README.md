@@ -2,32 +2,27 @@
 
 OpenClaw agent skills for autonomous development workflows.
 
-自主开发工作流的 OpenClaw Agent 技能集。
-
 ## Skills
 
-| Skill | Description / 描述 | Version |
-|-------|-------------------|---------|
+| Skill | Description | Version |
+|-------|-------------|---------|
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.2 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.0 |
 | [evolution-engine](./evolution-engine/) | PCEC self-evolution engine | v0.1.0 |
 
-## Install / 安装
+## Install
 
-Clone and symlink skills into your OpenClaw workspace:
+Clone the repo and symlink desired skills into your OpenClaw workspace:
 
 ```bash
 git clone https://github.com/best/openclaw-skills.git
-ln -sf $(pwd)/openclaw-skills/<skill-name> ~/.openclaw/workspace/skills/<skill-name>
+ln -sf /path/to/openclaw-skills/<skill-name> ~/.openclaw/workspace/skills/<skill-name>
 ```
 
-Or install individual skills:
+## Contributing
 
-```bash
-cd ~/.openclaw/workspace/skills
-ln -sf /path/to/openclaw-skills/cc-iterator .
-```
+Each skill lives in its own directory with a `SKILL.md` file. Follow the [OpenClaw skill format](https://docs.openclaw.ai) for authoring new skills.
 
 ## License
 
