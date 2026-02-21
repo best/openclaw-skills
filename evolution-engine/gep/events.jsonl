@@ -1,3 +1,4 @@
 {"id":"evt_001","ts":"2026-02-21T09:40:00Z","gene":"gene_repair_cron_delivery","result":"success","context":"scope-upgrade caused delivery failure, added operator.read scope"}
 {"id":"evt_002","ts":"2026-02-21T10:48:00Z","gene":"gene_prune_unbounded_sections","result":"success","context":"capability tree evolution log extracted to archive, 60+ lines → 5-line summary"}
 {"id":"evt_003","ts":"2026-02-21T13:48:00Z","gene":"gene_subagent_announce_timeout","result":"observed","context":"two gateway timeout errors on subagent announce (12:12, 13:12 UTC), new gene created for detection and response"}
+{"id":"evt_004","ts":"2026-02-21T16:48:00Z","gene":"gene_npm_publish_version_conflict","result":"observed","context":"OpenLinkOS release failed 2x with E403 version conflict, resolved by resetting to 0.1.0"}

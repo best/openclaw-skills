@@ -33,8 +33,15 @@
       "id": "gene_subagent_announce_timeout",
       "name": "Subagent Announce Timeout",
       "trigger": "gateway log shows 'Subagent completion direct announce failed.*gateway timeout'",
-      "strategy": "1) Check gateway health (openclaw gateway status). 2) If gateway is up, likely transient — log and monitor. 3) If repeated (3+ in 1h), restart gateway. 4) For critical subagents, use sessions_list to manually check completion instead of relying on push announce.",
-      "origin": "PCEC #9 — 2026-02-21 two announce timeouts at 12:12 and 13:12 UTC"
+      "strategy": "1) Check gateway health. 2) Transient → log and monitor. 3) Repeated 3+ in 1h → restart gateway. 4) Critical subagents: use sessions_list to check manually.",
+      "origin": "PCEC #9 — 2026-02-21"
+    },
+    {
+      "id": "gene_npm_publish_version_conflict",
+      "name": "NPM Publish Version Conflict",
+      "trigger": "CI release fails with E403 'cannot publish over previously published versions'",
+      "strategy": "1) Check npm registry for actual published versions: npm view <pkg> versions --json. 2) If local version matches registry, bump or reset via changesets. 3) For monorepo: ensure all packages are in sync — one stale package blocks the whole publish. 4) After fix, verify with dry-run: pnpm publish --dry-run.",
+      "origin": "PCEC #10 — 2026-02-22 OpenLinkOS release failed twice before version reset"
     }
   ]
 }
