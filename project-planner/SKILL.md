@@ -1,7 +1,7 @@
 ---
 name: project-planner
 version: 0.1.0
-description: Evaluate and prioritize next tasks for OpenLinkOS project. Activate when: (1) need to decide what to work on next, (2) multiple open issues need prioritization, (3) sprint/milestone planning. NOT for: executing tasks, writing code, or reviewing PRs.
+description: "Evaluate and prioritize open issues for next development task. Score-based ranking with effort estimation."
 ---
 
 # Project Planner — Task Prioritization

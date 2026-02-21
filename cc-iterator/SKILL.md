@@ -1,7 +1,7 @@
 ---
 name: cc-iterator
-version: 0.1.0
-description: Autonomous CC (Claude Code) iteration loop for OpenLinkOS project. Activate when: (1) heartbeat/cron triggers project patrol, (2) CC task completes and next step needed, (3) need to start/monitor/review CC development tasks. NOT for: simple file edits, reading code, non-project work.
+version: 0.1.2
+description: "Autonomous CC (Claude Code) iteration loop. Manages background coding agent tasks with pull-based issue tracking."
 ---
 
 # CC Iterator — Autonomous Development Loop

@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 version: 0.1.0
-description: Standardized code review for CC-generated code. Activate when: (1) CC completes a development task, (2) batch review after 3-4 issues, (3) pre-push quality gate. NOT for: writing code, fixing bugs directly, or project planning.
+description: "Standardized code review checklist for AI-generated code. Quality gate for pre-push verification."
 ---
 
 # Code Reviewer — Quality Gate

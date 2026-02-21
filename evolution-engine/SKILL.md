@@ -1,7 +1,7 @@
 ---
 name: evolution-engine
 version: 0.1.0
-description: PCEC (Plan-Check-Evolve-Commit) self-evolution engine. Activate when: (1) PCEC cron triggers, (2) need to review and improve capability tree, (3) identify workflow improvements. NOT for: writing code, project planning, or routine patrol.
+description: "PCEC (Plan-Check-Evolve-Commit) self-evolution engine for continuous workflow improvement."
 ---
 
 # Evolution Engine — PCEC Self-Evolution
