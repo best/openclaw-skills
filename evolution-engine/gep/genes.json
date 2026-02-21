@@ -28,6 +28,13 @@
       "trigger": "append-only section in a reference doc exceeds ~30 lines",
       "strategy": "Extract historical entries to archive file, keep summary + pointer in original",
       "origin": "PCEC #8 — 2026-02-21 capability tree evolution log grew to 60+ lines"
+    },
+    {
+      "id": "gene_subagent_announce_timeout",
+      "name": "Subagent Announce Timeout",
+      "trigger": "gateway log shows 'Subagent completion direct announce failed.*gateway timeout'",
+      "strategy": "1) Check gateway health (openclaw gateway status). 2) If gateway is up, likely transient — log and monitor. 3) If repeated (3+ in 1h), restart gateway. 4) For critical subagents, use sessions_list to manually check completion instead of relying on push announce.",
+      "origin": "PCEC #9 — 2026-02-21 two announce timeouts at 12:12 and 13:12 UTC"
     }
   ]
 }
