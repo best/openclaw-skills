@@ -1,0 +1,1 @@
+{"id":"evt_001","ts":"2026-02-21T09:40:00Z","gene":"gene_repair_cron_delivery","result":"success","context":"scope-upgrade caused delivery failure, added operator.read scope"}

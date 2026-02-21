@@ -13,7 +13,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.2 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.0 |
-| [evolution-engine](./evolution-engine/) | PCEC self-evolution engine | v0.2.0 |
+| [evolution-engine](./evolution-engine/) | PCEC self-evolution engine with GEP protocol | v0.3.0 |
 
 ## Install
 

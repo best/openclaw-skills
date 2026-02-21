@@ -1,88 +1,92 @@
 ---
 name: evolution-engine
-version: 0.2.0
-description: "PCEC (Plan-Check-Evolve-Commit) self-evolution engine. Drives capability-driven evolution of agent skills."
+version: 0.3.0
+description: "PCEC self-evolution engine with GEP protocol. Analyzes runtime history to drive capability evolution."
 ---
 
-# Evolution Engine — PCEC Self-Evolution
+# Evolution Engine — PCEC with GEP Protocol
 
-Periodic Cognitive Expansion Cycle. Every 3 hours, identify and commit at least one real improvement.
+Periodic Cognitive Expansion Cycle. Autonomous self-evolution through runtime analysis.
 
-## Core Principle: Capability-Driven Evolution
+## Data Sources (read via exec/read tools)
 
-The goal is not to complete tasks, but to make future tasks easier. When you notice:
-- A step you invented to solve a problem that could be reused
-- A tool call sequence you've combined multiple times
-- A pattern the user keeps requesting
-
-That's an evolution trigger. Abstract it → internalize it → ship it as a skill.
+| Source | Path | Content |
+|--------|------|---------|
+| Session history | `~/.openclaw/agents/main/sessions/*.jsonl` | All conversation records |
+| Cron runs | `~/.openclaw/cron/runs/*.jsonl` | Cron execution history |
+| Gateway logs | `/tmp/openclaw/openclaw-*.log` | Runtime errors |
+| Memory files | `~/.openclaw/workspace/memory/` | Daily notes, capability tree |
+| Long-term memory | `~/.openclaw/workspace/MEMORY.md` | Curated lessons |
+| Skills repo | `/data/code/github.com/best/openclaw-skills/` | Current skills |
+| GEP assets | `./gep/genes.json, capsules.json, events.jsonl` | Evolution state |
 
 ## PCEC Cycle
 
-1. **Plan** — Read capability tree + recent memory files, identify what to review
-2. **Check** — Audit: what worked, what failed, what was repeated
-3. **Evolve** — Make one concrete improvement (new skill, updated skill, new strategy)
-4. **Commit** — Update files, git commit, git push to skills repo
+### 1. Signal Extraction
+Scan recent data for evolution signals:
+```bash
+# Recent session errors
+grep -r "error\|failed\|retry" ~/.openclaw/agents/main/sessions/*.jsonl --include="*.jsonl" -l | tail -5
 
-## Evolution Targets (pick at least one per cycle)
+# Cron failures
+tail -50 ~/.openclaw/cron/runs/*.jsonl | grep '"error"'
 
-### A. New Capability
-- Something you did ad-hoc that should become a skill
-- A multi-step workflow that can be abstracted into reusable steps
+# Gateway errors (today)
+grep "ERROR" /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log | tail -20
 
-### B. New Abstraction
-- Elevate a specific solution into a general problem class
-- Merge two similar capabilities into one stronger one
+# Recent memory for patterns
+cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d)*.md
+```
 
-### C. New Leverage
-- A structural change that reduces steps, tool calls, or failure rate
-- Optimize an existing skill based on real usage patterns
+### 2. Gene Matching
+Read `gep/genes.json`. Check if any existing Gene matches the signals.
+- Match found → apply Gene strategy
+- No match → abstract new Gene from signal
 
-## Capability Abstraction Template
+### 3. Evolution Action (pick one)
 
-When abstracting a new capability, define:
-- **Input**: what triggers it
-- **Output**: what it produces
-- **Invariants**: what never changes
-- **Parameters**: what varies per invocation
-- **Failure modes**: how it can break
+**A. New/Updated Skill**
+- Write SKILL.md to skills repo
+- Symlink if new
+- Update README.md + README_CN.md versions
 
-## Skill Shipping
+**B. New Gene**
+- Abstract the pattern: trigger → strategy
+- Add to `gep/genes.json`
 
-When evolution produces a new or updated skill:
-1. Write/update SKILL.md in `/data/code/github.com/best/openclaw-skills/`
-2. Symlink to `~/.openclaw/workspace/skills/` if new
-3. `git commit && git push`
-4. Update capability tree
+**C. New Capsule**
+- Encode a multi-step solution that worked
+- Add to `gep/capsules.json`
+
+### 4. Commit
+```bash
+cd /data/code/github.com/best/openclaw-skills
+git add -A && git commit -m "evolve: <description>" && git push
+```
+Append EvolutionEvent to `gep/events.jsonl`.
+Update capability tree if needed.
+
+## Evolution Strategy
+
+Assess current state to pick strategy:
+- **repair** — errors detected in logs/cron → fix first
+- **harden** — no errors but fragile patterns → add robustness
+- **innovate** — stable state → identify new capability opportunities
+- Repair always takes priority over innovate.
 
 ## Anti-Evolution Lock
 
-Priority order (never violate):
-1. Stability
-2. Explainability
-3. Reusability
-4. Extensibility
-5. Novelty (always last)
+Priority: Stability > Explainability > Reusability > Novelty
 
 Forbidden:
-- Adding complexity just to seem smarter
-- Vague concepts replacing executable strategies
-- "Feels right" as a decision basis
-- Summary-only cycles (must produce real change)
-- Creating issues autonomously
-
-If a capability can't be clearly described (input/output/failure), it must not exist.
+- Summary-only cycles (must produce file changes)
+- Creating GitHub issues autonomously
+- Modifying files outside skills repo without reason
+- "Feels right" as decision basis
 
 ## Stagnation Breaker
 
-If 2 consecutive cycles (6h) produce no real improvement, force one of:
-- Challenge a default assumption
-- Rethink from a 10x weaker agent's perspective
-- Ask: "if this runs 1000 times, what breaks?"
-
-## Key Files
-
-- Skills repo: `/data/code/github.com/best/openclaw-skills/`
-- Capability tree: `/root/.openclaw/workspace/memory/cc-capability-tree.md`
-- Long-term memory: `/root/.openclaw/workspace/MEMORY.md`
-- Daily notes: `/root/.openclaw/workspace/memory/`
+If 2 consecutive cycles produce no file changes:
+- Force challenge a default assumption
+- Or merge two similar capabilities
+- Or audit an existing skill against real usage

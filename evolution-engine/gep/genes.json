@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "genes": [
+    {
+      "id": "gene_repair_cron_delivery",
+      "name": "Repair Cron Delivery",
+      "trigger": "cron announce delivery failed",
+      "strategy": "Check device scopes, add missing scopes, restart gateway",
+      "origin": "PCEC #6 — 2026-02-21 scope-upgrade fix"
+    },
+    {
+      "id": "gene_sync_readme_version",
+      "name": "Sync README Version",
+      "trigger": "SKILL.md version changed",
+      "strategy": "Update README.md and README_CN.md version table",
+      "origin": "Repeated mistake — 2026-02-21"
+    },
+    {
+      "id": "gene_yaml_quote_description",
+      "name": "Quote YAML Description",
+      "trigger": "SKILL.md frontmatter contains colons or special chars",
+      "strategy": "Wrap description in double quotes",
+      "origin": "GitHub YAML parse error — 2026-02-21"
+    }
+  ]
+}
