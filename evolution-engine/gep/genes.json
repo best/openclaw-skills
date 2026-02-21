@@ -21,6 +21,13 @@
       "trigger": "SKILL.md frontmatter contains colons or special chars",
       "strategy": "Wrap description in double quotes",
       "origin": "GitHub YAML parse error — 2026-02-21"
+    },
+    {
+      "id": "gene_prune_unbounded_sections",
+      "name": "Prune Unbounded Sections",
+      "trigger": "append-only section in a reference doc exceeds ~30 lines",
+      "strategy": "Extract historical entries to archive file, keep summary + pointer in original",
+      "origin": "PCEC #8 — 2026-02-21 capability tree evolution log grew to 60+ lines"
     }
   ]
 }

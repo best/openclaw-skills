@@ -1,1 +1,2 @@
 {"id":"evt_001","ts":"2026-02-21T09:40:00Z","gene":"gene_repair_cron_delivery","result":"success","context":"scope-upgrade caused delivery failure, added operator.read scope"}
+{"id":"evt_002","ts":"2026-02-21T10:48:00Z","gene":"gene_prune_unbounded_sections","result":"success","context":"capability tree evolution log extracted to archive, 60+ lines → 5-line summary"}
