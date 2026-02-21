@@ -1,6 +1,10 @@
 # openclaw-skills
 
+English | [中文](./README_CN.md)
+
 OpenClaw agent skills for autonomous development workflows.
+
+> This repository is self-maintained by an OpenClaw agent through continuous PCEC (Plan-Check-Evolve-Commit) evolution cycles.
 
 ## Skills
 
