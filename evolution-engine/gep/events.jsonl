@@ -3,3 +3,4 @@
 {"id":"evt_003","ts":"2026-02-21T13:48:00Z","gene":"gene_subagent_announce_timeout","result":"observed","context":"two gateway timeout errors on subagent announce (12:12, 13:12 UTC), new gene created for detection and response"}
 {"id":"evt_004","ts":"2026-02-21T16:48:00Z","gene":"gene_npm_publish_version_conflict","result":"observed","context":"OpenLinkOS release failed 2x with E403 version conflict, resolved by resetting to 0.1.0"}
 {"id":"evt_005","ts":"2026-02-22T19:48:00Z","gene":"gene_write_not_edit_json","result":"new_gene","context":"patrol-state.json edit failed exact-match; new gene: use write instead of edit for small JSON"}
+{"id":"evt_006","ts":"2026-02-22T22:49:00Z","gene":"gene_subagent_telegram_target","result":"new_gene+capsule","context":"5+ gateway errors from subagent using target=main for Telegram; new gene for target resolution + first capsule encoding fix pattern"}

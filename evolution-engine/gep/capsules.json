@@ -1,4 +1,19 @@
 {
   "version": 1,
-  "capsules": []
+  "capsules": [
+    {
+      "id": "capsule_subagent_delivery_fix",
+      "name": "Fix Subagent Message Delivery in Telegram Context",
+      "trigger": "Subagent spawned from cron/heartbeat fails to deliver messages to Telegram",
+      "steps": [
+        "Identify: grep gateway log for 'Unknown target' or 'requires target <chatId>'",
+        "Root cause: subagent lacks implicit chat context — cron runs have no originating chatId",
+        "Fix: use sessions_spawn (auto-announces to requester) instead of message tool with target",
+        "If direct messaging needed: use sessions_send to relay through parent session",
+        "Never use target='main' — Telegram requires numeric chatId"
+      ],
+      "gene": "gene_subagent_telegram_target",
+      "origin": "PCEC #12 — 2026-02-22, abstracted from 5+ gateway errors"
+    }
+  ]
 }

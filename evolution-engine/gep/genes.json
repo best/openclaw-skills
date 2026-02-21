@@ -49,6 +49,13 @@
       "trigger": "edit tool fails on JSON file with exact-match error",
       "strategy": "For small state/config JSON files (<50 lines), always use write (full overwrite) instead of edit. JSON lacks stable text anchors — whitespace, key order, and formatting shift between writes, making exact-match unreliable. Read → modify in prompt → write back.",
       "origin": "PCEC #11 — 2026-02-22 patrol-state.json edit failure"
+    },
+    {
+      "id": "gene_subagent_telegram_target",
+      "name": "Subagent Telegram Target Resolution",
+      "trigger": "gateway log shows 'Unknown target.*for Telegram' or 'Explicit message target required' or 'Delivering to Telegram requires target <chatId>'",
+      "strategy": "Subagents spawned from cron/non-chat contexts lack implicit Telegram chatId. Never use target='main' — Telegram needs numeric chatId. For cron tasks needing to message: use sessions_spawn (auto-announces to requester). For direct message: omit target to let the framework route, or use sessions_send to relay through parent session.",
+      "origin": "PCEC #12 — 2026-02-22 repeated subagent announce failures"
     }
   ]
 }
