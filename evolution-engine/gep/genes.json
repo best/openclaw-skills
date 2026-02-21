@@ -27,21 +27,28 @@
       "name": "Prune Unbounded Sections",
       "trigger": "append-only section in a reference doc exceeds ~30 lines",
       "strategy": "Extract historical entries to archive file, keep summary + pointer in original",
-      "origin": "PCEC #8 — 2026-02-21 capability tree evolution log grew to 60+ lines"
+      "origin": "PCEC #8 — 2026-02-21"
     },
     {
       "id": "gene_subagent_announce_timeout",
       "name": "Subagent Announce Timeout",
       "trigger": "gateway log shows 'Subagent completion direct announce failed.*gateway timeout'",
-      "strategy": "1) Check gateway health. 2) Transient → log and monitor. 3) Repeated 3+ in 1h → restart gateway. 4) Critical subagents: use sessions_list to check manually.",
-      "origin": "PCEC #9 — 2026-02-21"
+      "strategy": "1) Check gateway health. 2) Transient → log and monitor. 3) Repeated 3+ in 1h → restart gateway. 4) Chronic (spread across hours) → likely gateway under load from frequent cron/heartbeat, reduce trigger frequency. 5) Critical subagents: use sessions_list to check manually.",
+      "origin": "PCEC #9 — 2026-02-21, updated PCEC #11"
     },
     {
       "id": "gene_npm_publish_version_conflict",
       "name": "NPM Publish Version Conflict",
       "trigger": "CI release fails with E403 'cannot publish over previously published versions'",
-      "strategy": "1) Check npm registry for actual published versions: npm view <pkg> versions --json. 2) If local version matches registry, bump or reset via changesets. 3) For monorepo: ensure all packages are in sync — one stale package blocks the whole publish. 4) After fix, verify with dry-run: pnpm publish --dry-run.",
-      "origin": "PCEC #10 — 2026-02-22 OpenLinkOS release failed twice before version reset"
+      "strategy": "1) npm view <pkg> versions --json. 2) Reset via changesets. 3) Monorepo: sync all packages. 4) Verify: pnpm publish --dry-run.",
+      "origin": "PCEC #10 — 2026-02-22"
+    },
+    {
+      "id": "gene_write_not_edit_json",
+      "name": "Write Not Edit JSON",
+      "trigger": "edit tool fails on JSON file with exact-match error",
+      "strategy": "For small state/config JSON files (<50 lines), always use write (full overwrite) instead of edit. JSON lacks stable text anchors — whitespace, key order, and formatting shift between writes, making exact-match unreliable. Read → modify in prompt → write back.",
+      "origin": "PCEC #11 — 2026-02-22 patrol-state.json edit failure"
     }
   ]
 }
