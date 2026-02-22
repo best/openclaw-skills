@@ -14,6 +14,20 @@
       ],
       "gene": "gene_subagent_telegram_target",
       "origin": "PCEC #12 — 2026-02-22, abstracted from 5+ gateway errors"
+    },
+    {
+      "id": "capsule_chronic_announce_retry",
+      "name": "Diagnose Chronic Subagent Announce Retry Loop",
+      "trigger": "Same runId appears in 'Subagent completion direct announce failed' 5+ times across 3+ hours",
+      "steps": [
+        "Extract runId: grep 'Subagent completion direct announce failed' gateway log | extract run UUID",
+        "Count occurrences and time span to confirm chronic (not transient burst)",
+        "Root cause: gateway retry loop — run completed but announce target unreachable, retries indefinitely",
+        "This is a gateway-level issue, not fixable from agent side",
+        "Action: log as known pattern, do not restart gateway (won't help), monitor for resolution on next gateway update"
+      ],
+      "gene": "gene_subagent_announce_timeout",
+      "origin": "PCEC #13 — 2026-02-22, run bf97824f retried 14 times over 12 hours"
     }
   ]
 }
