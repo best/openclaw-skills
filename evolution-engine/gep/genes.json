@@ -63,6 +63,13 @@
       "trigger": "gateway log shows 'message failed: messageId required' or 'message failed: target required'",
       "strategy": "message actions react/edit/delete require messageId. Always check the action's required params before calling: send needs target+message, react needs messageId+emoji, edit needs messageId+message, delete needs messageId. When messageId is unavailable (e.g. in cron context), skip the action gracefully.",
       "origin": "PCEC #13 — 2026-02-22 react called without messageId"
+    },
+    {
+      "id": "gene_llm_provider_cascade_failure",
+      "name": "LLM Provider Cascade Failure",
+      "trigger": "gateway log shows 'All models failed' or multiple lanes timing out simultaneously with 'LLM request timed out' + 'HTTP 502 upstream_error'",
+      "strategy": "1) Detect: multiple lanes (main, cron, session) all failing with timeout/502 within minutes. 2) Root cause: all configured models share the same upstream provider, so a single outage kills everything. 3) Immediate: nothing to do — system auto-recovers when provider comes back. Queued cron jobs will batch-fire (expect duplicates). 4) Prevention: ensure failover models use different upstream providers (e.g., deeprouter + astralor should point to different Anthropic endpoints, or mix in a non-Anthropic model like MiniMax for critical cron). 5) The PCEC cron itself is affected — expect batched triggers after recovery.",
+      "origin": "PCEC #14 — 2026-02-22 total outage ~15:58-16:10 UTC, both opus and sonnet failed simultaneously"
     }
   ]
 }

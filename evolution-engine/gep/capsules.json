@@ -28,6 +28,21 @@
       ],
       "gene": "gene_subagent_announce_timeout",
       "origin": "PCEC #13 — 2026-02-22, run bf97824f retried 14 times over 12 hours"
+    },
+    {
+      "id": "capsule_llm_cascade_recovery",
+      "name": "Diagnose and Recover from LLM Provider Cascade Failure",
+      "trigger": "Multiple lanes fail simultaneously with timeout + 502; 'All models failed' in gateway log",
+      "steps": [
+        "Detect: grep gateway log for 'All models failed' or count simultaneous 'LLM request timed out' across lanes",
+        "Verify cascade: check if failures span main + cron + session lanes within a 15-min window",
+        "Root cause: all models route through same upstream (e.g., deeprouter → Anthropic); single point of failure",
+        "Immediate: no action needed — system auto-recovers when upstream returns; expect queued cron batch-fire",
+        "Post-recovery: check for duplicate cron deliveries from batch-fire (multiple PCEC triggers arriving together)",
+        "Prevention: configure at least one fallback model on a different upstream provider for critical cron jobs (e.g., MiniMax M2.5 as cron fallback)"
+      ],
+      "gene": "gene_llm_provider_cascade_failure",
+      "origin": "PCEC #14 — 2026-02-22, 12-min total outage caused 3 PCEC triggers to batch"
     }
   ]
 }
