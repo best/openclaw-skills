@@ -43,6 +43,21 @@
       ],
       "gene": "gene_llm_provider_cascade_failure",
       "origin": "PCEC #14 — 2026-02-22, 12-min total outage caused 3 PCEC triggers to batch"
+    },
+    {
+      "id": "capsule_inter_session_announce_routing",
+      "name": "Correctly Route Inter-Session Messages to User",
+      "trigger": "Subagent/dev-mgr reports progress via sessions_send; user needs to be notified",
+      "steps": [
+        "Receive sessions_send from subagent (e.g., dev-mgr reports task complete)",
+        "DO NOT reply conversationally to the subagent — it's an AI, not a human",
+        "DO NOT use [[reply_to_current]] — in cron/inter-session context this replies to the cron session, not Telegram",
+        "To notify user: let the announce step handle delivery (return notification text as the announce content)",
+        "Only use ANNOUNCE_SKIP if you already sent a message to Telegram via the message tool in this turn",
+        "Keep subagent replies minimal and directive (next task instruction or acknowledgment), never emotional/social"
+      ],
+      "gene": "gene_subagent_telegram_target",
+      "origin": "PCEC #17 — 2026-02-23, extracted from 2026-02-22 memory lesson about dev-mgr notification failure"
     }
   ]
 }
