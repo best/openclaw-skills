@@ -44,11 +44,11 @@
       "origin": "PCEC #10 — 2026-02-22"
     },
     {
-      "id": "gene_write_not_edit_json",
-      "name": "Write Not Edit JSON",
-      "trigger": "edit tool fails on JSON file with exact-match error",
-      "strategy": "For small state/config JSON files (<50 lines), always use write (full overwrite) instead of edit. JSON lacks stable text anchors — whitespace, key order, and formatting shift between writes, making exact-match unreliable. Read → modify in prompt → write back.",
-      "origin": "PCEC #11 — 2026-02-22 patrol-state.json edit failure"
+      "id": "gene_edit_exact_match_failure",
+      "name": "Edit Tool Exact-Match Failure",
+      "trigger": "gateway log shows 'edit failed: Could not find the exact text' or 'edit failed: Found N occurrences'",
+      "strategy": "The edit tool requires exact text matching including whitespace. Failures happen for two reasons: (1) text not found — file was modified between read and edit, or whitespace/newline mismatch; (2) multiple occurrences — text is not unique enough. For JSON files (<50 lines): use write (full overwrite) instead. For markdown/large files: read the file first, use longer unique context in oldText, or use write if the file is small enough. Never guess at whitespace — always read before editing.",
+      "origin": "PCEC #11 — 2026-02-22 patrol-state.json, widened PCEC #16 for MEMORY.md"
     },
     {
       "id": "gene_subagent_telegram_target",
@@ -77,6 +77,13 @@
       "trigger": "gateway log shows 'Gateway restart failed health checks' preceded by 'failed to load plugin.*Cannot find module'",
       "strategy": "1) Identify the blocking plugin: grep 'failed to load plugin' in log. 2) The plugin's npm dependency is missing (e.g., @larksuiteoapi/node-sdk for feishu). 3) If plugin is not actively used: remove or disable it in gateway config to unblock restarts. 4) If plugin is needed: install the missing dep with npm/pnpm. 5) This is critical — a broken plugin blocks ALL gateway restarts, preventing recovery from any issue. 6) Notify human if the agent cannot resolve (dependency install may need elevated permissions).",
       "origin": "PCEC #15 — 2026-02-22 feishu plugin blocked 8 gateway restarts"
+    },
+    {
+      "id": "gene_internal_subsystem_auth_mismatch",
+      "name": "Internal Subsystem Auth Mismatch",
+      "trigger": "gateway log shows 'No API key found for provider' from an internal subsystem (e.g., llm-slug-generator, diagnostic lane)",
+      "strategy": "Internal gateway subsystems (slug-generator, diagnostics) may hardcode a provider (e.g., 'anthropic') that doesn't match the configured auth profiles (which use proxies like deeprouter/astralor). This is a gateway config issue, not an agent-fixable problem. 1) Confirm: the error provider doesn't appear in auth-profiles.json. 2) Non-critical — slug generation falls back gracefully. 3) To fix: either add a direct API key for the provider, or wait for a gateway update that routes internal subsystems through configured proxies. 4) Log and suppress — don't treat as actionable error in PCEC.",
+      "origin": "PCEC #16 — 2026-02-22 slug-generator fails 'anthropic' auth in 3 consecutive cycles"
     }
   ]
 }
