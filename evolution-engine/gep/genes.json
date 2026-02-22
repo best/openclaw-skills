@@ -70,6 +70,13 @@
       "trigger": "gateway log shows 'All models failed' or multiple lanes timing out simultaneously with 'LLM request timed out' + 'HTTP 502 upstream_error'",
       "strategy": "1) Detect: multiple lanes (main, cron, session) all failing with timeout/502 within minutes. 2) Root cause: all configured models share the same upstream provider, so a single outage kills everything. 3) Immediate: nothing to do — system auto-recovers when provider comes back. Queued cron jobs will batch-fire (expect duplicates). 4) Prevention: ensure failover models use different upstream providers (e.g., deeprouter + astralor should point to different Anthropic endpoints, or mix in a non-Anthropic model like MiniMax for critical cron). 5) The PCEC cron itself is affected — expect batched triggers after recovery.",
       "origin": "PCEC #14 — 2026-02-22 total outage ~15:58-16:10 UTC, both opus and sonnet failed simultaneously"
+    },
+    {
+      "id": "gene_gateway_restart_blocked_by_plugin",
+      "name": "Gateway Restart Blocked by Plugin Dependency",
+      "trigger": "gateway log shows 'Gateway restart failed health checks' preceded by 'failed to load plugin.*Cannot find module'",
+      "strategy": "1) Identify the blocking plugin: grep 'failed to load plugin' in log. 2) The plugin's npm dependency is missing (e.g., @larksuiteoapi/node-sdk for feishu). 3) If plugin is not actively used: remove or disable it in gateway config to unblock restarts. 4) If plugin is needed: install the missing dep with npm/pnpm. 5) This is critical — a broken plugin blocks ALL gateway restarts, preventing recovery from any issue. 6) Notify human if the agent cannot resolve (dependency install may need elevated permissions).",
+      "origin": "PCEC #15 — 2026-02-22 feishu plugin blocked 8 gateway restarts"
     }
   ]
 }
