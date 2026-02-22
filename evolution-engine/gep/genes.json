@@ -46,9 +46,9 @@
     {
       "id": "gene_edit_exact_match_failure",
       "name": "Edit Tool Exact-Match Failure",
-      "trigger": "gateway log shows 'edit failed: Could not find the exact text' or 'edit failed: Found N occurrences'",
-      "strategy": "The edit tool requires exact text matching including whitespace. Failures happen for two reasons: (1) text not found — file was modified between read and edit, or whitespace/newline mismatch; (2) multiple occurrences — text is not unique enough. For JSON files (<50 lines): use write (full overwrite) instead. For markdown/large files: read the file first, use longer unique context in oldText, or use write if the file is small enough. Never guess at whitespace — always read before editing.",
-      "origin": "PCEC #11 — 2026-02-22 patrol-state.json, widened PCEC #16 for MEMORY.md"
+      "trigger": "gateway log shows 'edit failed: Could not find the exact text' or 'edit failed: Found N occurrences' or 'edit failed: Missing required parameter: newText'",
+      "strategy": "The edit tool requires exact text matching including whitespace. Failures happen for three reasons: (1) text not found — file was modified between read and edit, or whitespace/newline mismatch; (2) multiple occurrences — text is not unique enough; (3) deletion attempt — newText is empty or whitespace-only, which the tool rejects as 'Missing required parameter'. For case (3), use the merge-replace pattern: match the target block PLUS adjacent content, then replace with only the adjacent content (effectively deleting the target while keeping surroundings). For JSON files (<50 lines): use write (full overwrite) instead. For markdown/large files: read the file first, use longer unique context in oldText, or use write if the file is small enough. Never guess at whitespace — always read before editing.",
+      "origin": "PCEC #11 — 2026-02-22 patrol-state.json, widened PCEC #16 for MEMORY.md, hardened PCEC #19 for deletion case"
     },
     {
       "id": "gene_subagent_telegram_target",
