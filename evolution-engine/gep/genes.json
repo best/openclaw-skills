@@ -84,6 +84,13 @@
       "trigger": "gateway log shows 'No API key found for provider' from an internal subsystem (e.g., llm-slug-generator, diagnostic lane)",
       "strategy": "Internal gateway subsystems (slug-generator, diagnostics) may hardcode a provider (e.g., 'anthropic') that doesn't match the configured auth profiles (which use proxies like deeprouter/astralor). This is a gateway config issue, not an agent-fixable problem. 1) Confirm: the error provider doesn't appear in auth-profiles.json. 2) Non-critical — slug generation falls back gracefully. 3) To fix: either add a direct API key for the provider, or wait for a gateway update that routes internal subsystems through configured proxies. 4) Log and suppress — don't treat as actionable error in PCEC.",
       "origin": "PCEC #16 — 2026-02-22 slug-generator fails 'anthropic' auth in 3 consecutive cycles"
+    },
+    {
+      "id": "gene_gateway_restart_health_race",
+      "name": "Gateway Restart Health Check Race Condition",
+      "trigger": "gateway log shows 'Gateway restart failed health checks' WITHOUT preceding 'failed to load plugin'",
+      "strategy": "1) Check: did the gateway actually start? grep for 'listening on ws://' after the error timestamp. 2) If 'listening on' found: this is a benign race condition — the restart orchestrator's health check ran before the new instance was fully ready. No action needed; system self-healed. 3) Verify: check subsequent cron runs succeeded (confirms gateway is operational). 4) If 'listening on' NOT found: real failure — investigate for OOM, port conflict, config parse error, or other startup blockers. 5) Key differentiator from gene_gateway_restart_blocked_by_plugin: plugins loaded OK, no 'Cannot find module' errors. 6) Do not restart gateway again — the transient case means it already recovered.",
+      "origin": "PCEC #20 — 2026-02-23 restart at 00:28 UTC, health check failed but gateway started normally 1s earlier"
     }
   ]
 }
