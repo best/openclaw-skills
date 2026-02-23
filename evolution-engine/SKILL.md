@@ -1,6 +1,6 @@
 ---
 name: evolution-engine
-version: 0.3.0
+version: 0.4.0
 description: "PCEC self-evolution engine with GEP protocol. Analyzes runtime history to drive capability evolution."
 ---
 
@@ -58,6 +58,12 @@ Read `gep/genes.json`. Check if any existing Gene matches the signals.
 - Encode a multi-step solution that worked
 - Add to `gep/capsules.json`
 
+**D. No Evolution Needed (idle)**
+- Valid when: no new errors, all signals match existing genes, no fragile patterns found
+- Append a skip event to `events.jsonl` with result `"skip"` and brief context
+- This counts as a file change (events.jsonl is updated)
+- 3+ consecutive skips triggers the Stagnation Breaker
+
 ### 4. Commit
 ```bash
 cd /data/code/github.com/best/openclaw-skills
@@ -72,21 +78,39 @@ Assess current state to pick strategy:
 - **repair** — errors detected in logs/cron → fix first
 - **harden** — no errors but fragile patterns → add robustness
 - **innovate** — stable state → identify new capability opportunities
-- Repair always takes priority over innovate.
+- **skip** — genuinely clean, all signals covered → log and exit
+- Priority: repair > harden > innovate > skip
+
+## Idle Period Protocol
+
+When the system is stable and no new signals exist:
+1. Confirm: all gateway errors match existing genes (no new patterns)
+2. Confirm: no cron failures since last cycle
+3. Confirm: no new session errors or user-reported issues
+4. If all three hold → this is a genuine idle period
+5. Log a skip event and exit — don't force low-value changes
+
+**Cost awareness:** Each PCEC cycle costs LLM tokens (Opus-tier). Idle cycles should be fast and cheap. The value of PCEC is in catching real issues, not in producing changes for the sake of compliance.
+
+**Idle period work (optional, in lieu of skip):**
+- Prune events.jsonl if approaching 30 lines (per gene_prune_unbounded_sections)
+- Audit an existing skill against recent real usage
+- Review gene pool for merges or obsolescence
+- Update capability tree or documentation
 
 ## Anti-Evolution Lock
 
 Priority: Stability > Explainability > Reusability > Novelty
 
 Forbidden:
-- Summary-only cycles (must produce file changes)
 - Creating GitHub issues autonomously
 - Modifying files outside skills repo without reason
 - "Feels right" as decision basis
+- Inventing problems to justify changes
 
 ## Stagnation Breaker
 
-If 2 consecutive cycles produce no file changes:
+If 3 consecutive cycles produce skip events:
 - Force challenge a default assumption
 - Or merge two similar capabilities
 - Or audit an existing skill against real usage
