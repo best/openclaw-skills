@@ -50,10 +50,10 @@
       "trigger": "Subagent/dev-mgr reports progress via sessions_send; user needs to be notified",
       "steps": [
         "Receive sessions_send from subagent (e.g., dev-mgr reports task complete)",
+        "Evaluate: is this worth forwarding to the user? (task complete, error, important progress → yes; routine ack → no)",
         "DO NOT reply conversationally to the subagent — it's an AI, not a human",
-        "DO NOT use [[reply_to_current]] — in cron/inter-session context this replies to the cron session, not Telegram",
-        "To notify user: let the announce step handle delivery (return notification text as the announce content)",
-        "Only use ANNOUNCE_SKIP if you already sent a message to Telegram via the message tool in this turn",
+        "To notify user: use the message tool to send to Telegram directly (主 session 有 chat context，直接发就行)",
+        "DO NOT use [[reply_to_current]] — in inter-session context this replies to the sending session, not Telegram",
         "Keep subagent replies minimal and directive (next task instruction or acknowledgment), never emotional/social"
       ],
       "gene": "gene_subagent_telegram_target",
