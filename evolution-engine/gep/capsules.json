@@ -46,15 +46,16 @@
     },
     {
       "id": "capsule_inter_session_announce_routing",
-      "name": "Correctly Route Inter-Session Messages to User",
-      "trigger": "Subagent/dev-mgr reports progress via sessions_send; user needs to be notified",
+      "name": "Multi-Agent Report Routing: subagent → main → user",
+      "trigger": "Subagent (e.g. dev-mgr) sends progress report via sessions_send to main session",
       "steps": [
-        "Receive sessions_send from subagent (e.g., dev-mgr reports task complete)",
-        "Evaluate: is this worth forwarding to the user? (task complete, error, important progress → yes; routine ack → no)",
-        "DO NOT reply conversationally to the subagent — it's an AI, not a human",
-        "To notify user: use the message tool to send to Telegram directly (主 session 有 chat context，直接发就行)",
-        "DO NOT use [[reply_to_current]] — in inter-session context this replies to the sending session, not Telegram",
-        "Keep subagent replies minimal and directive (next task instruction or acknowledgment), never emotional/social"
+        "Receive sessions_send from subagent (e.g., dev-mgr reports 'issue #N complete')",
+        "Evaluate: worth notifying user? (task complete/failed, error, important progress → YES; routine status, no change → NO)",
+        "If NO → respond with NO_REPLY, do nothing else",
+        "If YES → use message tool to send notification to Telegram (this is the ONLY reliable path to user from inter-session context)",
+        "After sending via message tool → respond with NO_REPLY to avoid duplicate output",
+        "NEVER reply conversationally to the subagent — it's an AI, waste of tokens",
+        "NEVER use [[reply_to_current]] — in inter-session context this routes back to the sending session, not to Telegram"
       ],
       "gene": "gene_subagent_telegram_target",
       "origin": "PCEC #17 — 2026-02-23, extracted from 2026-02-22 memory lesson about dev-mgr notification failure"
