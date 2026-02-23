@@ -91,6 +91,13 @@
       "trigger": "gateway log shows 'Gateway restart failed health checks' WITHOUT preceding 'failed to load plugin'",
       "strategy": "1) Check: did the gateway actually start? grep for 'listening on ws://' after the error timestamp. 2) If 'listening on' found: this is a benign race condition — the restart orchestrator's health check ran before the new instance was fully ready. No action needed; system self-healed. 3) Verify: check subsequent cron runs succeeded (confirms gateway is operational). 4) If 'listening on' NOT found: real failure — investigate for OOM, port conflict, config parse error, or other startup blockers. 5) Key differentiator from gene_gateway_restart_blocked_by_plugin: plugins loaded OK, no 'Cannot find module' errors. 6) Do not restart gateway again — the transient case means it already recovered.",
       "origin": "PCEC #20 — 2026-02-23 restart at 00:28 UTC, health check failed but gateway started normally 1s earlier"
+    },
+    {
+      "id": "gene_cron_tool_schema_mismatch",
+      "name": "Cron Tool API vs Internal Storage Format Mismatch",
+      "trigger": "gateway log shows 'cron failed: invalid cron.update params' or 'cron failed: invalid cron.add params' with 'unexpected property' errors",
+      "strategy": "The cron tool API schema differs from the internal jobs.json storage format. Common mistakes: (1) Using 'message' instead of 'text' in payload — the tool API requires payload.text, not payload.message. (2) Using 'id' instead of 'jobId' for cron.update — the tool requires jobId at the root. (3) Nesting model/agentId/timeoutSeconds/thinking directly in payload — these may be top-level tool params, not payload sub-fields. (4) payload.kind may need a specific value or be omitted entirely. Never read jobs.json and pass its format directly to the cron tool — always check the tool's own parameter schema first. If unsure of the correct format, use 'openclaw cron --help' via exec to discover the CLI API, or try cron action:list to see the tool's response format.",
+      "origin": "PCEC #21 — 2026-02-23 main session failed 4x trying to update dev-mgr patrol job with internal storage format"
     }
   ]
 }

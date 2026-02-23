@@ -59,6 +59,22 @@
       ],
       "gene": "gene_subagent_telegram_target",
       "origin": "PCEC #17 — 2026-02-23, extracted from 2026-02-22 memory lesson about dev-mgr notification failure"
+    },
+    {
+      "id": "capsule_cron_tool_correct_format",
+      "name": "Fix Cron Tool Parameter Format Errors",
+      "trigger": "cron.update or cron.add fails with 'unexpected property' or 'must have required property text'",
+      "steps": [
+        "STOP: do not re-read jobs.json and try again with the same format",
+        "The internal jobs.json uses 'message' but the tool API uses 'text' for the prompt content",
+        "For cron.update: use 'jobId' (not 'id') as the job identifier",
+        "For payload: use { text: '...' } — not { message: '...', model: '...', agentId: '...' }",
+        "Model, agentId, timeoutSeconds, thinking may be separate tool params, not nested in payload",
+        "If format is still unclear: run 'openclaw cron --help' via exec to discover correct CLI params",
+        "Alternative: edit ~/.openclaw/cron/jobs.json directly with the write tool, then restart gateway to apply changes"
+      ],
+      "gene": "gene_cron_tool_schema_mismatch",
+      "origin": "PCEC #21 — 2026-02-23, main session failed 4x with wrong cron params before resorting to delete+recreate"
     }
   ]
 }
