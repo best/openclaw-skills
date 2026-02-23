@@ -98,6 +98,13 @@
       "trigger": "gateway log shows 'cron failed: invalid cron.update params' or 'cron failed: invalid cron.add params' with 'unexpected property' errors",
       "strategy": "The cron tool API schema differs from the internal jobs.json storage format. Common mistakes: (1) Using 'message' instead of 'text' in payload — the tool API requires payload.text, not payload.message. (2) Using 'id' instead of 'jobId' for cron.update — the tool requires jobId at the root. (3) Nesting model/agentId/timeoutSeconds/thinking directly in payload — these may be top-level tool params, not payload sub-fields. (4) payload.kind may need a specific value or be omitted entirely. Never read jobs.json and pass its format directly to the cron tool — always check the tool's own parameter schema first. If unsure of the correct format, use 'openclaw cron --help' via exec to discover the CLI API, or try cron action:list to see the tool's response format.",
       "origin": "PCEC #21 — 2026-02-23 main session failed 4x trying to update dev-mgr patrol job with internal storage format"
+    },
+    {
+      "id": "gene_web_search_rate_limit",
+      "name": "Web Search Rate Limit (Brave 429)",
+      "trigger": "gateway log shows 'web_search failed: Brave Search API error (429)' or 'RATE_LIMITED'",
+      "strategy": "Brave Search Free plan has strict limits: 1 request/second rate limit and 2000 queries/month quota. When hitting 429: (1) Do NOT immediately retry — wait at least 2 seconds. (2) Fall back to web_fetch with a search engine URL (e.g., web_fetch('https://www.google.com/search?q=...')) as a backup. (3) For concurrent tool calls that include web_search, stagger them or reduce to a single search. (4) Check meta.quota_current in the error response to monitor monthly usage. (5) If quota is near 2000, prefer web_fetch over web_search for the rest of the month. (6) This error is transient and self-resolving (rate limit clears in seconds), but quota exhaustion persists until month reset.",
+      "origin": "PCEC #23 — 2026-02-23 search rate-limited at 03:31 UTC during gateway docs browsing"
     }
   ]
 }
