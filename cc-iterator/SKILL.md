@@ -1,6 +1,6 @@
 ---
 name: cc-iterator
-version: 0.1.2
+version: 0.1.3
 description: "Autonomous CC (Claude Code) iteration loop. Manages background coding agent tasks with pull-based issue tracking."
 ---
 
@@ -44,6 +44,23 @@ exec pty:true background:true workdir:/data/code/github.com/openlinkos/agent com
 - No output after 25+ min = likely hung → kill and retry
 - Check `git status` to confirm no code changes before retrying
 - If CC partially completed: check `git log`, continue from breakpoint
+
+### Wake Event Failure
+
+The `openclaw system event` at the end of CC prompts may silently fail if:
+- Gateway restarted during CC execution (event has no delivery target)
+- LLM provider outage caused the parent session to expire
+
+When CC completes but no wake event arrives, the cron patrol loop detects completion
+via `process action:list` (exit code 0). Don't rely solely on wake events.
+
+### Debugging CC Failures (post-2026.2.22)
+
+OpenClaw 2026.2.22+ hides tool error details by default. When investigating CC failures:
+- Use `/verbose on` in the session to see full error payloads
+- Background tasks are no longer killed by default timeout (previous failure mode removed)
+- Execution and delivery status are now tracked separately — a CC may finish (execution OK)
+  but its wake event may fail to deliver (delivery failed)
 
 ## Lessons Learned
 
