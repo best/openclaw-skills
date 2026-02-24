@@ -67,9 +67,9 @@
     {
       "id": "gene_llm_provider_cascade_failure",
       "name": "LLM Provider Cascade Failure",
-      "trigger": "gateway log shows 'All models failed' or multiple lanes timing out simultaneously with 'LLM request timed out' + 'HTTP 502 upstream_error'",
-      "strategy": "1) Detect: multiple lanes (main, cron, session) all failing with timeout/502 within minutes. 2) Root cause: all configured models share the same upstream provider, so a single outage kills everything. 3) Immediate: nothing to do — system auto-recovers when provider comes back. Queued cron jobs will batch-fire (expect duplicates). 4) Prevention: ensure failover models use different upstream providers (e.g., deeprouter + astralor should point to different Anthropic endpoints, or mix in a non-Anthropic model like MiniMax for critical cron). 5) The PCEC cron itself is affected — expect batched triggers after recovery.",
-      "origin": "PCEC #14 — 2026-02-22 total outage ~15:58-16:10 UTC, both opus and sonnet failed simultaneously"
+      "trigger": "gateway log shows 'All models failed' or multiple lanes timing out simultaneously with 'LLM request timed out' + 'HTTP 502 upstream_error', or multiple embedded runs ending with 'stream_read_error' within minutes",
+      "strategy": "1) Detect: multiple lanes (main, cron, session) all failing with timeout/502/stream_read_error within minutes. 2) Root cause: all configured models share the same upstream provider, so a single outage kills everything. Three failure modes: (a) timeout — no response at all, (b) 502 upstream_error — provider returns error, (c) stream_read_error — provider starts responding but SSE stream breaks mid-response. All three indicate provider instability. 3) Immediate: nothing to do — system auto-recovers when provider comes back. Queued cron jobs will batch-fire (expect duplicates). 4) stream_read_error specifically: the run's partial response is lost, agent sees isError=true. The run will be retried on next trigger. Often precedes or follows LLM timeouts as the provider degrades. 5) Prevention: ensure failover models use different upstream providers (e.g., deeprouter + astralor should point to different Anthropic endpoints, or mix in a non-Anthropic model like MiniMax for critical cron). 6) The PCEC cron itself is affected — expect batched triggers after recovery.",
+      "origin": "PCEC #14 — 2026-02-22 total outage, hardened PCEC #24 for stream_read_error variant (3 events on 2026-02-24)"
     },
     {
       "id": "gene_gateway_restart_blocked_by_plugin",
