@@ -105,6 +105,13 @@
       "trigger": "gateway log shows 'web_search failed: Brave Search API error (429)' or 'RATE_LIMITED'",
       "strategy": "Brave Search Free plan has strict limits: 1 request/second rate limit and 2000 queries/month quota. When hitting 429: (1) Do NOT immediately retry — wait at least 2 seconds. (2) Fall back to web_fetch with a search engine URL (e.g., web_fetch('https://www.google.com/search?q=...')) as a backup. (3) For concurrent tool calls that include web_search, stagger them or reduce to a single search. (4) Check meta.quota_current in the error response to monitor monthly usage. (5) If quota is near 2000, prefer web_fetch over web_search for the rest of the month. (6) This error is transient and self-resolving (rate limit clears in seconds), but quota exhaustion persists until month reset.",
       "origin": "PCEC #23 — 2026-02-23 search rate-limited at 03:31 UTC during gateway docs browsing"
+    },
+    {
+      "id": "gene_session_transcript_repair",
+      "name": "Session Transcript Auto-Repair (Synthetic Error Result)",
+      "trigger": "session history contains '[openclaw] missing tool result in session history; inserted synthetic error result for transcript repair'",
+      "strategy": "A tool call was recorded but no result came back. The gateway auto-repairs by inserting a synthetic error result (isError: true). Common causes: (1) gateway restart during tool execution, (2) LLM cascade timeout causing session abort while tool is in-flight, (3) process crash or OOM during tool call. Single occurrences: benign, auto-repair worked, no action needed. Clustered (3+ within minutes): correlates with a system event — check for concurrent gateway restart errors or LLM timeouts at the same timestamp. The affected tool call's result is lost; the agent sees isError:true and should retry if the operation is safe and idempotent. No prevention available — this is a race condition between session persistence and tool execution lifecycle.",
+      "origin": "PCEC #21 — 2026-02-24, observed 11 occurrences across 6 sessions (Feb 3–24), clusters correlate with LLM cascade failure (Feb 23) and gateway restarts"
     }
   ]
 }
