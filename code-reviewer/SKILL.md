@@ -1,28 +1,46 @@
 ---
 name: code-reviewer
-version: 0.1.0
-description: "Standardized code review checklist for AI-generated code. Quality gate for pre-push verification."
+version: 0.1.1
+description: "Standardized code review checklist for AI-generated code. Supports both local diff and PR review workflows."
 ---
 
 # Code Reviewer — Quality Gate
 
-Review CC-generated code against a standardized checklist.
+Review code against a standardized checklist. Works in two modes: local diff review and PR review.
 
 ## Review Checklist
 
-1. **Type Safety** — No `any` types, proper generics
+1. **Type Safety** — No `any` types, proper generics, strict null checks
 2. **Error Handling** — All async ops have try/catch, meaningful error messages
 3. **Resource Cleanup** — Streams closed, listeners removed, timers cleared
 4. **API Consistency** — Naming conventions, parameter ordering, return types
 5. **Tests** — Coverage for happy path + edge cases + error cases
 6. **Build** — `pnpm test` passes, `tsc --noEmit` clean
+7. **Security** — No hardcoded secrets, proper input validation
+8. **Idempotency** — Operations safe to retry (especially for event handlers, webhooks)
 
-## Workflow
+## Mode A: Local Diff Review
+
+For reviewing code before pushing (used by cc-iterator self-check):
 
 1. `git diff main..HEAD --stat` to see changed files
 2. Review each changed file against checklist
 3. Run `pnpm test` to verify
-4. Report findings with severity (critical/warning/info)
+4. Report findings with severity
+
+## Mode B: PR Review (Cron Patrol)
+
+For review-engineer cron patrol or manual PR review:
+
+1. `gh pr list --repo OWNER/REPO --state open` to find PRs
+2. `gh pr checks <number>` — CI must pass before code review
+   - CI pending → skip, wait for next patrol
+   - CI failed → reject with CI failure details
+3. `gh pr diff <number>` — review changed code against checklist
+4. Verdict:
+   - PASS → `gh pr merge <number> --squash`
+   - NEEDS_FIX → `gh pr review <number> --request-changes -b "details"`
+   - UNCERTAIN → escalate to dev-mgr (via sessions_send if in multi-agent setup)
 
 ## Output Format
 
@@ -38,18 +56,18 @@ Review CC-generated code against a standardized checklist.
 ### Info
 - file.ts:8 — suggestion
 
-### Verdict: PASS / NEEDS_FIX
+### Verdict: PASS / NEEDS_FIX / ESCALATE
 ```
 
-## Principles
+## Severity Guide
 
-- Critical = must fix before merge
-- Warning = should fix, can defer
-- Info = style/optimization suggestion
-- If NEEDS_FIX: create a fix issue or let CC handle directly
-- Every 3-4 issues, do a batch cross-file review
+- **Critical** = must fix before merge (type errors, missing error handling, security issues)
+- **Warning** = should fix, can defer (style inconsistency, missing edge case test)
+- **Info** = suggestion (optimization, naming improvement)
+- **ESCALATE** = reviewer is unsure about a design decision or trade-off
 
-## Project Context
+## Integration Notes
 
-- Repo: `/data/code/github.com/openlinkos/agent`
-- Tech: TypeScript, pnpm monorepo, vitest
+- The review-engineer cron patrol embeds the PR workflow inline — this skill provides the detailed checklist reference
+- When reviewing CC-generated code, pay extra attention to: test coverage gaps, over-abstraction, hardcoded paths
+- Review cadence: every 3-4 development issues, consider a batch cross-file review for architectural consistency

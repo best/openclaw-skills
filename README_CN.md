@@ -12,7 +12,7 @@ OpenClaw Agent 自主开发工作流技能集。
 |------|------|------|
 | [cc-iterator](./cc-iterator/) | 自主编码代理迭代循环 | v0.1.3 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
-| [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.0 |
+| [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.1 |
 | [evolution-engine](./evolution-engine/) | PCEC 自我进化引擎（GEP 协议） | v0.4.0 |
 
 ## 安装
