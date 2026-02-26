@@ -60,9 +60,9 @@
     {
       "id": "gene_message_missing_params",
       "name": "Message Tool Missing Required Params",
-      "trigger": "gateway log shows 'message failed: messageId required' or 'message failed: target required' or 'message failed: Action send requires a target'",
-      "strategy": "message actions react/edit/delete require messageId. Always check the action's required params before calling: send needs target+message, react needs messageId+emoji, edit needs messageId+message, delete needs messageId. When target is unavailable (e.g. in cron/subagent context with no implicit chatId), use sessions_send to relay through the main session instead of message.send directly. When messageId is unavailable (e.g. in cron context), skip the action gracefully.",
-      "origin": "PCEC #13 — 2026-02-22 react called without messageId, hardened PCEC #22 for 'Action send requires a target' variant"
+      "trigger": "gateway log shows 'message failed: messageId required' or 'message failed: target required' or 'message failed: Action send requires a target' or 'message failed: Action thread-reply requires a target'",
+      "strategy": "message actions react/edit/delete require messageId. Thread actions (thread-reply, thread-create) require target (the thread/channel id). Always check the action's required params before calling: send needs target+message, react needs messageId+emoji, edit needs messageId+message, delete needs messageId, thread-reply needs target+message (target is the thread id). When target is unavailable (e.g. in cron/subagent context with no implicit chatId), use sessions_send to relay through the main session instead of message.send directly. When messageId is unavailable (e.g. in cron context), skip the action gracefully. For thread-reply specifically: the target must be the threadId, not a channel or user — check thread-list first if the thread id is unknown.",
+      "origin": "PCEC #13 — 2026-02-22 react called without messageId, hardened PCEC #22 for 'Action send requires a target', hardened PCEC #39 for thread-reply variant"
     },
     {
       "id": "gene_llm_provider_cascade_failure",
