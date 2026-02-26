@@ -146,6 +146,13 @@
       "name": "Message Tool Media Path Restriction",
       "trigger": "gateway log shows 'message failed: Local media path is not under an allowed directory'",
       "strategy": "The message tool's filePath/media parameter restricts local file paths to allowed directories (typically the workspace ~/. openclaw/workspace/ and standard download paths). Files in /tmp, /root, or other arbitrary locations will be rejected. Workarounds: (1) Copy the file to the workspace first: cp /tmp/file.sh ~/.openclaw/workspace/file.sh, then reference the workspace path. (2) For generated scripts/text files: use the buffer parameter with base64 content instead of filePath — this bypasses path restrictions entirely. (3) For small text content: paste it inline in the message text rather than attaching as a file. (4) Never assume /tmp is an allowed media directory — it is not. (5) When creating files intended for sharing, write them directly to the workspace from the start. (6) The restriction is a security measure to prevent accidental exfiltration of system files — do not attempt to circumvent it by symlinking."
+    },
+    {
+      "id": "gene_web_search_param_validation",
+      "name": "Web Search Parameter Validation (Brave 422)",
+      "trigger": "gateway log shows 'web_search failed: Brave Search API error (422)' with 'VALIDATION' code, typically for invalid search_lang or country values",
+      "strategy": "Brave Search API validates parameter enum values strictly and returns 422 on mismatch. Common pitfall: using ISO 639-1 short codes (e.g., 'zh', 'pt') when Brave requires extended variants. Correct mappings: Chinese → 'zh-hans' (simplified) or 'zh-hant' (traditional), NOT 'zh'. Portuguese → 'pt-br' or 'pt-pt', NOT 'pt'. English GB → 'en-gb', NOT 'en-GB'. Japanese → 'jp', NOT 'ja'. Full valid list: ar, eu, bn, bg, ca, zh-hans, zh-hant, hr, cs, da, nl, en, en-gb, et, fi, fr, gl, de, el, gu, he, hi, hu, is, it, jp, kn, ko, lv, lt, ms, ml, mr, nb, pl, pt-br, pt-pt, pa, ro, ru, sr, sk, sl, es, sv, ta, te, th, tr, uk, vi. When calling web_search with search_lang for Chinese content, always use 'zh-hans'. If unsure about a language code, omit search_lang entirely — Brave defaults sensibly. Distinct from gene_web_search_rate_limit (429) which is about quota/rate, not parameter validity.",
+      "origin": "PCEC #36 — 2026-02-26 search_lang 'zh' rejected at 01:46 UTC"
     }
   ]
 }
