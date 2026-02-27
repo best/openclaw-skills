@@ -54,17 +54,25 @@ def get_model(provided_model: str | None) -> str:
 
 
 def resolve_output_path(filename: str) -> Path:
-    """Resolve output path. Pure filename → output_dir/YYYY-MM/filename. Path with directory → use as-is."""
+    """Resolve output path. Pure filename → output_dir/YYYY-MM/timestamp-filename. Path with dir → use as-is."""
     from datetime import datetime
     p = Path(filename)
+    now = datetime.now()
+
+    # Auto-prepend timestamp if filename doesn't already start with a date pattern
+    name = p.name
+    import re
+    if not re.match(r"^\d{4}-\d{2}-\d{2}", name):
+        name = now.strftime("%Y-%m-%d-%H-%M-%S-") + name
+
     if p.parent == Path("."):
         # Pure filename: auto-organize into GEMINI_IMAGE_OUTPUT_DIR/YYYY-MM/
         output_dir = os.environ.get("GEMINI_IMAGE_OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
-        month_dir = datetime.now().strftime("%Y-%m")
-        return Path(output_dir) / month_dir / filename
+        month_dir = now.strftime("%Y-%m")
+        return Path(output_dir) / month_dir / name
     else:
-        # Has directory component: use as-is
-        return p
+        # Has directory component: use specified dir with timestamped name
+        return p.parent / name
 
 
 def main():

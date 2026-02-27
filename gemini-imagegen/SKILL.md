@@ -13,10 +13,10 @@ Generate and edit images using the Gemini Image Generation API via the bundled P
 Run the script with a prompt and output filename:
 
 ```bash
-uv run <skill_dir>/scripts/generate_image.py -p "description" -f "YYYY-MM-DD-HH-MM-SS-name.png"
+uv run <skill_dir>/scripts/generate_image.py -p "description" -f "descriptive-name.png"
 ```
 
-The script handles authentication, API communication, response parsing, and image saving. Always use this script to generate images.
+The script handles authentication, API communication, response parsing, image saving, and auto-organizes output files with timestamp prefixes into monthly directories.
 
 ### Examples
 
@@ -25,7 +25,7 @@ Text-to-image:
 ```bash
 uv run <skill_dir>/scripts/generate_image.py \
   -p "a serene mountain lake at sunset with reflections" \
-  -f "2026-03-01-14-30-00-mountain-lake.png"
+  -f "mountain-lake.png"
 ```
 
 With aspect ratio and resolution:
@@ -33,7 +33,7 @@ With aspect ratio and resolution:
 ```bash
 uv run <skill_dir>/scripts/generate_image.py \
   -p "phone wallpaper of cherry blossoms in spring breeze" \
-  -f "2026-03-01-15-00-00-cherry-blossoms.png" \
+  -f "cherry-blossoms.png" \
   -a 9:16 -r 2K
 ```
 
@@ -42,7 +42,7 @@ Edit an existing image:
 ```bash
 uv run <skill_dir>/scripts/generate_image.py \
   -p "make the sky purple and add northern lights" \
-  -f "2026-03-01-15-30-00-purple-sky.png" \
+  -f "purple-sky.png" \
   -i /path/to/input.png
 ```
 
@@ -51,7 +51,7 @@ Compose multiple images (up to 14):
 ```bash
 uv run <skill_dir>/scripts/generate_image.py \
   -p "combine these photos into a unified scene" \
-  -f "2026-03-01-16-00-00-combined.png" \
+  -f "combined.png" \
   -i img1.png -i img2.png -i img3.png
 ```
 
@@ -60,7 +60,7 @@ uv run <skill_dir>/scripts/generate_image.py \
 | Param | Required | Description |
 |-------|----------|-------------|
 | -p, --prompt | Yes | Image description or editing instruction |
-| -f, --filename | Yes | Output filename. Use `YYYY-MM-DD-HH-MM-SS-name.png` format |
+| -f, --filename | Yes | Output filename (e.g., `mountain-lake.png`). Timestamp prefix auto-added |
 | -r, --resolution | No | `1K` (default), `2K`, or `4K` |
 | -a, --aspect-ratio | No | `1:1` `2:3` `3:2` `3:4` `4:3` `4:5` `5:4` `9:16` `16:9` `21:9` |
 | -i, --input-image | No | Input image path for editing/composition. Repeatable, up to 14 |
@@ -76,13 +76,13 @@ uv run <skill_dir>/scripts/generate_image.py \
 
 ### Output Directory
 
-When `-f` is a plain filename (no directory), images are saved to `$GEMINI_IMAGE_OUTPUT_DIR/YYYY-MM/`:
+When `-f` is a plain filename (no directory), images are auto-saved to `$GEMINI_IMAGE_OUTPUT_DIR/YYYY-MM/` with a timestamp prefix:
 
 ```bash
-# -f "sunset.png" → saves to $GEMINI_IMAGE_OUTPUT_DIR/2026-03/sunset.png
+# -f "sunset.png" → saves to $GEMINI_IMAGE_OUTPUT_DIR/2026-03/2026-03-01-14-30-00-sunset.png
 uv run <skill_dir>/scripts/generate_image.py -p "a sunset" -f "sunset.png"
 
-# -f "/custom/path/sunset.png" → saves to /custom/path/sunset.png (as-is)
+# -f "/custom/path/sunset.png" → saves to /custom/path/2026-03-01-14-30-00-sunset.png
 uv run <skill_dir>/scripts/generate_image.py -p "a sunset" -f "/custom/path/sunset.png"
 ```
 
