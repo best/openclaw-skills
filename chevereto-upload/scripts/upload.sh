@@ -24,10 +24,15 @@ if [[ ! -f "$FILE_PATH" ]]; then
 fi
 
 # --- Rename file to meaningful name based on title ---
+RENAMED_PATH=""
 if [[ -n "$TITLE" ]]; then
   EXT="${FILE_PATH##*.}"
   # Title → lowercase, spaces/special chars → hyphens, trim
   SAFE_NAME=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//')
+  # Fallback: non-ASCII titles (e.g. Chinese) produce empty SAFE_NAME
+  if [[ -z "$SAFE_NAME" || ${#SAFE_NAME} -lt 3 ]]; then
+    SAFE_NAME="upload-$(date +%Y%m%d-%H%M%S)"
+  fi
   RENAMED_PATH="/tmp/${SAFE_NAME}.${EXT}"
   cp "$FILE_PATH" "$RENAMED_PATH"
   FILE_PATH="$RENAMED_PATH"
@@ -83,6 +88,9 @@ RESULT=$(echo "$RESPONSE" | jq '{
 }')
 
 echo "$RESULT"
+
+# --- Cleanup temp renamed file ---
+[[ -n "$RENAMED_PATH" && -f "$RENAMED_PATH" ]] && rm -f "$RENAMED_PATH"
 
 # --- Log upload for management ---
 mkdir -p "$(dirname "$CHEVERETO_LOG")"

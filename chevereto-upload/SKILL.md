@@ -1,6 +1,6 @@
 ---
 name: chevereto-upload
-version: 0.3.0
+version: 0.3.1
 description: "Upload images to a Chevereto V4 image hosting service for permanent, shareable URLs. Use when images (AI-generated, screenshots, or any visual content) need to be hosted, archived, or shared via a link. Also supports listing and deleting uploaded images."
 ---
 
@@ -46,6 +46,11 @@ bash <skill_dir>/scripts/upload.sh /tmp/screenshot.png \
 | title | Short descriptive name in English (e.g., "Cherry Blossom Phone Wallpaper") |
 | description | For AI images: include Prompt, Model, Generated date, and user's original Request. For other images: describe content and context |
 | tags | Comma-separated keywords. AI images always include `ai-generated,openclaw` plus model name and style tags |
+
+**Metadata rules:**
+- **Never include proxy/third-party service info** in descriptions — only the model name (e.g., "gemini-3-pro-image", not "via gptclub proxy")
+- **Always upload via the script** — do not use raw `curl` against the API. The script ensures all metadata fields (delete_url, dimensions, size) are logged to `chevereto-uploads.jsonl`
+- **Non-ASCII titles** (Chinese, etc.) are handled gracefully — the script falls back to a timestamp-based filename when the title has no ASCII-safe characters
 
 ### Response
 
