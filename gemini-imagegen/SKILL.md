@@ -84,6 +84,12 @@ Environment variables (auto-injected via OpenClaw `env.vars`):
 | `GEMINI_BASE_URL` | No | Custom API endpoint URL (for alternative deployments) |
 | `GEMINI_IMAGE_MODEL` | No | Model ID override |
 
+## Prompt Writing
+
+For prompt templates, examples, and best practices, see [references/prompting.md](references/prompting.md).
+
+Key principle: **describe the scene as a narrative paragraph**, not a keyword list. Include subject, environment, lighting, mood, and camera perspective. The more specific and descriptive, the better the result.
+
 ## Model Capabilities
 
 - **World knowledge**: renders real-world subjects accurately
