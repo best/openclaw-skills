@@ -1,5 +1,5 @@
 ---
-name: gemini-image
+name: gemini-imagegen
 version: 0.2.0
 description: "Generate and edit images with Gemini 3.1 Flash Image (Nano Banana 2) via third-party proxy. Supports text-to-image, image editing, multi-image composition (up to 14), aspect ratio control, and 1K/2K/4K resolution."
 ---
