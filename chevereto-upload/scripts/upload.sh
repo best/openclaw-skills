@@ -94,5 +94,11 @@ if [[ -z "$AGENT_ID" ]]; then
     *)             AGENT_ID="unknown" ;;
   esac
 fi
-LOG_ENTRY=$(echo "$RESULT" | jq -c ". + {uploaded_at: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", agent: \"$AGENT_ID\", local_file: \"$FILE_PATH\"}")
+LOG_ENTRY=$(echo "$RESULT" | jq -c \
+  --arg uploaded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg agent "$AGENT_ID" \
+  --arg local_file "$FILE_PATH" \
+  --arg description "$DESCRIPTION" \
+  --arg tags "$TAGS" \
+  '. + {uploaded_at: $uploaded_at, agent: $agent, local_file: $local_file, description: $description, tags: $tags}')
 echo "$LOG_ENTRY" >> "$CHEVERETO_LOG"
