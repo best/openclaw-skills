@@ -15,6 +15,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.1 |
 | [evolution-engine](./evolution-engine/) | PCEC self-evolution engine with GEP protocol | v0.4.0 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.2.0 |
+| [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.2.0 |
 
 ## Install
 
