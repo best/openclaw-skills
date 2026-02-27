@@ -7,7 +7,7 @@
 # ]
 # ///
 """
-Generate images using Gemini 3.1 Flash Image (Nano Banana 2) via third-party API proxy.
+Generate images using the Gemini Image Generation API.
 
 Supports text-to-image, image editing, multi-image composition, aspect ratio control,
 and resolutions from 1K to 4K.
@@ -27,27 +27,26 @@ import sys
 from pathlib import Path
 
 
-DEFAULT_BASE_URL = "https://api.gptclubapi.xyz/gemini"
 DEFAULT_MODEL = "gemini-3.1-flash-image"
 VALID_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 
 
 def get_api_key(provided_key: str | None) -> str | None:
-    """Get API key from argument first, then environment."""
+    """Get API key from argument, then GEMINI_API_KEY env var."""
     if provided_key:
         return provided_key
-    return os.environ.get("GPTCLUB_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    return os.environ.get("GEMINI_API_KEY")
 
 
-def get_base_url(provided_url: str | None) -> str:
-    """Get base URL from argument or environment."""
+def get_base_url(provided_url: str | None) -> str | None:
+    """Get base URL from argument or GEMINI_BASE_URL env var. None means use official default."""
     if provided_url:
         return provided_url
-    return os.environ.get("GEMINI_BASE_URL", DEFAULT_BASE_URL)
+    return os.environ.get("GEMINI_BASE_URL")
 
 
 def get_model(provided_model: str | None) -> str:
-    """Get model name from argument or environment."""
+    """Get model name from argument or GEMINI_IMAGE_MODEL env var."""
     if provided_model:
         return provided_model
     return os.environ.get("GEMINI_IMAGE_MODEL", DEFAULT_MODEL)
@@ -55,7 +54,7 @@ def get_model(provided_model: str | None) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate/edit images using Gemini 3.1 Flash Image (Nano Banana 2) via proxy"
+        description="Generate/edit images using the Gemini Image Generation API"
     )
     parser.add_argument(
         "--prompt", "-p",
@@ -65,7 +64,7 @@ def main():
     parser.add_argument(
         "--filename", "-f",
         required=True,
-        help="Output filename (e.g., sunset-mountains.png)"
+        help="Output filename (e.g., 2026-03-01-14-30-00-sunset.png)"
     )
     parser.add_argument(
         "--input-image", "-i",
@@ -89,11 +88,11 @@ def main():
     )
     parser.add_argument(
         "--api-key", "-k",
-        help="API key (overrides GPTCLUB_API_KEY / GEMINI_API_KEY env var)"
+        help="API key (overrides GEMINI_API_KEY env var)"
     )
     parser.add_argument(
         "--base-url",
-        help=f"API proxy base URL (default: {DEFAULT_BASE_URL})"
+        help="API endpoint URL (overrides GEMINI_BASE_URL env var)"
     )
     parser.add_argument(
         "--model", "-m",
@@ -106,9 +105,7 @@ def main():
     api_key = get_api_key(args.api_key)
     if not api_key:
         print("Error: No API key provided.", file=sys.stderr)
-        print("Please either:", file=sys.stderr)
-        print("  1. Provide --api-key argument", file=sys.stderr)
-        print("  2. Set GPTCLUB_API_KEY or GEMINI_API_KEY environment variable", file=sys.stderr)
+        print("Set GEMINI_API_KEY environment variable or use --api-key.", file=sys.stderr)
         sys.exit(1)
 
     base_url = get_base_url(args.base_url)
@@ -119,13 +116,15 @@ def main():
     from google.genai import types
     from PIL import Image as PILImage
 
-    # Initialise client with custom proxy endpoint
-    client = genai.Client(
-        api_key=api_key,
-        http_options={"base_url": base_url}
-    )
+    # Initialise client, optionally with custom endpoint
+    client_kwargs = {"api_key": api_key}
+    if base_url:
+        client_kwargs["http_options"] = {"base_url": base_url}
+
+    client = genai.Client(**client_kwargs)
     print(f"Using model: {model}")
-    print(f"Using endpoint: {base_url}")
+    if base_url:
+        print(f"Using endpoint: {base_url}")
 
     # Set up output path
     output_path = Path(args.filename)
