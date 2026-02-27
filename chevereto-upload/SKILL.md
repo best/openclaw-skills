@@ -1,6 +1,6 @@
 ---
 name: chevereto-upload
-version: 0.1.0
+version: 0.2.0
 description: "Upload, manage, and delete images on any Chevereto V4 instance. Use when generating images, screenshots, or any visual content that should be hosted and shared via a permanent URL. Also handles listing and deleting previously uploaded images."
 ---
 
