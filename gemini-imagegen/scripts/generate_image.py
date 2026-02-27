@@ -241,10 +241,13 @@ def main():
                 image_saved = True
 
         if image_saved:
-            full_path = output_path.resolve()
-            print(f"\nImage saved: {full_path}")
+            # Use absolute path without resolving symlinks so output shows
+            # the logical path (e.g. ~/.openclaw/workspace/images/...) instead
+            # of the symlink target (e.g. /data/images/...).
+            display_path = Path(os.path.abspath(str(output_path)))
+            print(f"\nImage saved: {display_path}")
             # OpenClaw parses MEDIA tokens and will attach the file on supported providers.
-            print(f"MEDIA: {full_path}")
+            print(f"MEDIA: {display_path}")
         else:
             print("Error: No image was generated in the response.", file=sys.stderr)
             sys.exit(1)
