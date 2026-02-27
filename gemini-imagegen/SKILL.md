@@ -74,6 +74,18 @@ uv run <skill_dir>/scripts/generate_image.py \
 - Report the saved file path to the user. Do not read the generated image file back into the conversation.
 - If the image should be permanently hosted, use the `chevereto-upload` skill as a separate step after generation.
 
+### Output Directory
+
+When `-f` is a plain filename (no directory), images are saved to `$GEMINI_IMAGE_OUTPUT_DIR/YYYY-MM/`:
+
+```bash
+# -f "sunset.png" → saves to $GEMINI_IMAGE_OUTPUT_DIR/2026-03/sunset.png
+uv run <skill_dir>/scripts/generate_image.py -p "a sunset" -f "sunset.png"
+
+# -f "/custom/path/sunset.png" → saves to /custom/path/sunset.png (as-is)
+uv run <skill_dir>/scripts/generate_image.py -p "a sunset" -f "/custom/path/sunset.png"
+```
+
 ## Configuration
 
 Environment variables (auto-injected via OpenClaw `env.vars`):
@@ -83,6 +95,7 @@ Environment variables (auto-injected via OpenClaw `env.vars`):
 | `GEMINI_API_KEY` | Yes | Gemini API key |
 | `GEMINI_BASE_URL` | No | Custom API endpoint URL (for alternative deployments) |
 | `GEMINI_IMAGE_MODEL` | No | Model ID override |
+| `GEMINI_IMAGE_OUTPUT_DIR` | No | Output directory for generated images (default: `~/.openclaw/workspace/images`) |
 
 ## Prompt Writing
 

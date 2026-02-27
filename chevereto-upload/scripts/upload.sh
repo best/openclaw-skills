@@ -11,6 +11,7 @@ CHEVERETO_LOG="${CHEVERETO_LOG:-$HOME/.openclaw/workspace/memory/chevereto-uploa
 
 # --- Args ---
 FILE_PATH="${1:?Usage: upload.sh <file_path> [title] [description] [tags] [album_id]}"
+ORIGINAL_FILE_PATH="$FILE_PATH"  # preserve original path for logging
 TITLE="${2:-}"
 DESCRIPTION="${3:-}"
 TAGS="${4:-}"
@@ -97,7 +98,7 @@ fi
 LOG_ENTRY=$(echo "$RESULT" | jq -c \
   --arg uploaded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg agent "$AGENT_ID" \
-  --arg local_file "$FILE_PATH" \
+  --arg local_file "$ORIGINAL_FILE_PATH" \
   --arg description "$DESCRIPTION" \
   --arg tags "$TAGS" \
   '. + {uploaded_at: $uploaded_at, agent: $agent, local_file: $local_file, description: $description, tags: $tags}')

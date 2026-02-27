@@ -28,6 +28,7 @@ from pathlib import Path
 
 
 DEFAULT_MODEL = "gemini-3.1-flash-image"
+DEFAULT_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), ".openclaw", "workspace", "images")
 VALID_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 
 
@@ -50,6 +51,20 @@ def get_model(provided_model: str | None) -> str:
     if provided_model:
         return provided_model
     return os.environ.get("GEMINI_IMAGE_MODEL", DEFAULT_MODEL)
+
+
+def resolve_output_path(filename: str) -> Path:
+    """Resolve output path. Pure filename → output_dir/YYYY-MM/filename. Path with directory → use as-is."""
+    from datetime import datetime
+    p = Path(filename)
+    if p.parent == Path("."):
+        # Pure filename: auto-organize into GEMINI_IMAGE_OUTPUT_DIR/YYYY-MM/
+        output_dir = os.environ.get("GEMINI_IMAGE_OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
+        month_dir = datetime.now().strftime("%Y-%m")
+        return Path(output_dir) / month_dir / filename
+    else:
+        # Has directory component: use as-is
+        return p
 
 
 def main():
@@ -127,7 +142,7 @@ def main():
         print(f"Using endpoint: {base_url}")
 
     # Set up output path
-    output_path = Path(args.filename)
+    output_path = resolve_output_path(args.filename)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load input images if provided (up to 14 supported)
