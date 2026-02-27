@@ -75,3 +75,14 @@ uv run <skill_dir>/scripts/generate_image.py -p "combine into one scene" -f "out
 - Do not read the image file back; report the saved path only.
 - Use timestamps in filenames: `yyyy-mm-dd-hh-mm-ss-name.png`.
 - Generation typically takes 15-45 seconds through the proxy.
+
+## Post-Generation Workflow
+
+**All generated images must be archived via the `chevereto-upload` skill after generation.**
+
+1. Generate the image with this skill.
+2. Upload to Chevereto using `chevereto-upload` with proper metadata (prompt, model, date).
+3. Return the `viewer_url` and `direct_url` to the user.
+4. Clean up the local temporary file after successful upload.
+
+This applies to all images — test images, user-requested images, and any other generated visuals.
