@@ -85,5 +85,14 @@ echo "$RESULT"
 
 # --- Log upload for management ---
 mkdir -p "$(dirname "$CHEVERETO_LOG")"
-LOG_ENTRY=$(echo "$RESULT" | jq -c ". + {uploaded_at: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", local_file: \"$FILE_PATH\"}")
+# --- Detect agent from workspace path ---
+AGENT_ID="${CHEVERETO_AGENT:-}"
+if [[ -z "$AGENT_ID" ]]; then
+  case "$PWD" in
+    */workspace-*) AGENT_ID="${PWD##*workspace-}" ;;
+    */workspace)   AGENT_ID="main" ;;
+    *)             AGENT_ID="unknown" ;;
+  esac
+fi
+LOG_ENTRY=$(echo "$RESULT" | jq -c ". + {uploaded_at: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", agent: \"$AGENT_ID\", local_file: \"$FILE_PATH\"}")
 echo "$LOG_ENTRY" >> "$CHEVERETO_LOG"
