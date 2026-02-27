@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# ImgLab (Chevereto V4) image uploader
+# Chevereto V4 image uploader
 # Usage: upload.sh <file_path> [title] [description] [tags] [album_id]
 set -euo pipefail
 
 # --- Config ---
-IMGLAB_URL="${IMGLAB_URL:-https://imglab.cc}"
-IMGLAB_API_KEY="${IMGLAB_API_KEY:?IMGLAB_API_KEY is required}"
-IMGLAB_ALBUM_ID="${IMGLAB_ALBUM_ID:-}"
-IMGLAB_LOG="${IMGLAB_LOG:-$HOME/.openclaw/workspace/memory/imglab-uploads.jsonl}"
+CHEVERETO_URL="${CHEVERETO_URL:-https://imglab.cc}"
+CHEVERETO_API_KEY="${CHEVERETO_API_KEY:?CHEVERETO_API_KEY is required}"
+CHEVERETO_ALBUM_ID="${CHEVERETO_ALBUM_ID:-}"
+CHEVERETO_LOG="${CHEVERETO_LOG:-$HOME/.openclaw/workspace/memory/chevereto-uploads.jsonl}"
 
 # --- Args ---
 FILE_PATH="${1:?Usage: upload.sh <file_path> [title] [description] [tags] [album_id]}"
 TITLE="${2:-}"
 DESCRIPTION="${3:-}"
 TAGS="${4:-}"
-ALBUM_ID="${5:-$IMGLAB_ALBUM_ID}"
+ALBUM_ID="${5:-$CHEVERETO_ALBUM_ID}"
 
 # --- Validate ---
 if [[ ! -f "$FILE_PATH" ]]; then
@@ -36,7 +36,7 @@ fi
 CURL_ARGS=(
   -s --fail-with-body
   -X POST
-  -H "X-API-Key: $IMGLAB_API_KEY"
+  -H "X-API-Key: $CHEVERETO_API_KEY"
   -F "source=@${FILE_PATH}"
   -F "format=json"
 )
@@ -47,7 +47,7 @@ CURL_ARGS=(
 [[ -n "$ALBUM_ID" ]] && CURL_ARGS+=(-F "album_id=${ALBUM_ID}")
 
 # --- Upload ---
-RESPONSE=$(curl "${CURL_ARGS[@]}" "${IMGLAB_URL}/api/1/upload" 2>&1)
+RESPONSE=$(curl "${CURL_ARGS[@]}" "${CHEVERETO_URL}/api/1/upload" 2>&1)
 EXIT_CODE=$?
 
 if [[ $EXIT_CODE -ne 0 ]]; then
@@ -84,6 +84,6 @@ RESULT=$(echo "$RESPONSE" | jq '{
 echo "$RESULT"
 
 # --- Log upload for management ---
-mkdir -p "$(dirname "$IMGLAB_LOG")"
+mkdir -p "$(dirname "$CHEVERETO_LOG")"
 LOG_ENTRY=$(echo "$RESULT" | jq -c ". + {uploaded_at: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", local_file: \"$FILE_PATH\"}")
-echo "$LOG_ENTRY" >> "$IMGLAB_LOG"
+echo "$LOG_ENTRY" >> "$CHEVERETO_LOG"
