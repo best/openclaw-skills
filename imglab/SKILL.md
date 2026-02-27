@@ -1,6 +1,7 @@
 ---
 name: imglab
-description: Upload, manage, and delete images on ImgLab (Chevereto V4) image hosting. Use when generating images, screenshots, or any visual content that should be hosted and shared via a permanent URL. Also use for listing or deleting previously uploaded images. Triggers on image generation, upload requests, image management, or when a shareable image link is needed.
+version: 0.1.0
+description: "Upload, manage, and delete images on ImgLab (Chevereto V4) image hosting. Use when generating images, screenshots, or any visual content that should be hosted and shared via a permanent URL."
 ---
 
 # ImgLab Image Uploader
