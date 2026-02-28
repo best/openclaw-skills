@@ -1,55 +1,61 @@
 ---
 name: discord-thread-archiver
-description: "Smart Discord thread archiving with AI conversation analysis. Use when: (1) periodically cleaning up inactive threads, (2) setting up automated thread lifecycle management, (3) analyzing whether Discord conversations have concluded. Requires DISCORD_BOT_TOKEN env var. Supports AI-powered conversation completion detection via Anthropic-compatible API."
+description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and archives concluded threads."
 ---
 
 # Discord Thread Archiver
 
-Archive inactive Discord threads using AI to judge whether conversations have concluded.
+Evaluate active threads and archive concluded conversations. You ARE the judge — read messages and decide.
 
-## Usage
+## Procedure
+
+### 1. List threads
+
+```
+message(action="thread-list", channel="discord", channelId="<parent_channel>", guildId="<guild>")
+```
+
+### 2. Evaluate each thread
+
+Apply in order, stop at first match:
+
+| Rule | Condition | Action |
+|------|-----------|--------|
+| Pinned | `last_pin_timestamp` exists | Skip |
+| Too fresh | < 2h inactive | Skip |
+| Bot-only | All messages from bots + 4h inactive | Archive |
+| **Your judgment** | 4h+ inactive → read last 8 messages | Concluded → archive / Ongoing → lenient / Uncertain → time rule |
+| Time fallback | 1-3 msgs: 8h / 4-20 msgs: 24h / 20+: 48h | Archive if exceeded |
+
+Read messages for judgment:
+```
+message(action="read", channel="discord", target="channel:<thread_id>", limit=8)
+```
+
+Inactive time = now − `thread_metadata.archive_timestamp`.
+
+"Lenient" for ongoing = tier hours × 1.5.
+
+### 3. Archive
+
+`channel-edit` cannot set `archived` (schema limitation). Use exec:
 
 ```bash
-python3 scripts/archiver.py [--dry-run] [--verbose]
+curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+  -H "Authorization: Bot $(python3 -c \"import json; print(json.load(open('/root/.openclaw/openclaw.json'))['channels']['discord']['token'])\")" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: DiscordBot (https://openclaw.ai, 1.0)" \
+  -d '{"archived": true}' \
+  "https://discord.com/api/v10/channels/<thread_id>"
 ```
 
-## Environment Variables
+Sleep 0.5s between calls (rate limit).
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| DISCORD_BOT_TOKEN | Yes | Discord Bot token (falls back to OpenClaw config) |
-| ARCHIVER_GUILD_ID | No | Guild ID (default: from script) |
-| ARCHIVER_AI_BASE_URL | No | Anthropic-compatible API base URL (falls back to OpenClaw config) |
-| ARCHIVER_AI_API_KEY | No | API key for AI provider (falls back to OpenClaw config) |
-| ARCHIVER_AI_MODEL | No | Model ID (default: claude-sonnet-4-6) |
+### 4. Report
 
-## Decision Flow
+Summarize: archived count, kept count, reasons. One line per archived thread.
 
-```
-Thread enters evaluation
-  ├─ Has pin → never archive
-  ├─ < 2h inactive → skip
-  ├─ Bot-only messages + 4h → archive
-  ├─ 4h+ inactive → AI reads last 8 messages
-  │   ├─ concluded → archive
-  │   ├─ ongoing → lenient threshold (tier × 1.5)
-  │   └─ uncertain → fall through
-  └─ Time-based fallback
-      ├─ 1-3 msgs → 8h
-      ├─ 4-20 msgs → 24h
-      └─ 20+ msgs → 48h
-```
+## Requirements
 
-## Output
-
-Human-readable log + final JSON line:
-
-```json
-{"archived": 2, "kept": 3, "failed": 0, "ai_calls": 4, "details": [...]}
-```
-
-## Notes
-
-- Skill handles archiving logic only — scheduling and delivery are the caller's responsibility
-- Bot needs `MANAGE_THREADS` permission in the Discord guild
-- AI judgment uses `max_tokens: 20` per call — negligible cost
+- Bot needs `MANAGE_THREADS` permission
+- Scheduling and result delivery are the caller's responsibility
