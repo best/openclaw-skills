@@ -1,0 +1,25 @@
+{
+  "guild_id": "1083322462244175902",
+  "tiers": {
+    "quick":  { "max_msgs": 3,  "hours": 8 },
+    "normal": { "max_msgs": 20, "hours": 24 },
+    "deep":   { "max_msgs": 99999, "hours": 48 }
+  },
+  "channel_multipliers": {
+    "1476874308503474267": 2.0,
+    "1476874362274578523": 2.0
+  },
+  "ai": {
+    "enabled": true,
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "base_url": "",
+    "api_key": "",
+    "min_inactive_hours": 4
+  },
+  "closing_patterns": [
+    "谢谢", "感谢", "搞定", "解决了", "好的[，。！]?\\s*$",
+    "OK[，。！]?\\s*$", "ok[，。！]?\\s*$", "收到", "明白了",
+    "没问题", "就这样", "先这样", "可以了", "完美"
+  ]
+}
