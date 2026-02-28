@@ -1,12 +1,12 @@
 ---
 name: discord-thread-archiver
-version: 0.2.0
+version: 0.3.0
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and archives concluded threads."
 ---
 
 # Discord Thread Archiver
 
-Evaluate active threads and archive concluded conversations. You ARE the judge — read messages and decide.
+Evaluate active threads and archive concluded conversations. AI judgment is the primary decision mechanism — time alone is never sufficient reason to archive.
 
 ## Procedure
 
@@ -25,19 +25,29 @@ Apply in order, stop at first match:
 | Pinned | `last_pin_timestamp` exists | Skip |
 | Too fresh | < 2h inactive | Skip |
 | Bot-only | All messages from bots + 4h inactive | Archive |
-| **Your judgment** | 4h+ inactive → read last 8 messages | Concluded → archive / Ongoing → lenient / Uncertain → time rule |
-| Time fallback | 1-3 msgs: 8h / 4-20 msgs: 24h / 20+: 48h | Archive if exceeded |
-
-Read messages for judgment:
-```
-message(action="read", channel="discord", target="channel:<thread_id>", limit=8)
-```
+| Safety net | 7d+ inactive (any thread) | Archive |
+| **AI judgment** | 2h+ inactive → read last 10 messages | See below |
 
 Inactive time = now − `thread_metadata.archive_timestamp`.
 
-"Lenient" for ongoing = tier hours × 1.5.
+### 3. AI judgment (primary mechanism)
 
-### 3. Archive
+Read messages:
+```
+message(action="read", channel="discord", target="channel:<thread_id>", limit=10)
+```
+
+Evaluate conversation state and classify:
+
+| Verdict | Criteria | Action |
+|---------|----------|--------|
+| **Concluded** | Clear resolution: thanks/confirmation, question answered, task completed, mutual agreement reached | Archive |
+| **Ongoing** | Open question unanswered, debate in progress, action items pending, waiting for someone | **Keep** |
+| **Uncertain** | Can't tell from context | **Keep** (default to preserving) |
+
+Key principle: **When in doubt, keep the thread.** A user not responding does not mean the conversation is over — they may return later. Only archive when there are clear signals of conclusion.
+
+### 4. Archive
 
 `channel-edit` cannot set `archived` (schema limitation). Use exec:
 
@@ -52,7 +62,7 @@ curl -s -o /dev/null -w "%{http_code}" -X PATCH \
 
 Sleep 0.5s between calls (rate limit).
 
-### 4. Report
+### 5. Report
 
 Summarize: archived count, kept count, reasons. One line per archived thread.
 
