@@ -1,81 +1,126 @@
 ---
 name: skill-validator
-version: 0.1.0
+version: 0.2.0
 description: >
-  Validate OpenClaw skills for quality, structure, and cross-platform compatibility.
-  Use when: (1) receiving a skill archive (.zip/.tar.gz) or directory for review,
-  (2) checking a skill before release or installation, (3) running acceptance tests
-  on new or updated skills. Produces a structured report with pass/fail/warn verdicts.
+  技能实验室：OpenClaw 技能的全生命周期准入测试。包含三阶段：
+  (1) 静态校验 — 结构、路径、跨平台兼容性（脚本 + AI 分析）
+  (2) 智能分析 — 模型阅读技能全部内容，语义级审查
+  (3) 动态测试 — 生成子 Agent 加载技能实际运行，验证能力声明
+  Use when: 收到技能压缩包/目录需要评审，技能发布前准入测试，技能升级回归测试。
 ---
 
-# Skill Validator
+# Skill Validator — 技能实验室
 
-Validate skill packages for structure, path safety, cross-platform compatibility, and runability.
+三阶段准入测试：静态校验 → 智能分析 → 动态测试。
 
-## Usage
+## Thread 命名
+
+```
+YYYY-MM-DD {skill-name} v{version}
+```
+
+版本未知时用 `v?.?.?`。示例：`2026-02-28 gemini-imagegen v0.3.1`
+
+## Phase 1: 静态校验
+
+运行 `scripts/validate.py` 进行规则检查：
 
 ```bash
 python3 scripts/validate.py <skill-path> [--json] [--strict]
 ```
 
-- `<skill-path>` — path to skill directory (or extracted archive)
-- `--json` — output machine-readable JSON report
-- `--strict` — treat warnings as failures (exit code 1)
+### 检查项
+- **结构**：SKILL.md 存在、frontmatter 合法、目录规范
+- **路径安全**：无硬编码绝对路径
+- **脚本质量**：shebang、权限、语法
+- **跨平台**：行尾符 CRLF、BOM、bash 特性、路径拼接
+- **引用完整性**：SKILL.md 中引用的文件都存在
+- **体积**：SKILL.md <500 行、总体积 <1MB
+- **垃圾文件**：`__MACOSX/`、`Thumbs.db`、`.DS_Store`
 
-## Checks Performed
+静态校验 FAIL → 直接报告问题，不进入下一阶段。
+静态校验 PASS/WARN → 进入 Phase 2。
 
-### 1. Structure (required)
-- SKILL.md exists with valid YAML frontmatter (`name`, `description` required; `version` recommended)
-- No extraneous top-level files (README.md, CHANGELOG.md, etc.)
-- Resource directories only: `scripts/`, `references/`, `assets/`
-- No empty directories
+## Phase 2: 智能分析（模型驱动）
 
-### 2. Path Safety
-- No hardcoded absolute paths in scripts (`/root/`, `/home/`, `C:\Users\`, `/usr/local/`)
-- Scripts use portable path resolution (`dirname "$0"`, `$PSScriptRoot`, `__file__`, `__dirname`)
-- No OS-specific path separators hardcoded in cross-platform code
+不依赖脚本，由模型直接阅读技能全部内容进行语义级审查：
 
-### 3. Script Quality
-- `.sh` files have executable permission (`+x`)
-- Scripts have proper shebang lines
-- Python scripts pass `py_compile` syntax check
-- Dependencies declared if non-stdlib imports used
+### 审查维度
+1. **功能一致性** — description 声明的能力是否与实际脚本/指令匹配
+2. **触发准确性** — description 中的触发条件是否清晰、不会误触发
+3. **指令质量** — SKILL.md body 的指令是否清晰、无歧义、可执行
+4. **安全性** — 脚本有无危险操作（rm -rf、网络外传、权限提升）
+5. **依赖合理性** — 依赖的工具/包是否常见、是否声明了安装方式
+6. **跨平台语义** — 静态规则抓不到的平台问题（如 Python 用了 os-specific API）
+7. **边界情况** — 输入为空、文件不存在、网络超时等异常处理
+8. **渐进式加载** — 是否遵循了 SKILL.md 精简 + references 分离的原则
 
-### 4. Cross-Platform
-- Shell scripts flagged if using bash-specific features without platform restriction
-- Path joining uses `os.path.join` / `path.join` instead of string concatenation
+### 输出格式
+每个维度给出 ✅ PASS / ⚠️ WARN / ❌ FAIL + 说明。
+汇总为智能分析总评。
 
-### 5. Reference Integrity
-- All file paths mentioned in SKILL.md actually exist in the skill directory
-- No dead links to scripts/, references/, or assets/ files
+Phase 2 有 FAIL → 报告问题，建议修复后重测。
+Phase 2 全 PASS/WARN → 进入 Phase 3。
 
-### 6. Size & Tokens
-- SKILL.md body under 500 lines (warn if exceeded)
-- Total skill size under 1MB (warn if exceeded)
-- Large reference files (>100 lines) should have table of contents
+## Phase 3: 动态测试（子 Agent）
 
-## Report Format
+生成一个隔离的子 Agent session，加载待测技能并实际执行。
+
+### 流程
+1. **确认测试条件**
+   - 询问用户指定测试模型（默认用当前 agent 的模型）
+   - 检查技能是否需要特定环境变量/API key
+   - 检查是否需要测试素材（图片、文档等），缺失则向用户索要
+
+2. **生成测试用例**
+   - 根据 SKILL.md 的 description 和指令，自动构造 2-3 个典型使用场景
+   - 覆盖正常路径 + 至少一个边界情况
+
+3. **执行测试**
+   - 用 `sessions_spawn` 创建隔离 session
+   - 在 session 中模拟用户请求触发技能
+   - 收集执行结果（成功/失败/报错/输出质量）
+
+4. **报告结果**
+   - 每个测试用例的结果
+   - 执行耗时、token 消耗
+   - 最终准入判定：✅ 准入通过 / ⚠️ 有条件通过 / ❌ 不通过
+
+### 需要用户提供的信息
+- **测试模型**（可选，默认当前模型）
+- **测试素材**（如果技能处理图片/文件，需提供样本）
+- **API Key**（如果技能需要外部 API，确认已配置）
+
+## 完整报告模板
 
 ```
-╔══════════════════════════════════════╗
-║   Skill Validator Report             ║
-║   skill-name v0.1.0                  ║
-╠══════════════════════════════════════╣
-║ ✅ Structure         PASS            ║
-║ ✅ Path Safety       PASS            ║
-║ ⚠️  Script Quality    WARN (2)       ║
-║ ❌ Reference Integrity FAIL (1)      ║
-║ ✅ Size & Tokens     PASS            ║
-╠══════════════════════════════════════╣
-║ Verdict: FAIL                        ║
-║ 3 passed · 1 warning · 1 failure    ║
-╚══════════════════════════════════════╝
+══════════════════════════════════════════
+   技能实验室报告
+   {skill-name} v{version}
+   {date}
+══════════════════════════════════════════
+
+📋 Phase 1 — 静态校验
+   [validate.py 输出]
+
+🧠 Phase 2 — 智能分析
+   功能一致性    ✅ PASS
+   触发准确性    ✅ PASS
+   指令质量      ⚠️ WARN — ...
+   安全性        ✅ PASS
+   依赖合理性    ✅ PASS
+   跨平台语义    ✅ PASS
+   边界情况      ⚠️ WARN — ...
+   渐进式加载    ✅ PASS
+
+🧪 Phase 3 — 动态测试
+   模型：gptclub-claude/claude-sonnet-4-6
+   用例 1：[描述] → ✅ 通过 (3.2s)
+   用例 2：[描述] → ✅ 通过 (5.1s)
+   用例 3：[边界] → ⚠️ 部分通过 — ...
+
+══════════════════════════════════════════
+   准入判定：✅ 通过
+   静态 6/6 · 智能 7/8 · 动态 2.5/3
+══════════════════════════════════════════
 ```
-
-## Thread Workflow (Discord 🧪丨技能校验)
-
-1. User uploads a skill archive
-2. Create thread: `{skill-name} v{version} 校验`
-3. Extract → validate → post report
-4. FAIL → list specific fixes needed
-5. PASS → confirm ready for installation

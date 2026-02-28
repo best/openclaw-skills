@@ -256,6 +256,66 @@ def check_cross_platform(skill_dir: Path) -> CategoryResult:
     return cat
 
 
+
+
+# ---------------------------------------------------------------------------
+# Check: Platform Compat (enhanced)
+# ---------------------------------------------------------------------------
+
+JUNK_PATTERNS = {"__MACOSX", ".DS_Store", "Thumbs.db", "desktop.ini", "._."}
+
+
+def check_platform_compat(skill_dir: Path) -> CategoryResult:
+    """Enhanced cross-platform checks beyond simple syntax patterns."""
+    cat = CategoryResult("Platform Compat")
+
+    # Junk files/dirs
+    for f in skill_dir.rglob("*"):
+        name = f.name
+        for junk in JUNK_PATTERNS:
+            if name == junk or name.startswith(junk):
+                cat.add("warn", f"Platform junk file: {name}",
+                        file=str(f.relative_to(skill_dir)))
+                break
+
+    # CRLF line endings in scripts
+    for script in iter_scripts(skill_dir):
+        rel = script.relative_to(skill_dir)
+        try:
+            raw = script.read_bytes()
+        except Exception:
+            continue
+        if b"\r\n" in raw and script.suffix in (".sh", ".bash", ".py", ".rb", ".pl"):
+            cat.add("fail" if script.suffix in (".sh", ".bash") else "warn",
+                    "CRLF line endings (will break on Linux/macOS)",
+                    file=str(rel))
+
+    # BOM in scripts
+    for script in iter_scripts(skill_dir):
+        rel = script.relative_to(skill_dir)
+        try:
+            raw = script.read_bytes()[:3]
+        except Exception:
+            continue
+        if raw == b"\xef\xbb\xbf":
+            cat.add("warn", "UTF-8 BOM detected (may break shebang)",
+                    file=str(rel))
+
+    # Filename case conflicts
+    seen = {}
+    for f in skill_dir.rglob("*"):
+        if f.is_file():
+            rel = str(f.relative_to(skill_dir))
+            lower = rel.lower()
+            if lower in seen:
+                cat.add("warn",
+                        f"Case conflict: {rel} vs {seen[lower]}",
+                        file=rel)
+            else:
+                seen[lower] = rel
+
+    return cat
+
 # ---------------------------------------------------------------------------
 # Check: Reference Integrity
 # ---------------------------------------------------------------------------
@@ -381,7 +441,8 @@ def validate(skill_dir: Path) -> Report:
         report.skill_name = skill_dir.name
 
     for check_fn in [check_structure, check_path_safety, check_script_quality,
-                     check_cross_platform, check_reference_integrity, check_size]:
+                     check_cross_platform, check_platform_compat,
+                     check_reference_integrity, check_size]:
         report.add_category(check_fn(skill_dir))
 
     return report
