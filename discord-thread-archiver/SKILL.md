@@ -1,5 +1,6 @@
 ---
 name: discord-thread-archiver
+version: 2.0.0
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and archives concluded threads."
 ---
 
