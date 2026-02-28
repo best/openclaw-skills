@@ -1,111 +1,55 @@
 ---
 name: discord-thread-archiver
-version: 1.0.0
-description: "Discord Thread 智能归档工具。根据对话内容、消息量、频道类型和 AI 判断自动归档不活跃的 Thread。"
-metadata:
-  openclaw:
-    emoji: "📦"
-    requires:
-      env: ["DISCORD_BOT_TOKEN"]
-allowed-tools: ["exec"]
+description: "Smart Discord thread archiving with AI conversation analysis. Use when: (1) periodically cleaning up inactive threads, (2) setting up automated thread lifecycle management, (3) analyzing whether Discord conversations have concluded. Requires DISCORD_BOT_TOKEN env var. Supports AI-powered conversation completion detection via Anthropic-compatible API."
 ---
 
 # Discord Thread Archiver
 
-Discord Thread 智能归档 Skill。分析 Thread 活跃度和对话状态，自动归档已结束的讨论。
+Archive inactive Discord threads using AI to judge whether conversations have concluded.
 
-## 能力
-
-- **分层时间规则**：根据消息量动态调整归档阈值
-- **频道差异化**：不同频道可设不同保留时长
-- **结束语检测**：识别"谢谢/搞定/OK"等收尾信号
-- **AI 对话判断**：用 LLM 读最后几条消息判断对话是否结束
-- **保护机制**：有 pin 的 Thread 永不自动归档
-
-## 用法
+## Usage
 
 ```bash
-# 执行归档
-python3 archiver.py
-
-# 预览模式（不实际归档）
-python3 archiver.py --dry-run
-
-# 详细输出
-python3 archiver.py --verbose
-
-# 自定义配置
-python3 archiver.py --config /path/to/config.json
+python3 scripts/archiver.py [--dry-run] [--verbose]
 ```
 
-## 配置
+## Environment Variables
 
-默认读取同目录下 `config.json`，可通过 `--config` 指定。
+| Variable | Required | Description |
+|----------|----------|-------------|
+| DISCORD_BOT_TOKEN | Yes | Discord Bot token (falls back to OpenClaw config) |
+| ARCHIVER_GUILD_ID | No | Guild ID (default: from script) |
+| ARCHIVER_AI_BASE_URL | No | Anthropic-compatible API base URL (falls back to OpenClaw config) |
+| ARCHIVER_AI_API_KEY | No | API key for AI provider (falls back to OpenClaw config) |
+| ARCHIVER_AI_MODEL | No | Model ID (default: claude-sonnet-4-6) |
 
-| 字段 | 类型 | 默认 | 说明 |
-|------|------|------|------|
-| guild_id | string | 必填 | Discord 服务器 ID |
-| tiers.quick | object | {max_msgs: 3, hours: 8} | 快问快答阈值 |
-| tiers.normal | object | {max_msgs: 20, hours: 24} | 普通讨论阈值 |
-| tiers.deep | object | {max_msgs: ∞, hours: 48} | 深度讨论阈值 |
-| channel_multipliers | object | {} | 频道保留倍率 |
-| ai.enabled | bool | true | 是否启用 AI 判断 |
-| ai.model | string | claude-sonnet-4-6 | AI 判断使用的模型 |
-| ai.provider | string | anthropic | API 类型 (anthropic) |
-| ai.base_url | string | 从环境变量 | API 地址 |
-| ai.api_key | string | 从环境变量 | API 密钥 |
-| ai.min_inactive_hours | number | 4 | 触发 AI 判断的最小不活跃时长 |
-| closing_patterns | string[] | 内置列表 | 结束语正则 |
-
-## 环境变量
-
-| 变量 | 说明 |
-|------|------|
-| DISCORD_BOT_TOKEN | Discord Bot Token（必需） |
-| ARCHIVER_AI_BASE_URL | AI API 地址（可选，覆盖配置） |
-| ARCHIVER_AI_API_KEY | AI API 密钥（可选，覆盖配置） |
-
-## 决策流程
+## Decision Flow
 
 ```
-Thread 进入评估
-  │
-  ├─ 有 pin → 永不归档
-  ├─ <2h 无活动 → 跳过
-  ├─ 只有 bot 消息 + 4h → 归档
-  │
-  ├─ 最后一条有结束语 → 阈值减半
-  │
-  ├─ 4h+ 无活动 → AI 判断
-  │   ├─ concluded → 归档
-  │   ├─ ongoing → 阈值 ×1.5
-  │   └─ uncertain → 走时间规则
-  │
-  └─ 兜底：按消息量分层时间规则
-      ├─ 1-3 条 → 8h
-      ├─ 4-20 条 → 24h
-      └─ 20+ 条 → 48h
-      （频道倍率叠加）
+Thread enters evaluation
+  ├─ Has pin → never archive
+  ├─ < 2h inactive → skip
+  ├─ Bot-only messages + 4h → archive
+  ├─ 4h+ inactive → AI reads last 8 messages
+  │   ├─ concluded → archive
+  │   ├─ ongoing → lenient threshold (tier × 1.5)
+  │   └─ uncertain → fall through
+  └─ Time-based fallback
+      ├─ 1-3 msgs → 8h
+      ├─ 4-20 msgs → 24h
+      └─ 20+ msgs → 48h
 ```
 
-## 输出
+## Output
 
-脚本输出人类可读的日志，最后一行是 JSON 格式的结构化结果：
+Human-readable log + final JSON line:
 
 ```json
-{
-  "archived": 3,
-  "kept": 5,
-  "failed": 0,
-  "ai_calls": 4,
-  "details": [
-    {"name": "Thread名称", "reason": "AI: concluded (12h inactive)"}
-  ]
-}
+{"archived": 2, "kept": 3, "failed": 0, "ai_calls": 4, "details": [...]}
 ```
 
-## 注意
+## Notes
 
-- 此 Skill 只负责归档逻辑，不包含调度（cron）和结果投递
-- 调度和投递由主 Agent 决策配置
-- Token 不要硬编码在配置文件里，走环境变量
+- Skill handles archiving logic only — scheduling and delivery are the caller's responsibility
+- Bot needs `MANAGE_THREADS` permission in the Discord guild
+- AI judgment uses `max_tokens: 20` per call — negligible cost
