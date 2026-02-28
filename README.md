@@ -16,6 +16,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [evolution-engine](./evolution-engine/) | PCEC self-evolution engine with GEP protocol | v0.4.0 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.3.1 |
 | [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.2.0 |
+| [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI conversation analysis | v1.0.0 |
 
 ## Install
 
