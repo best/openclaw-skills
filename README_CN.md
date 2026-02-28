@@ -17,6 +17,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.3.1 |
 | [gemini-imagegen](./gemini-imagegen/) | Gemini 3.1 Flash Image (Nano Banana 2) 图片生成与编辑 | v0.2.0 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 对话分析） | v0.3.0 |
+| [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.1.0 |
 
 ## 安装
 

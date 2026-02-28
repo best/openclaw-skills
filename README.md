@@ -17,6 +17,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.3.1 |
 | [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.2.0 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI conversation analysis | v0.3.0 |
+| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.1.0 |
 
 ## Install
 
