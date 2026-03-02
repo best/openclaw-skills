@@ -1,12 +1,14 @@
 ---
 name: gemini-imagegen
-version: 0.3.1
+version: 0.3.2
 description: "Generate and edit images using the Gemini Image Generation API. Supports text-to-image, image editing, multi-image composition (up to 14 input images), aspect ratio control, and 1K/2K/4K resolution. Use when the user asks to create, generate, draw, or edit images."
 ---
 
 # Gemini Image Generation
 
 Generate and edit images using the Gemini Image Generation API via the bundled Python script.
+
+**Default model:** `gemini-3.1-flash-image` (override via `-m` or `GEMINI_IMAGE_MODEL`).
 
 ## How to Generate
 
@@ -61,18 +63,31 @@ uv run <skill_dir>/scripts/generate_image.py \
 |-------|----------|-------------|
 | -p, --prompt | Yes | Image description or editing instruction |
 | -f, --filename | Yes | Output filename (e.g., `mountain-lake.png`). Timestamp prefix auto-added |
-| -r, --resolution | No | `1K` (default), `2K`, or `4K` |
+| -r, --resolution | No | `1K` (default), `2K`, or `4K`. Auto-detected from input images (see below) |
 | -a, --aspect-ratio | No | `1:1` `2:3` `3:2` `3:4` `4:3` `4:5` `5:4` `9:16` `16:9` `21:9` |
 | -i, --input-image | No | Input image path for editing/composition. Repeatable, up to 14 |
-| -m, --model | No | Override model ID |
+| -m, --model | No | Override model ID (default: `gemini-3.1-flash-image`) |
 | --base-url | No | Override API endpoint URL |
 | -k, --api-key | No | Override API key |
+
+### Auto-Resolution for Input Images
+
+When editing or composing images (`-i`), the script **auto-detects output resolution** from the largest input dimension if `-r` is not explicitly set:
+
+| Max input dimension | Auto-resolution |
+|---------------------|-----------------|
+| ≥ 3000px | 4K |
+| ≥ 1500px | 2K |
+| < 1500px | 1K |
+
+This prevents quality loss when editing high-resolution inputs. To override, specify `-r` explicitly.
 
 ## Output Handling
 
 - The script saves the image and prints a `MEDIA:` line for auto-attachment on supported chat platforms.
 - Report the saved file path to the user. Do not read the generated image file back into the conversation.
 - If the image should be permanently hosted, use the `chevereto-upload` skill as a separate step after generation.
+- RGBA images are automatically converted to RGB (composited on white background) for PNG output.
 
 ### Output Directory
 
@@ -94,7 +109,7 @@ Environment variables (auto-injected via OpenClaw `env.vars`):
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | Yes | Gemini API key |
 | `GEMINI_BASE_URL` | No | Custom API endpoint URL (for alternative deployments) |
-| `GEMINI_IMAGE_MODEL` | No | Model ID override |
+| `GEMINI_IMAGE_MODEL` | No | Model ID override (default: `gemini-3.1-flash-image`) |
 | `GEMINI_IMAGE_OUTPUT_DIR` | No | Output directory for generated images (default: `~/.openclaw/workspace/images`) |
 
 ## Prompt Writing
@@ -110,3 +125,13 @@ Key principle: **describe the scene as a narrative paragraph**, not a keyword li
 - **Character consistency**: maintains appearance across a workflow (up to 5 characters, 14 objects)
 - **Infographics**: diagrams, flowcharts, data visualizations from descriptions
 - **Production range**: 512px to 4K, 10 aspect ratios
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `No API key provided` | `GEMINI_API_KEY` not set | Set env var or use `-k` |
+| `Too many input images (N)` | More than 14 `-i` args | Reduce to ≤14 images |
+| `Error loading input image` | File not found or corrupt | Check path and file integrity |
+| `No image was generated` | API returned text-only response | Rephrase prompt; some prompts trigger safety filters |
+| First run slow (~10s) | `uv` downloading dependencies | Subsequent runs use cache, ~1s startup |
