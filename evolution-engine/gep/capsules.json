@@ -75,6 +75,22 @@
       ],
       "gene": "gene_cron_tool_schema_mismatch",
       "origin": "PCEC #21 — 2026-02-23, main session failed 4x with wrong cron params before resorting to delete+recreate"
+    },
+    {
+      "id": "capsule_recurring_mistake_escalation",
+      "name": "Escalate Recurring Mistakes Beyond Gene Documentation",
+      "trigger": "Same gene triggers 3+ times across separate PCEC cycles despite documentation",
+      "steps": [
+        "Identify: review events.jsonl for repeated gene triggers on the same error pattern",
+        "Root cause: gene documents the fix but agent keeps making the same mistake — documentation alone is insufficient",
+        "Escalate level 1: add a concrete note to TOOLS.md with the correct value/mapping (agent reads TOOLS.md every session)",
+        "Escalate level 2: if still recurring, check if the tool itself can enforce the constraint (e.g., parameter validation)",
+        "Escalate level 3: if tool-level fix is impossible, add to AGENTS.md as a mandatory check rule",
+        "Example: web_search search_lang='zh' keeps failing → add 'Chinese search: use zh-hans not zh' to TOOLS.md",
+        "Track escalation in the gene's origin field: append 'escalated to TOOLS.md YYYY-MM-DD'"
+      ],
+      "gene": "gene_web_search_param_validation",
+      "origin": "PCEC #67 — 2026-03-03, stagnation breaker: search_lang=zh recurred 3x despite gene existing since Feb 26"
     }
   ]
 }
