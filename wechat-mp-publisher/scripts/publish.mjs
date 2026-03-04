@@ -72,6 +72,13 @@ function extractFrontmatter(markdown) {
   };
 }
 
+// Pre-process markdown before sending to wenyan-md
+// IMPORTANT: Do NOT modify ** bold markers — wenyan-md handles 50/53 cases correctly
+// The remaining 3 cases (**text：**followedByText) are fixed in HTML post-processing
+function preprocessMarkdown(body) {
+  return body; // pass-through, fixes happen in postProcess
+}
+
 async function processInlineImages(html, mdDir, accessToken) {
   const imgRegex = /<img\s+[^>]*src="([^"]+\.(png|jpg|jpeg|gif|webp))"[^>]*>/gi;
   let result = html;
@@ -90,83 +97,111 @@ async function processInlineImages(html, mdDir, accessToken) {
   return result;
 }
 
-// === Post-processing: starry-night color overlay (structure-safe) ===
+// === Post-processing: dark-mode-friendly starry theme ===
+// Strategy: NO background colors (WeChat dark mode inverts them into ugly gray blocks)
+// Use borders, text colors, and subtle decorations only
 const S = {
   navy:      "#0f1b35",
-  indigo:    "#1b2a4a",
-  purple:    "#2d1b69",
-  gold:      "#e8b731",
-  goldLight: "#f5d76e",
-  goldBg:    "#fdf6e3",
-  text:      "#1a1a2e",
-  textLight: "#4a4a6a",
-  quoteBg:   "#f0eef5",
-  tableTh:   "#1b2a4a",
-  tableThTx: "#f5d76e",
+  purple:    "#5b4dc7",   // mid-range purple, readable in both modes
+  gold:      "#c9952c",   // muted gold, not too bright
+  text:      "#2b2b3a",
+  textLight: "#555568",
+  accent:    "#6c5ce7",   // for strong emphasis
 };
 
 function postProcess(html) {
   let e = html;
 
-  // --- Structural fixes only ---
-  // Blockquote dialogue line breaks
-  e = e.replace(/(<\/strong>)(\s*)(<strong)/g, '$1<br/>$3');
+  // --- Structural fixes ---
+  // Blockquote: convert \n to <br/> inside <p> within blockquotes
+  e = e.replace(/<blockquote[\s\S]*?<\/blockquote>/g, (bq) => {
+    return bq.replace(/<p[^>]*>([\s\S]*?)<\/p>/g, (match, inner) => {
+      return match.replace(inner, inner.replace(/\n/g, '<br/>'));
+    });
+  });
 
-  // --- Color-only overrides (replace style values, keep structure) ---
+  // Convert remaining **text** to <strong>
+  e = e.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
 
-  // H2: change colors only (keep text-align:center, font-size, etc.)
+  // --- Dark-mode-safe color overrides ---
+
+  // H2: left border only, NO background
   e = e.replace(
     /(<h2\s+style=")([^"]*)(">)/g,
-    `$1margin:1.5em 0 0.8em;text-align:left;font-size:1.15em;font-weight:bold;padding:10px 16px;background:linear-gradient(135deg,${S.goldBg},#f5f0fa);border-left:4px solid ${S.gold};border-bottom:none;border-radius:4px;color:${S.navy};$3`
+    `$1margin:1.5em 0 0.8em;font-size:1.15em;font-weight:bold;padding:8px 0 8px 14px;border-left:4px solid ${S.gold};border-bottom:none;background:none;color:${S.navy};text-align:left;$3`
   );
 
-  // Strong: purple accent
+  // Strong: accent color
   e = e.replace(
     /(<strong\s+style=")([^"]*)(">)/g,
-    `$1color:${S.purple};font-weight:700;$3`
+    `$1color:${S.accent};font-weight:700;$3`
   );
-  // Strong without style
-  e = e.replace(/<strong>/g, `<strong style="color:${S.purple};font-weight:700;">`);
+  e = e.replace(/<strong>/g, `<strong style="color:${S.accent};font-weight:700;">`);
 
-  // Blockquote: purple tint
+  // Blockquote: left border only, NO background
   e = e.replace(
     /(<blockquote\s+style=")([^"]*)(">)/g,
-    `$1background:${S.quoteBg};border-left:3px solid ${S.purple};margin:1.5em 0;padding:12px 18px;border-radius:0 4px 4px 0;font-style:normal;color:${S.textLight};font-size:15px;line-height:1.8;$3`
+    `$1border-left:3px solid ${S.purple};margin:1.5em 0;padding:12px 18px;background:none;font-style:normal;color:${S.textLight};font-size:15px;line-height:1.8;$3`
   );
 
-  // Paragraphs: adjust color
+  // Paragraphs
   e = e.replace(
     /(<p\s+style=")([^"]*)(">)/g,
     `$1margin:0.9em 0;line-height:1.85;font-size:16px;color:${S.text};letter-spacing:0.3px;$3`
   );
 
-  // Table th: dark header
+  // Table th: minimal, no background, subtle bottom border
   e = e.replace(
     /(<th\s+style=")([^"]*)(">)/g,
-    `$1font-size:0.85em;padding:10px 12px;line-height:22px;color:${S.tableThTx};border:1px solid ${S.indigo};font-weight:bold;background:${S.tableTh};vertical-align:top;$3`
+    `$1font-size:0.85em;padding:10px 12px;line-height:22px;color:${S.accent};border:none;border-bottom:2px solid ${S.accent};font-weight:bold;background:none;vertical-align:top;$3`
   );
 
-  // Table td: subtle style
+  // Table td: very subtle borders
   e = e.replace(
     /(<td\s+style=")([^"]*)(">)/g,
-    `$1font-size:0.85em;padding:10px 12px;line-height:22px;color:${S.textLight};border:1px solid #d0d0e0;vertical-align:top;$3`
+    `$1font-size:0.85em;padding:10px 12px;line-height:22px;color:${S.textLight};border:none;border-bottom:1px solid rgba(0,0,0,0.06);vertical-align:top;$3`
   );
 
-  // Images: add shadow (keep existing style)
+  // Images: subtle shadow
   e = e.replace(
     /(<img[^>]*style=")([^"]*)(">)/g,
-    '$1$2border-radius:6px;box-shadow:0 2px 12px rgba(15,27,53,0.12);$3'
+    '$1$2border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);$3'
   );
 
-  // Li: text color
+  // Li
   e = e.replace(
     /(<li\s+style=")([^"]*)(">)/g,
     `$1$2color:${S.text};$3`
   );
 
-  // HR: gradient divider
+  // HR: thin separator, less bottom margin
   e = e.replace(/<hr[^>]*\/?>/g,
-    `<section style="text-align:center;margin:2em 0;"><section style="display:inline-block;width:40%;height:1px;background:linear-gradient(to right,transparent,${S.gold},transparent);"></section></section>`);
+    `<hr style="border:none;border-top:1px dashed #ddd;margin:2em 0 0.8em;">`);
+
+  // === Signature: left-aligned, normal italic (like blog) ===
+  e = e.replace(
+    /(<hr[^>]*>[\s\S]*?<p\s+style=")([^"]*)(">\s*<em>)/g,
+    '$1font-size:14px;color:#888;margin:0.3em 0 0;text-align:left;$3'
+  );
+
+  // === Footnotes: own dashed separator, compact, faded, no heading ===
+  e = e.replace(
+    /<section id="footnotes">/g,
+    `<section id="footnotes" style="margin-top:2em;padding-top:1em;border-top:1px dashed #ddd;">`
+  );
+  // Remove "引用链接" heading entirely
+  e = e.replace(
+    /<h3[^>]*>引用链接<\/h3>/g,
+    ''
+  );
+  // Footnotes items: very small and faded
+  e = e.replace(
+    /<section id="footnotes"[^>]*>([\s\S]*?)(<\/section>)/g,
+    (match) => {
+      return match.replace(/<p\s+style="[^"]*"/g,
+        '<p style="margin:2px 0;display:flex;font-size:10px;color:#ccc;line-height:1.4"');
+    }
+  );
 
   return e;
 }
@@ -179,7 +214,7 @@ async function main() {
       cover: { type: "string", short: "c" },
       title: { type: "string", short: "t" },
       url: { type: "string", short: "u", default: "" },
-      author: { type: "string", short: "a", default: "张昊辰(Astralor)" },
+      author: { type: "string", short: "a", default: "张昊辰" },
       "dry-run": { type: "boolean", default: false },
     }
   });
@@ -196,7 +231,8 @@ async function main() {
   console.log(`📄 Reading ${values.file}...`);
 
   // Extract frontmatter
-  const { title: fmTitle, body } = extractFrontmatter(markdown);
+  const { title: fmTitle, body: rawBody } = extractFrontmatter(markdown);
+  const body = preprocessMarkdown(rawBody);
   const title = values.title || fmTitle || body.match(/^#\s+(.+)/m)?.[1] || "Untitled";
 
   // Render with wenyan-md
