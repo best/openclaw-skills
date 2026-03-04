@@ -160,7 +160,7 @@
       "name": "Web Search Parameter Validation (Brave 422)",
       "trigger": "gateway log shows 'web_search failed: Brave Search API error (422)' with 'VALIDATION' code, typically for invalid search_lang or country values",
       "strategy": "Brave Search API validates parameter enum values strictly and returns 422 on mismatch. Common pitfall: using ISO 639-1 short codes (e.g., 'zh', 'pt') when Brave requires extended variants. Correct mappings: Chinese → 'zh-hans' (simplified) or 'zh-hant' (traditional), NOT 'zh'. Portuguese → 'pt-br' or 'pt-pt', NOT 'pt'. English GB → 'en-gb', NOT 'en-GB'. Japanese → 'jp', NOT 'ja'. Full valid list: ar, eu, bn, bg, ca, zh-hans, zh-hant, hr, cs, da, nl, en, en-gb, et, fi, fr, gl, de, el, gu, he, hi, hu, is, it, jp, kn, ko, lv, lt, ms, ml, mr, nb, pl, pt-br, pt-pt, pa, ro, ru, sr, sk, sl, es, sv, ta, te, th, tr, uk, vi. When calling web_search with search_lang for Chinese content, always use 'zh-hans'. If unsure about a language code, omit search_lang entirely — Brave defaults sensibly. Distinct from gene_web_search_rate_limit (429) which is about quota/rate, not parameter validity.",
-      "origin": "PCEC #36 — 2026-02-26 search_lang 'zh' rejected at 01:46 UTC"
+      "origin": "PCEC #36 — 2026-02-26 search_lang 'zh' rejected at 01:46 UTC, escalated L1→L2 PCEC #70 2026-03-04 (TOOLS.md warning strengthened after 6 recurrences)"
     },
     {
       "id": "gene_discord_missing_permissions",
