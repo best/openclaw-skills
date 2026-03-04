@@ -1,0 +1,7 @@
+# /// script
+# dependencies = [
+#   "requests",
+#   "markdown",
+#   "beautifulsoup4",
+# ]
+# ///
