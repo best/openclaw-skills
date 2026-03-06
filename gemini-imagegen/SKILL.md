@@ -1,6 +1,6 @@
 ---
 name: gemini-imagegen
-version: 0.3.2
+version: 0.3.3
 description: "Generate and edit images using the Gemini Image Generation API. Supports text-to-image, image editing, multi-image composition (up to 14 input images), aspect ratio control, and 1K/2K/4K resolution. Use when the user asks to create, generate, draw, or edit images."
 ---
 
@@ -8,7 +8,7 @@ description: "Generate and edit images using the Gemini Image Generation API. Su
 
 Generate and edit images using the Gemini Image Generation API via the bundled Python script.
 
-**Default model:** `gemini-3.1-flash-image` (override via `-m` or `GEMINI_IMAGE_MODEL`).
+**Default model:** `gemini-3.1-flash-image-preview` (override via `-m` or `GEMINI_IMAGE_MODEL`).
 
 ## How to Generate
 
@@ -109,7 +109,7 @@ Environment variables (auto-injected via OpenClaw `env.vars`):
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | Yes | Gemini API key |
 | `GEMINI_BASE_URL` | No | Custom API endpoint URL (for alternative deployments) |
-| `GEMINI_IMAGE_MODEL` | No | Model ID override (default: `gemini-3.1-flash-image`) |
+| `GEMINI_IMAGE_MODEL` | No | Model ID override (default: `gemini-3.1-flash-image-preview`) |
 | `GEMINI_IMAGE_OUTPUT_DIR` | No | Output directory for generated images (default: `~/.openclaw/workspace/images`) |
 
 ## Prompt Writing
