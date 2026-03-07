@@ -63,20 +63,57 @@ async function uploadCover(localPath, accessToken) {
 // === Markdown processing ===
 function extractFrontmatter(markdown) {
   const match = markdown.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
-  if (!match) return { title: null, body: markdown };
+  if (!match) return { title: null, image: null, body: markdown };
   const fm = match[1];
   const titleMatch = fm.match(/^title:\s*["']?(.+?)["']?\s*$/m);
+  const imageMatch = fm.match(/^image:\s*["']?(.+?)["']?\s*$/m);
   return {
     title: titleMatch ? titleMatch[1] : null,
+    image: imageMatch ? imageMatch[1] : null,
     body: markdown.slice(match[0].length)
   };
 }
+
+// Module-level: footnotes extracted during preprocessing, consumed by buildFootnotesHtml()
+let _pendingFootnotes = null;
 
 // Pre-process markdown before sending to wenyan-md
 // IMPORTANT: Do NOT modify ** bold markers — wenyan-md handles 50/53 cases correctly
 // The remaining 3 cases (**text：**followedByText) are fixed in HTML post-processing
 function preprocessMarkdown(body) {
-  return body; // pass-through, fixes happen in postProcess
+  const footnotes = new Map();
+
+  // Extract and remove [^N]: footnote definitions
+  // Convert markdown links inside to plain text so wenyan-md won't double-footnote them
+  body = body.replace(/^\[\^(\d+)\]:\s*(.+)$/gm, (_match, num, text) => {
+    const cleaned = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2');
+    footnotes.set(Number(num), cleaned);
+    return '';
+  });
+
+  // Replace [^N] references in body with superscript HTML
+  body = body.replace(/\[\^(\d+)\]/g, '<sup>[$1]</sup>');
+
+  // Clean up excessive blank lines left by removed definitions
+  body = body.replace(/\n{3,}/g, '\n\n');
+
+  _pendingFootnotes = footnotes.size > 0 ? footnotes : null;
+  return body;
+}
+
+// Build HTML footnote section from extracted [^N] definitions
+// Call after postProcess(); returns empty string if no footnotes were extracted
+function buildFootnotesHtml() {
+  if (!_pendingFootnotes) return '';
+  const sorted = [..._pendingFootnotes.entries()].sort((a, b) => a[0] - b[0]);
+  let html = '<section id="footnotes" style="margin-top:2em;padding-top:1em;border-top:1px dashed #ddd;">';
+  for (const [num, text] of sorted) {
+    const linkedText = text.replace(/(https?:\/\/[^\s,)]+)/g, '<i>$1</i>');
+    html += `<p style="margin:2px 0;display:flex;font-size:10px;color:#ccc;line-height:1.4"><span class="footnote-num" style="display:inline;width:10%;">[${num}]</span><span class="footnote-txt" style="display:inline;width:90%;word-wrap:break-word;word-break:break-all;">${linkedText}</span></p>`;
+  }
+  html += '</section>';
+  _pendingFootnotes = null;
+  return html;
 }
 
 async function processInlineImages(html, mdDir, accessToken) {
@@ -210,78 +247,99 @@ function postProcess(html) {
 async function main() {
   const { values } = parseArgs({
     options: {
-      file: { type: "string", short: "f" },
-      cover: { type: "string", short: "c" },
-      title: { type: "string", short: "t" },
-      url: { type: "string", short: "u", default: "" },
+      file: { type: "string", short: "f", multiple: true },
+      cover: { type: "string", short: "c", multiple: true },
+      title: { type: "string", short: "t", multiple: true },
+      url: { type: "string", short: "u", multiple: true },
       author: { type: "string", short: "a", default: "张昊辰" },
       "dry-run": { type: "boolean", default: false },
     }
   });
 
-  if (!values.file) {
-    console.error("Usage: node publish.mjs -f <markdown-file> [-c cover.png] [-u url] [-t title]");
+  const files = values.file || [];
+  if (files.length === 0) {
+    console.error("Usage: node publish.mjs -f <file1.md> [-f <file2.md>] [-c cover.png] [-t title] [-u url]");
+    console.error("  Multiple -f flags for multi-article draft (微信多图文)");
     process.exit(1);
   }
 
-  const mdPath = path.resolve(values.file);
-  const mdDir = path.dirname(mdPath);
-  const markdown = fs.readFileSync(mdPath, "utf-8");
+  const titles = values.title || [];
+  const covers = values.cover || [];
+  const urls = values.url || [];
 
-  console.log(`📄 Reading ${values.file}...`);
-
-  // Extract frontmatter
-  const { title: fmTitle, body: rawBody } = extractFrontmatter(markdown);
-  const body = preprocessMarkdown(rawBody);
-  const title = values.title || fmTitle || body.match(/^#\s+(.+)/m)?.[1] || "Untitled";
-
-  // Render with wenyan-md
-  const { content: renderedHtml } = await renderStyledContent(body, {
-    theme: "default",
-    lineNumbers: false,
-  });
-
-  // Post-process
-  let html = postProcess(renderedHtml);
-
-  // Get access token
   const accessToken = await getAccessToken();
+  const articles = [];
 
-  // Upload inline images
-  html = await processInlineImages(html, mdDir, accessToken);
+  for (let i = 0; i < files.length; i++) {
+    const mdPath = path.resolve(files[i]);
+    const mdDir = path.dirname(mdPath);
+    const markdown = fs.readFileSync(mdPath, "utf-8");
 
-  if (values["dry-run"]) {
-    const outPath = "/tmp/wechat-preview.html";
-    fs.writeFileSync(outPath, html);
-    console.log(`📝 Dry run: saved to ${outPath}`);
-    return;
-  }
+    console.log(`\n📄 [${i + 1}/${files.length}] Reading ${files[i]}...`);
 
-  // Upload cover
-  let coverPath = values.cover;
-  if (!coverPath) {
-    const imgMatch = body.match(/!\[.*?\]\((.+?)\)/);
-    if (imgMatch) coverPath = path.resolve(mdDir, imgMatch[1]);
-  }
-  if (!coverPath) throw new Error("No cover image. Use --cover.");
-  coverPath = path.resolve(mdDir, coverPath);
+    // Extract frontmatter (now includes image)
+    const { title: fmTitle, image: fmImage, body: rawBody } = extractFrontmatter(markdown);
+    const body = preprocessMarkdown(rawBody);
+    const title = titles[i] || fmTitle || body.match(/^#\s+(.+)/m)?.[1] || "Untitled";
 
-  console.log(`📸 Uploading cover...`);
-  const coverMediaId = await uploadCover(coverPath, accessToken);
+    // Render with wenyan-md
+    const { content: renderedHtml } = await renderStyledContent(body, {
+      theme: "default",
+      lineNumbers: false,
+    });
 
-  // Create draft
-  console.log(`✍️  Creating draft: ${title}...`);
-  const payload = {
-    articles: [{
+    // Post-process
+    let html = postProcess(renderedHtml);
+
+    // Append footnotes section (from [^N] definitions extracted during preprocessing)
+    html += buildFootnotesHtml();
+
+    // Upload inline images
+    html = await processInlineImages(html, mdDir, accessToken);
+
+    if (values["dry-run"]) {
+      const outPath = `/tmp/wechat-preview-${i + 1}.html`;
+      fs.writeFileSync(outPath, html);
+      console.log(`📝 Dry run: saved to ${outPath}`);
+      continue;
+    }
+
+    // Resolve cover image
+    let coverPath = covers[i] || null;
+    if (!coverPath && fmImage) {
+      coverPath = fmImage;
+    }
+    if (!coverPath) {
+      const imgMatch = body.match(/!\[.*?\]\((.+?)\)/);
+      if (imgMatch) coverPath = imgMatch[1];
+    }
+    if (!coverPath) throw new Error(`No cover image for article ${i + 1}. Use --cover.`);
+    coverPath = path.resolve(mdDir, coverPath);
+
+    console.log(`📸 Uploading cover for "${title}"...`);
+    const coverMediaId = await uploadCover(coverPath, accessToken);
+
+    articles.push({
       title,
       author: values.author,
       content: html,
       thumb_media_id: coverMediaId,
       need_open_comment: 1,
       only_fans_can_comment: 0,
-      content_source_url: values.url || "",
-    }]
-  };
+      content_source_url: urls[i] || "",
+    });
+
+    console.log(`✅ Article ${i + 1} ready: ${title}`);
+  }
+
+  if (values["dry-run"]) {
+    console.log(`\n📝 Dry run complete. ${files.length} preview(s) saved.`);
+    return;
+  }
+
+  // Create draft with all articles
+  console.log(`\n✍️  Creating draft with ${articles.length} article(s)...`);
+  const payload = { articles };
 
   const res = await fetch(`${WECHAT_API}/draft/add?access_token=${accessToken}`, {
     method: "POST",
@@ -293,6 +351,7 @@ async function main() {
   if (data.errcode) throw new Error(`Failed to create draft: ${JSON.stringify(data)}`);
 
   console.log(`✅ Draft created! media_id: ${data.media_id}`);
+  console.log(`   ${articles.length} article(s): ${articles.map(a => a.title).join(" | ")}`);
   console.log(`👉 Go to mp.weixin.qq.com to review and publish.`);
 }
 
