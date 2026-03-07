@@ -53,6 +53,27 @@ def get_model(provided_model: str | None) -> str:
     return os.environ.get("GEMINI_IMAGE_MODEL", DEFAULT_MODEL)
 
 
+def workspace_display_path(path: Path) -> Path:
+    """Return a workspace-accessible path if the real path is reachable via a workspace symlink.
+
+    When GEMINI_IMAGE_OUTPUT_DIR points to a real path (e.g. /data/images) that is also
+    reachable via a workspace symlink (e.g. ~/.openclaw/workspace/images -> /data/images),
+    prefer the workspace path so that MEDIA: lines work with the message tool's sandbox.
+    """
+    workspace_images = Path(DEFAULT_OUTPUT_DIR)
+    if workspace_images.is_symlink():
+        try:
+            real_target = workspace_images.resolve()
+            real_path = path.resolve()
+            if real_path == real_target or str(real_path).startswith(str(real_target) + os.sep):
+                rel = real_path.relative_to(real_target)
+                return workspace_images / rel
+        except (ValueError, OSError):
+            pass
+    # Fallback: use absolute path without resolving symlinks
+    return Path(os.path.abspath(str(path)))
+
+
 def resolve_output_path(filename: str) -> Path:
     """Resolve output path. Pure filename → output_dir/YYYY-MM/timestamp-filename. Path with dir → use as-is."""
     from datetime import datetime
@@ -241,10 +262,9 @@ def main():
                 image_saved = True
 
         if image_saved:
-            # Use absolute path without resolving symlinks so output shows
-            # the logical path (e.g. ~/.openclaw/workspace/images/...) instead
-            # of the symlink target (e.g. /data/images/...).
-            display_path = Path(os.path.abspath(str(output_path)))
+            # Resolve through workspace symlinks so MEDIA: paths stay within
+            # the workspace sandbox (required by the message tool).
+            display_path = workspace_display_path(output_path)
             print(f"\nImage saved: {display_path}")
             # OpenClaw parses MEDIA tokens and will attach the file on supported providers.
             print(f"MEDIA: {display_path}")
