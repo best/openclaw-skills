@@ -13,7 +13,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.1 |
-| [evolution-engine](./evolution-engine/) | PCEC self-evolution engine — skill iteration & knowledge grounding | v1.0.0 |
+| [evolution-engine](./evolution-engine/) | PCEC self-evolution engine — skill iteration & knowledge grounding | v1.1.0 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.3.1 |
 | [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.3.4 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI conversation analysis | v0.4.0 |

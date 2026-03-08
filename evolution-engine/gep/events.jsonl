@@ -1,1 +1,3 @@
 {"id":"evt_094","ts":"2026-03-08T04:41:06Z","result":"migration","target":"pcec-v2","summary":"PCEC v1→v2 migration: genes→work-items, focus shift from gene accumulation to skill iteration and knowledge grounding. Archived 32 genes + 5 capsules + 93 events."}
+{"id":"evt_095","ts":"2026-03-08T04:49:00Z","result":"skip","target":"pcec-v2","summary":"Clean triage: 7 real errors all transient (2x web_fetch, 3x discord reconnect, 2x write missing param). 10 crons all healthy. No work items."}
+{"id":"evt_096","ts":"2026-03-08T04:50:00Z","result":"skip","target":"none","summary":"Clean triage: 31 grep hits but only ~9 real ERRORs, all transient (discord reconnect, web_fetch, migration artifacts). 10 crons all healthy, 0 work items."}

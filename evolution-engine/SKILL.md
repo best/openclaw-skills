@@ -1,6 +1,6 @@
 ---
 name: evolution-engine
-version: 1.0.0
+version: 1.1.0
 description: "PCEC self-evolution engine. Iterates skills and grounds operational knowledge from runtime signals."
 ---
 
@@ -77,13 +77,38 @@ grep -l "keyword" ~/.openclaw/workspace/memory/reference/*.md 2>/dev/null
 2. If not documented, add a concise entry: **Symptom → Cause → Fix**
 3. Commit reference doc changes to skills repo if applicable, otherwise just write to workspace
 
-**Priority 3: Audit a skill** (when system has low-priority signals)
+**Priority 3: Audit a skill** (when system has low-priority signals or stagnation breaker)
 1. Pick one skill from the repo (prefer least-recently-audited)
 2. Check recent session logs for how it was actually used
 3. Look for: outdated instructions, missing error handling, token waste, stale paths
-4. Improve if issues found, otherwise note "audited, healthy" in event log
+4. **Look for creation signals**: repeated manual workflows in sessions that no skill covers → create work item with `target: "investigate"` for next cycle's Priority 4
+5. Improve if issues found, otherwise note "audited, healthy" in event log
 
-**Priority 4: Resolve open work items**
+**Priority 4: Create a new skill** (when recurring patterns lack skill coverage)
+
+Trigger conditions (need **at least one**, evidence-driven):
+- Audit or session logs reveal a **recurring multi-step workflow** (3+ occurrences) with no existing skill
+- A reference doc has grown into a full workflow (not just troubleshooting facts) → promote to skill
+- Open work item identifies a gap best solved by a new skill rather than patching an existing one
+
+Process:
+1. **Verify the pattern**: grep session logs for evidence of 3+ manual repetitions
+2. **Check for overlap**: ensure no existing skill covers this (read all SKILL.md descriptions)
+3. **Create minimal skill directory** in `/data/code/github.com/best/openclaw-skills/<skill-name>/`
+4. **Write SKILL.md**: frontmatter (`name`, `description`) + concise instructions, <200 lines
+5. **Add `scripts/`** only if deterministic code is needed (test scripts before committing)
+6. **Install**: `ln -sf /data/code/github.com/best/openclaw-skills/<skill-name> ~/.openclaw/workspace/skills/<skill-name>`
+7. **Update repo README.md + README_CN.md** version tables
+8. **Commit + push**: `git add -A && git commit -m "release: <skill-name> v0.1.0" && git push`
+9. **Log event** as `result: "skill-create"`
+
+Constraints:
+- First version is always `v0.1.0` — start minimal, iterate later
+- No `assets/` or `references/` in v0.1.0 unless truly essential
+- Skill name: lowercase, hyphens, verb-led (e.g. `log-analyzer`, `image-optimizer`)
+- Must solve a real observed problem, not a hypothetical one
+
+**Priority 5: Resolve open work items**
 - Items >3 cycles old → resolve or close with reason
 - Resolution must point to concrete output: "fixed skill X v1.2.3" or "documented in reference/Y"
 
@@ -91,7 +116,7 @@ grep -l "keyword" ~/.openclaw/workspace/memory/reference/*.md 2>/dev/null
 
 Append to `{baseDir}/gep/events.jsonl`:
 ```json
-{"id": "evt_NNN", "ts": "ISO-8601", "result": "skill-fix|knowledge-ground|skill-audit|skip", "target": "skill:name|ref:filename|none", "summary": "one line"}
+{"id": "evt_NNN", "ts": "ISO-8601", "result": "skill-fix|skill-create|knowledge-ground|skill-audit|skip", "target": "skill:name|ref:filename|none", "summary": "one line"}
 ```
 
 Prune to 20 entries; archive older to `events-archive.jsonl`.
@@ -114,7 +139,7 @@ Rules:
 
 ## Strategy Priority
 
-repair skill > ground knowledge > audit skill > create skill > skip
+repair skill > ground knowledge > audit skill > create skill > resolve work items > skip
 
 ## Anti-Evolution Lock
 
