@@ -1,116 +1,146 @@
 ---
 name: evolution-engine
-version: 0.4.0
-description: "PCEC self-evolution engine with GEP protocol. Analyzes runtime history to drive capability evolution."
+version: 1.0.0
+description: "PCEC self-evolution engine. Iterates skills and grounds operational knowledge from runtime signals."
 ---
 
-# Evolution Engine — PCEC with GEP Protocol
+# Evolution Engine — PCEC v2
 
-Periodic Cognitive Expansion Cycle. Autonomous self-evolution through runtime analysis.
+Periodic Cognitive Expansion Cycle. Autonomous evolution through **skill iteration** and **knowledge grounding**.
 
-## Data Sources (read via exec/read tools)
+## Core Principle
 
-| Source | Path | Content |
-|--------|------|---------|
-| Session history | `~/.openclaw/agents/main/sessions/*.jsonl` | All conversation records |
-| Cron runs | `~/.openclaw/cron/runs/*.jsonl` | Cron execution history |
-| Gateway logs | `/tmp/openclaw/openclaw-*.log` | Runtime errors |
-| Memory files | `~/.openclaw/workspace/memory/` | Daily notes, capability tree |
-| Long-term memory | `~/.openclaw/workspace/MEMORY.md` | Curated lessons |
-| Skills repo | `/data/code/github.com/best/openclaw-skills/` | Current skills |
-| GEP assets | `./gep/genes.json, capsules.json, events.jsonl` | Evolution state |
+**Every evolution must land somewhere visible.** Three valid outputs, in priority order:
+
+1. **Skill improvement** — modify SKILL.md, scripts, or templates in the skills repo (highest value: auto-loaded by all sessions)
+2. **Knowledge grounding** — write to `memory/reference/*.md` (searchable by all sessions via memory_search)
+3. **Work item** — temporary tracker for complex issues (must resolve within 3 cycles)
+
+Invalid output: adding to a self-referential knowledge base that only PCEC can see.
+
+## Data Sources
+
+| Source | Command | What to look for |
+|--------|---------|------------------|
+| Gateway errors | `grep ERROR /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log \| tail -30` | Error patterns, skill failures |
+| Cron health | cron tool `action=list` | Failed jobs, slow jobs (>5min) |
+| Recent sessions | `ls -t ~/.openclaw/agents/main/sessions/*.jsonl \| head -3` + grep | Skill invocation failures |
+| Daily memory | `cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d).md` | User feedback, pain points |
+| Skills repo | `/data/code/github.com/best/openclaw-skills/` | Current skill code |
+| Work items | `{baseDir}/gep/work-items.jsonl` | Open items from previous cycles |
+| Reference docs | `~/.openclaw/workspace/memory/reference/` | Already documented knowledge |
 
 ## PCEC Cycle
 
-### 1. Signal Extraction
-Scan recent data for evolution signals:
+### Step 1: Quick Triage (exit fast if clean)
+
 ```bash
-# Recent session errors
-grep -r "error\|failed\|retry" ~/.openclaw/agents/main/sessions/*.jsonl --include="*.jsonl" -l | tail -5
-
-# Cron failures
-tail -50 ~/.openclaw/cron/runs/*.jsonl | grep '"error"'
-
-# Gateway errors (today)
-grep "ERROR" /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log | tail -20
-
-# Recent memory for patterns
-cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d)*.md
+ERROR_COUNT=$(grep -c ERROR /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log 2>/dev/null || echo 0)
+echo "Errors today: $ERROR_COUNT"
 ```
 
-### 2. Gene Matching
-Read `gep/genes.json`. Check if any existing Gene matches the signals.
-- Match found → apply Gene strategy
-- No match → abstract new Gene from signal
+Also: cron tool `action=list` → check `lastStatus` and `consecutiveErrors`.
+Also: `cat {baseDir}/gep/work-items.jsonl` → check for open items.
 
-### 3. Evolution Action (pick one)
+**If all clean** (0 new errors, 0 cron failures, 0 open work items):
+→ Log skip to `events.jsonl` and exit immediately. Target: <30s, <20k tokens.
 
-**A. New/Updated Skill**
-- Write SKILL.md to skills repo
-- Symlink if new
-- Update README.md + README_CN.md versions
+### Step 2: Signal Classification (only if Step 1 found signals)
 
-**B. New Gene**
-- Abstract the pattern: trigger → strategy
-- Add to `gep/genes.json`
+Read the actual error messages. For each signal, classify:
 
-**C. New Capsule**
-- Encode a multi-step solution that worked
-- Add to `gep/capsules.json`
+| Classification | Criteria | Action |
+|---------------|----------|--------|
+| **Skill-fixable** | Error relates to a skill's behavior or code | Fix the skill |
+| **Knowledge gap** | Useful pattern not yet in reference docs | Write to `memory/reference/` |
+| **Already documented** | Pattern exists in reference docs | Skip (system is working as expected) |
+| **Transient** | Provider 503, network blip, one-off | Skip |
+| **Complex** | Multi-step, needs investigation | Create work item |
 
-**D. No Evolution Needed (idle)**
-- Valid when: no new errors, all signals match existing genes, no fragile patterns found
-- Append a skip event to `events.jsonl` with result `"skip"` and brief context
-- This counts as a file change (events.jsonl is updated)
-- 3+ consecutive skips triggers the Stagnation Breaker
-
-### 4. Commit
+To check if already documented:
 ```bash
-cd /data/code/github.com/best/openclaw-skills
-git add -A && git commit -m "evolve: <description>" && git push
+grep -l "keyword" ~/.openclaw/workspace/memory/reference/*.md 2>/dev/null
 ```
-Append EvolutionEvent to `gep/events.jsonl`.
-Update capability tree if needed.
 
-## Evolution Strategy
+### Step 3: Act (one action per cycle, priority order)
 
-Assess current state to pick strategy:
-- **repair** — errors detected in logs/cron → fix first
-- **harden** — no errors but fragile patterns → add robustness
-- **innovate** — stable state → identify new capability opportunities
-- **skip** — genuinely clean, all signals covered → log and exit
-- Priority: repair > harden > innovate > skip
+**Priority 1: Fix a skill**
+1. Read the affected skill's SKILL.md and related files
+2. Identify root cause from signal data
+3. Fix it (edit code, improve prompts, add error handling)
+4. Bump version in SKILL.md frontmatter (bugfix → patch, feature → minor)
+5. Update repo `README.md` + `README_CN.md` version tables
+6. Commit: `git add -A && git commit -m "evolve: <skill-name> v<version> — <what changed>" && git push`
 
-## Idle Period Protocol
+**Priority 2: Ground knowledge**
+1. Check if `memory/reference/openclaw-troubleshooting.md` or other reference docs cover it
+2. If not documented, add a concise entry: **Symptom → Cause → Fix**
+3. Commit reference doc changes to skills repo if applicable, otherwise just write to workspace
 
-When the system is stable and no new signals exist:
-1. Confirm: all gateway errors match existing genes (no new patterns)
-2. Confirm: no cron failures since last cycle
-3. Confirm: no new session errors or user-reported issues
-4. If all three hold → this is a genuine idle period
-5. Log a skip event and exit — don't force low-value changes
+**Priority 3: Audit a skill** (when system has low-priority signals)
+1. Pick one skill from the repo (prefer least-recently-audited)
+2. Check recent session logs for how it was actually used
+3. Look for: outdated instructions, missing error handling, token waste, stale paths
+4. Improve if issues found, otherwise note "audited, healthy" in event log
 
-**Cost awareness:** Each PCEC cycle costs LLM tokens (Opus-tier). Idle cycles should be fast and cheap. The value of PCEC is in catching real issues, not in producing changes for the sake of compliance.
+**Priority 4: Resolve open work items**
+- Items >3 cycles old → resolve or close with reason
+- Resolution must point to concrete output: "fixed skill X v1.2.3" or "documented in reference/Y"
 
-**Idle period work (optional, in lieu of skip):**
-- Prune events.jsonl if approaching 30 lines (per gene_prune_unbounded_sections)
-- Audit an existing skill against recent real usage
-- Review gene pool for merges or obsolescence
-- Update capability tree or documentation
+### Step 4: Log Event
+
+Append to `{baseDir}/gep/events.jsonl`:
+```json
+{"id": "evt_NNN", "ts": "ISO-8601", "result": "skill-fix|knowledge-ground|skill-audit|skip", "target": "skill:name|ref:filename|none", "summary": "one line"}
+```
+
+Prune to 20 entries; archive older to `events-archive.jsonl`.
+
+## Work Items (temporary issue tracker)
+
+Replaces the old gene system. Work items are **temporary** — they track issues, not knowledge.
+
+Format in `{baseDir}/gep/work-items.jsonl`:
+```json
+{"id": "wi_NNN", "ts": "ISO-8601", "signal": "what was observed", "status": "open", "target": "skill:name|ref:name|investigate", "cycle_created": 94, "cycle_limit": 97}
+```
+
+Rules:
+- Max 10 open items at any time
+- Must resolve within 3 cycles or close with reason
+- Resolution always points to a concrete change
+- Closed items: change `status` to `"resolved"` or `"closed"`, add `"resolution": "what was done"`
+- No permanent accumulation — if it's worth keeping, it belongs in a reference doc or skill improvement
+
+## Strategy Priority
+
+repair skill > ground knowledge > audit skill > create skill > skip
 
 ## Anti-Evolution Lock
 
-Priority: Stability > Explainability > Reusability > Novelty
+Priority: **Stability > Explainability > Reusability > Novelty**
 
 Forbidden:
-- Creating GitHub issues autonomously
-- Modifying files outside skills repo without reason
+- Accumulating permanent self-referential knowledge (no genes.json-style accumulation)
+- Modifying skills without evidence from actual usage/errors
 - "Feels right" as decision basis
 - Inventing problems to justify changes
+- Creating GitHub issues autonomously
+- Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md) — these are human-owned
 
-## Stagnation Breaker
+## Cost Discipline
 
-If 3 consecutive cycles produce skip events:
-- Force challenge a default assumption
-- Or merge two similar capabilities
-- Or audit an existing skill against real usage
+- Clean system → exit in Step 1 (target: <30s, <20k tokens)
+- Active evolution → target: <3min, <80k tokens
+- Don't read large files unless signals point to them
+- One skill audit per cycle max
+- Prefer `grep` and `tail` over full file reads
+
+## Migration Note (v1 → v2)
+
+PCEC v1 (0.1.0–0.4.0) focused on gene accumulation — cataloging error patterns in `genes.json`. This produced 32 genes over 93 cycles, but most knowledge was only visible to PCEC itself.
+
+PCEC v2 (1.0.0) shifts focus to **skill iteration** and **knowledge grounding**:
+- Old genes → migrated to `memory/reference/openclaw-troubleshooting.md` and `memory/reference/discord-troubleshooting.md`
+- Old gene/capsule files → archived in `gep/archive/`
+- Gene system → replaced by temporary work items
