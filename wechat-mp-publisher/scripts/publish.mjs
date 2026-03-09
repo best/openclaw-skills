@@ -91,6 +91,10 @@ function preprocessMarkdown(body) {
     return '';
   });
 
+  // Remove "**参考文献**" heading and the --- separator before it
+  // (we render our own styled heading in buildFootnotesHtml)
+  body = body.replace(/\n---\n+\*\*参考文献\*\*\n*/g, '\n');
+
   // Replace [^N] references in body with superscript HTML
   body = body.replace(/\[\^(\d+)\]/g, '<sup>[$1]</sup>');
 
@@ -106,10 +110,11 @@ function preprocessMarkdown(body) {
 function buildFootnotesHtml() {
   if (!_pendingFootnotes) return '';
   const sorted = [..._pendingFootnotes.entries()].sort((a, b) => a[0] - b[0]);
-  let html = '<section id="footnotes" style="margin-top:2em;padding-top:1em;border-top:1px dashed #ddd;">';
+  let html = '<section id="footnotes" style="margin-top:1.5em;padding-top:0.8em;">';
+  html += '<p style="margin:0 0 0.5em;font-size:12px;color:#888;font-weight:bold;">参考文献</p>';
   for (const [num, text] of sorted) {
-    const linkedText = text.replace(/(https?:\/\/[^\s,)]+)/g, '<i>$1</i>');
-    html += `<p style="margin:2px 0;display:flex;font-size:10px;color:#ccc;line-height:1.4"><span class="footnote-num" style="display:inline;width:10%;">[${num}]</span><span class="footnote-txt" style="display:inline;width:90%;word-wrap:break-word;word-break:break-all;">${linkedText}</span></p>`;
+    const linkedText = text.replace(/(https?:\/\/[^\s,)>]+)/g, '<i>$1</i>');
+    html += `<p style="margin:2px 0;display:flex;font-size:10px;color:#999;line-height:1.4"><span class="footnote-num" style="display:inline;width:10%;">[${num}]</span><span class="footnote-txt" style="display:inline;width:90%;word-wrap:break-word;word-break:break-all;">${linkedText}</span></p>`;
   }
   html += '</section>';
   _pendingFootnotes = null;
@@ -226,12 +231,22 @@ function postProcess(html) {
     /<section id="footnotes">/g,
     `<section id="footnotes" style="margin-top:2em;padding-top:1em;border-top:1px dashed #ddd;">`
   );
-  // Remove "引用链接" heading entirely
+  // Remove wenyan-md auto-generated "引用链接" section entirely (heading + first footnotes block).
+  // We build our own footnotes via buildFootnotesHtml(), so the auto-generated one is redundant.
   e = e.replace(
     /<h3[^>]*>引用链接<\/h3>/g,
     ''
   );
-  // Footnotes items: very small and faded
+  // Remove the FIRST auto-generated footnotes section (wenyan-md's inline-link references).
+  // Our manually built section (from [^N] definitions) is appended later and should be kept.
+  e = e.replace(
+    /<section id="footnotes"[^>]*>[\s\S]*?<\/section>/,
+    ''
+  );
+  // Remove wenyan-md auto-injected superscript footnote numbers from inline links
+  // (e.g. <sup class="footnote" ...>[2]</sup>) — we use our own [^N] numbering
+  e = e.replace(/<sup class="footnote"[^>]*>\[\d+\]<\/sup>/g, '');
+  // Style remaining footnotes sections (our custom ones): very small and faded
   e = e.replace(
     /<section id="footnotes"[^>]*>([\s\S]*?)(<\/section>)/g,
     (match) => {
