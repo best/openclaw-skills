@@ -18,6 +18,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.3.4 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI conversation analysis | v0.4.0 |
 | [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.1.0 |
+| [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.1.0 |
 
 ## Install
 
