@@ -11,13 +11,13 @@ OpenClaw agent skills for autonomous development workflows.
 | Skill | Description | Version |
 |-------|-------------|---------|
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
-| [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
-| [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.1 |
-| [evolution-engine](./evolution-engine/) | PCEC v3 — anti-entropy self-evolution engine | v1.2.0 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.3.1 |
-| [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.3.4 |
+| [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.1 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI conversation analysis | v0.4.0 |
-| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.1.0 |
+| [evolution-engine](./evolution-engine/) | PCEC v3 — anti-entropy self-evolution engine | v1.2.0 |
+| [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.3.4 |
+| [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
+| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.0 |
 | [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.1.0 |
 
 ## Install
