@@ -1,171 +1,154 @@
 ---
 name: evolution-engine
-version: 1.1.0
-description: "PCEC self-evolution engine. Iterates skills and grounds operational knowledge from runtime signals."
+version: 1.2.0
+description: "PCEC v3 — Anti-entropy self-evolution engine. Discovers behavioral issues from daily operations, self-corrects, and tracks convergence."
 ---
 
-# Evolution Engine — PCEC v2
+# Evolution Engine — PCEC v3
 
-Periodic Cognitive Expansion Cycle. Autonomous evolution through **skill iteration** and **knowledge grounding**.
+Periodic Cognitive Expansion Cycle. **Evolution = anti-entropy.**
 
-## Core Principle
+Core mission: continuously review your own behavior, discover drift and problems, self-correct, and drive the system toward increasing order. The same class of problem should never require human intervention twice.
 
-**Every evolution must land somewhere visible.** Three valid outputs, in priority order:
+## Design Philosophy
 
-1. **Skill improvement** — modify SKILL.md, scripts, or templates in the skills repo (highest value: auto-loaded by all sessions)
-2. **Knowledge grounding** — write to `memory/reference/*.md` (searchable by all sessions via memory_search)
-3. **Work item** — temporary tracker for complex issues (must resolve within 3 cycles)
+PCEC v1 accumulated genes (pattern catalog). v2 waited for errors (passive repair). Both failed:
+- v1 built knowledge only PCEC could see
+- v2 skipped endlessly when the system was "clean"
 
-Invalid output: adding to a self-referential knowledge base that only PCEC can see.
+v3 is **introspection-driven**. The most valuable evolution signals are not in error logs — they're in daily conversations where humans had to fix your problems.
 
-## Data Sources
+## Three-Phase Cycle
 
-| Source | Command | What to look for |
-|--------|---------|------------------|
-| Gateway errors | `grep ERROR /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log \| tail -30` | Error patterns, skill failures |
-| Cron health | cron tool `action=list` | Failed jobs, slow jobs (>5min) |
-| Recent sessions | `ls -t ~/.openclaw/agents/main/sessions/*.jsonl \| head -3` + grep | Skill invocation failures |
-| Daily memory | `cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d).md` | User feedback, pain points |
-| Skills repo | `/data/code/github.com/best/openclaw-skills/` | Current skill code |
-| Work items | `{baseDir}/gep/work-items.jsonl` | Open items from previous cycles |
-| Reference docs | `~/.openclaw/workspace/memory/reference/` | Already documented knowledge |
+Every cycle runs all three phases. **There is no skip.**
 
-## PCEC Cycle
+### Phase 1: Discover
 
-### Step 1: Quick Triage (exit fast if clean)
+Read these sources in order. Extract signals — anything that indicates a problem, inefficiency, or improvement opportunity.
 
+**Primary: daily logs (richest signal source)**
 ```bash
-ERROR_COUNT=$(grep -c ERROR /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log 2>/dev/null || echo 0)
-echo "Errors today: $ERROR_COUNT"
+cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d).md 2>/dev/null
+cat ~/.openclaw/workspace/memory/$(date -d yesterday +%Y-%m-%d).md 2>/dev/null
 ```
 
-Also: cron tool `action=list` → check `lastStatus` and `consecutiveErrors`.
-Also: `cat {baseDir}/gep/work-items.jsonl` → check for open items.
+Focus on:
+- Moments where the human had to intervene to fix your behavior
+- Decisions made about how things should work
+- Mistakes you made and their root causes
+- Patterns that repeated across multiple incidents
+- Workarounds that should be permanent fixes
 
-**If all clean** (0 new errors, 0 cron failures, 0 open work items):
-→ Log skip to `events.jsonl` and exit immediately. Target: <30s, <20k tokens.
-
-### Step 2: Signal Classification (only if Step 1 found signals)
-
-Read the actual error messages. For each signal, classify:
-
-| Classification | Criteria | Action |
-|---------------|----------|--------|
-| **Skill-fixable** | Error relates to a skill's behavior or code | Fix the skill |
-| **Knowledge gap** | Useful pattern not yet in reference docs | Write to `memory/reference/` |
-| **Already documented** | Pattern exists in reference docs | Skip (system is working as expected) |
-| **Transient** | Provider 503, network blip, one-off | Skip |
-| **Complex** | Multi-step, needs investigation | Create work item |
-
-To check if already documented:
+**Secondary: system health**
 ```bash
-grep -l "keyword" ~/.openclaw/workspace/memory/reference/*.md 2>/dev/null
+# Gateway errors — use pattern that excludes false positives from cron payload text
+grep -P '^\d{4}-\d{2}.*\bERROR\b' /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log 2>/dev/null | tail -20
+```
+Also: cron tool `action=list` → check `lastStatus` and `consecutiveErrors`
+
+**Tertiary: open trackers**
+```bash
+cat {baseDir}/gep/convergence-tracker.jsonl 2>/dev/null
+cat {baseDir}/gep/work-items.jsonl 2>/dev/null
 ```
 
-### Step 3: Act (one action per cycle, priority order)
+**Signal classification:**
 
-**Priority 1: Fix a skill**
-1. Read the affected skill's SKILL.md and related files
-2. Identify root cause from signal data
-3. Fix it (edit code, improve prompts, add error handling)
-4. Bump version in SKILL.md frontmatter (bugfix → patch, feature → minor)
-5. Update repo `README.md` + `README_CN.md` version tables
-6. Commit: `git add -A && git commit -m "evolve: <skill-name> v<version> — <what changed>" && git push`
+| Type | Description | Priority |
+|------|-------------|----------|
+| Human-intervention | Human had to fix something that should have been self-managed | Highest |
+| Recurring-pattern | Same type of problem appeared 2+ times | High |
+| Behavioral-drift | Acting inconsistently with established rules | High |
+| Inefficiency | Wasting time, tokens, or human attention | Medium |
+| System-health | Errors, timeouts, cron failures | Medium |
+| Knowledge-gap | Repeatedly looking up the same thing | Low |
 
-**Priority 2: Ground knowledge**
-1. Check if `memory/reference/openclaw-troubleshooting.md` or other reference docs cover it
-2. If not documented, add a concise entry: **Symptom → Cause → Fix**
-3. Commit reference doc changes to skills repo if applicable, otherwise just write to workspace
+### Phase 2: Fix
 
-**Priority 3: Audit a skill** (when system has low-priority signals or stagnation breaker)
-1. Pick one skill from the repo (prefer least-recently-audited)
-2. Check recent session logs for how it was actually used
-3. Look for: outdated instructions, missing error handling, token waste, stale paths
-4. **Look for creation signals**: repeated manual workflows in sessions that no skill covers → create work item with `target: "investigate"` for next cycle's Priority 4
-5. Improve if issues found, otherwise note "audited, healthy" in event log
+For each signal, take ONE concrete action. **Max 3 actions per cycle.** Priority order:
 
-**Priority 4: Create a new skill** (when recurring patterns lack skill coverage)
+**1. Fix a skill**
+- Edit SKILL.md / scripts in `/data/code/github.com/best/openclaw-skills/`
+- Bump version (bugfix → patch, feature → minor)
+- Update repo `README.md` + `README_CN.md` version tables
+- `git add -A && git commit -m "evolve: <skill> v<version> — <what>" && git push`
 
-Trigger conditions (need **at least one**, evidence-driven):
-- Audit or session logs reveal a **recurring multi-step workflow** (3+ occurrences) with no existing skill
-- A reference doc has grown into a full workflow (not just troubleshooting facts) → promote to skill
-- Open work item identifies a gap best solved by a new skill rather than patching an existing one
+**2. Fix a cron prompt**
+- Identify the specific prompt issue from daily logs
+- Use cron tool `action=update` with corrected payload
+- Log what changed and why
 
-Process:
-1. **Verify the pattern**: grep session logs for evidence of 3+ manual repetitions
-2. **Check for overlap**: ensure no existing skill covers this (read all SKILL.md descriptions)
-3. **Create minimal skill directory** in `/data/code/github.com/best/openclaw-skills/<skill-name>/`
-4. **Write SKILL.md**: frontmatter (`name`, `description`) + concise instructions, <200 lines
-5. **Add `scripts/`** only if deterministic code is needed (test scripts before committing)
-6. **Install**: `ln -sf /data/code/github.com/best/openclaw-skills/<skill-name> ~/.openclaw/workspace/skills/<skill-name>`
-7. **Update repo README.md + README_CN.md** version tables
-8. **Commit + push**: `git add -A && git commit -m "release: <skill-name> v0.1.0" && git push`
-9. **Log event** as `result: "skill-create"`
+**3. Ground knowledge**
+- Write to `memory/reference/*.md`
+- Format: **Symptom → Root Cause → Fix → Prevention**
+- Only if the knowledge isn't already documented
 
-Constraints:
-- First version is always `v0.1.0` — start minimal, iterate later
-- No `assets/` or `references/` in v0.1.0 unless truly essential
-- Skill name: lowercase, hyphens, verb-led (e.g. `log-analyzer`, `image-optimizer`)
-- Must solve a real observed problem, not a hypothetical one
+**4. Update behavioral guardrails**
+- Add rules to relevant skill or reference doc to prevent recurrence
+- Must be specific and actionable, not vague principles
 
-**Priority 5: Resolve open work items**
-- Items >3 cycles old → resolve or close with reason
-- Resolution must point to concrete output: "fixed skill X v1.2.3" or "documented in reference/Y"
+**5. Create work item**
+- For complex issues that can't be resolved in one cycle
+- Must resolve within 3 cycles
 
-### Step 4: Log Event
+### Phase 3: Verify
+
+Track whether fixes actually work.
+
+**Update convergence tracker** (`{baseDir}/gep/convergence-tracker.jsonl`):
+```json
+{"id":"ct_NNN","ts":"ISO-8601","category":"human-intervention|recurring|drift|inefficiency|system-health","signal":"what was found","action":"what was done","status":"open","verify_after":"evt_NNN+3"}
+```
+
+**Check existing trackers:**
+- Same category of problem hasn't recurred for 3+ cycles → `"status": "converged"`
+- Recurred → `"status": "regressed"` — the fix wasn't sufficient, needs deeper root cause analysis
+- Regressed items get highest priority in next cycle
+
+### When Daily Logs Have No New Signals
+
+Even when everything is quiet, do one of:
+
+1. **Audit a skill** — pick one from the repo, check actual usage in recent session logs, look for outdated instructions / missing guards / token waste
+2. **Review convergence tracker** — verify "converged" items haven't regressed
+3. **Proactive improvement** — find one thing that works but could work better
+
+Every cycle produces output.
+
+## Event Log
 
 Append to `{baseDir}/gep/events.jsonl`:
 ```json
-{"id": "evt_NNN", "ts": "ISO-8601", "result": "skill-fix|skill-create|knowledge-ground|skill-audit|skip", "target": "skill:name|ref:filename|none", "summary": "one line"}
+{"id":"evt_NNN","ts":"ISO-8601","signals_found":2,"actions":[{"type":"skill-fix|cron-fix|knowledge|guardrail|audit","target":"...","summary":"..."}],"convergence":{"open":3,"converged":5,"regressed":0}}
 ```
 
-Prune to 20 entries; archive older to `events-archive.jsonl`.
+Prune to 30 entries; archive older to `events-archive.jsonl`.
 
-## Work Items (temporary issue tracker)
+## Work Items
 
-Replaces the old gene system. Work items are **temporary** — they track issues, not knowledge.
+Temporary tracker for complex issues. Same rules as v2:
+- Max 10 open items
+- Must resolve within 3 cycles or close with reason
+- Resolution always points to a concrete change
 
 Format in `{baseDir}/gep/work-items.jsonl`:
 ```json
-{"id": "wi_NNN", "ts": "ISO-8601", "signal": "what was observed", "status": "open", "target": "skill:name|ref:name|investigate", "cycle_created": 94, "cycle_limit": 97}
+{"id":"wi_NNN","ts":"ISO-8601","signal":"what was observed","status":"open","target":"...","cycle_created":"evt_NNN","cycle_limit":"evt_NNN+3"}
 ```
 
-Rules:
-- Max 10 open items at any time
-- Must resolve within 3 cycles or close with reason
-- Resolution always points to a concrete change
-- Closed items: change `status` to `"resolved"` or `"closed"`, add `"resolution": "what was done"`
-- No permanent accumulation — if it's worth keeping, it belongs in a reference doc or skill improvement
+## Anti-Entropy Lock
 
-## Strategy Priority
-
-repair skill > ground knowledge > audit skill > create skill > resolve work items > skip
-
-## Anti-Evolution Lock
-
-Priority: **Stability > Explainability > Reusability > Novelty**
+**Stability > Explainability > Reusability > Novelty**
 
 Forbidden:
-- Accumulating permanent self-referential knowledge (no genes.json-style accumulation)
-- Modifying skills without evidence from actual usage/errors
+- Empty skips — every cycle must produce substantive output
+- Self-referential knowledge accumulation
+- Changes without evidence from observed signals
 - "Feels right" as decision basis
 - Inventing problems to justify changes
 - Creating GitHub issues autonomously
-- Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md) — these are human-owned
+- Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md) — human-owned
 
-## Cost Discipline
+## Success Metric
 
-- Clean system → exit in Step 1 (target: <30s, <20k tokens)
-- Active evolution → target: <3min, <80k tokens
-- Don't read large files unless signals point to them
-- One skill audit per cycle max
-- Prefer `grep` and `tail` over full file reads
-
-## Migration Note (v1 → v2)
-
-PCEC v1 (0.1.0–0.4.0) focused on gene accumulation — cataloging error patterns in `genes.json`. This produced 32 genes over 93 cycles, but most knowledge was only visible to PCEC itself.
-
-PCEC v2 (1.0.0) shifts focus to **skill iteration** and **knowledge grounding**:
-- Old genes → migrated to `memory/reference/openclaw-troubleshooting.md` and `memory/reference/discord-troubleshooting.md`
-- Old gene/capsule files → archived in `gep/archive/`
-- Gene system → replaced by temporary work items
+**Convergence rate** — the ratio of issues that get fixed once and stay fixed vs. issues that regress. PCEC succeeds when the human spends less time fixing agent problems over time.
