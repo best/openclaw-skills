@@ -109,8 +109,8 @@ class WeChatMPPublisher:
 
         # 3. Append formatted footnotes section if any exist
         if footnotes:
-            fn_lines = ['<section style="margin-top:30px;padding-top:16px;border-top:1px dashed #ccc;">',
-                         '<p style="font-size:14px;font-weight:bold;color:#888;margin-bottom:8px;">参考文献</p>']
+            fn_lines = ['<section style="margin-top:36px;padding-top:20px;border-top:1px solid #e5e5e5;">',
+                         '<p style="font-size:14px;font-weight:600;color:#999;margin-bottom:10px;letter-spacing:1px;">参考文献</p>']
             for num in sorted(footnotes.keys(), key=int):
                 # Strip markdown links to plain text (WeChat filters external URLs)
                 text = footnotes[num]
@@ -155,25 +155,27 @@ class WeChatMPPublisher:
             for p in li.find_all('p'):
                 p.unwrap()
 
-        # Inline styles for WeChat
+        # Inline styles for WeChat (designed for light + dark mode compatibility)
+        # Key: avoid subtle tinted backgrounds (invert badly in dark mode),
+        # use clear contrasts, keep accent colors moderate saturation.
         style_map = {
-            'h2': 'font-size:20px;font-weight:bold;color:#1a1a1a;margin:28px 0 14px;padding:8px 12px;border-left:4px solid #07c160;background:#f8fdf9;',
-            'h3': 'font-size:18px;font-weight:bold;color:#333;margin:22px 0 10px;',
-            'p': 'font-size:16px;color:#333;line-height:1.9;margin:14px 0;letter-spacing:0.5px;',
-            'blockquote': 'border-left:3px solid #07c160;padding:12px 18px;margin:18px 0;background:#f7f8f7;color:#555;font-size:15px;line-height:1.8;border-radius:0 4px 4px 0;',
-            'strong': 'color:#1a1a1a;font-weight:bold;',
-            'em': 'color:#888;font-style:italic;',
-            'ul': 'margin:12px 0;padding-left:24px;',
-            'ol': 'margin:12px 0;padding-left:24px;',
-            'li': 'font-size:16px;color:#333;line-height:1.9;margin:6px 0;letter-spacing:0.5px;',
-            'img': 'max-width:100%;height:auto;display:block;margin:20px auto;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08);',
-            'table': 'width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;',
-            'th': 'background:#f0f7f0;border:1px solid #ddd;padding:10px 12px;text-align:left;font-weight:bold;color:#333;',
-            'td': 'border:1px solid #ddd;padding:10px 12px;color:#555;line-height:1.6;',
-            'hr': 'border:none;border-top:1px dashed #ccc;margin:30px 0;',
-            'code': 'background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:14px;color:#c7254e;font-family:Consolas,monospace;',
-            'pre': 'background:#2d2d2d;color:#f8f8f2;padding:16px;border-radius:6px;overflow-x:auto;margin:18px 0;line-height:1.5;font-size:14px;',
-            'sup': 'font-size:12px;color:#07c160;vertical-align:super;line-height:0;',
+            'h2': 'font-size:20px;font-weight:bold;color:#1a1a1a;margin:32px 0 16px;padding-bottom:10px;border-bottom:2px solid #07c160;',
+            'h3': 'font-size:17px;font-weight:bold;color:#2c2c2c;margin:26px 0 12px;',
+            'p': 'font-size:16px;color:#333;line-height:2;margin:16px 0;letter-spacing:0.5px;',
+            'blockquote': 'border-left:3px solid #07c160;padding:14px 20px;margin:22px 0;color:#555;font-size:15px;line-height:1.85;',
+            'strong': 'color:#1a1a1a;font-weight:600;',
+            'em': 'color:#777;font-style:italic;',
+            'ul': 'margin:14px 0;padding-left:24px;',
+            'ol': 'margin:14px 0;padding-left:24px;',
+            'li': 'font-size:16px;color:#333;line-height:2;margin:6px 0;letter-spacing:0.5px;',
+            'img': 'max-width:100%;height:auto;display:block;margin:24px auto;border-radius:8px;',
+            'table': 'width:100%;border-collapse:collapse;margin:20px 0;font-size:14px;',
+            'th': 'border:1px solid #e0e0e0;padding:10px 14px;text-align:left;font-weight:bold;color:#333;',
+            'td': 'border:1px solid #e0e0e0;padding:10px 14px;color:#555;line-height:1.6;',
+            'hr': 'border:none;border-top:1px solid #e5e5e5;margin:36px 0;',
+            'code': 'background:#f4f5f7;padding:2px 6px;border-radius:3px;font-size:14px;color:#476582;font-family:Consolas,monospace;',
+            'pre': 'background:#1e1e2e;color:#cdd6f4;padding:18px;border-radius:8px;overflow-x:auto;margin:20px 0;line-height:1.6;font-size:14px;',
+            'sup': 'font-size:11px;color:#07c160;vertical-align:super;line-height:0;',
         }
 
         for tag, style in style_map.items():
