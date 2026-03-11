@@ -55,6 +55,12 @@ Optimized for both light and dark mode reading:
 
 Draft created in WeChat MP backend (mp.weixin.qq.com). User confirms and publishes manually.
 
+## Known Gotchas
+
+- **Bold regex cross-line bug (v0.2.0 fix)**: The bold pre-processor uses `[^*\n]+?` (not `[^*]+?`) to prevent matching across paragraph boundaries. Without the `\n` exclusion, `**end of paragraph` pairs with `beginning of next**`, corrupting entire sections.
+- **Orphaned `---` separators**: If the source Markdown has a horizontal rule between content and footnote definitions, the footnote extraction leaves an orphan `---`. The script cleans trailing `\n---\n` before rendering.
+- **WeChat external URL filtering**: All `[text](url)` links in footnotes are stripped to plain text because WeChat silently drops external links from article content.
+
 ## Limitations
 
 - Personal subscription accounts cannot auto-publish via API (requires manual confirmation)
