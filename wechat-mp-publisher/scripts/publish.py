@@ -89,7 +89,35 @@ class WeChatMPPublisher:
 
         # Pre-process: fix bold markers that markdown-it can't parse
         # **text：**followed-by-text → **text：** followed-by-text (add space)
-        body = re.sub(r'\*\*([^*]+?)\*\*(?=[^\s*])', r'**\1** ', body)
+        # IMPORTANT: [^*\n]+? must NOT cross newlines, otherwise it pairs
+        # the closing ** of one paragraph with the opening ** of the next
+        body = re.sub(r'\*\*([^*\n]+?)\*\*(?=[^\s*])', r'**\1** ', body)
+
+        # Pre-process: handle footnotes (markdown-it doesn't support [^N] syntax)
+        # 1. Extract footnote definitions
+        footnotes = {}
+        def collect_footnote(m):
+            footnotes[m.group(1)] = m.group(2).strip()
+            return ''
+        body = re.sub(r'^\[\^(\d+)\]:\s*(.+)$', collect_footnote, body, flags=re.MULTILINE)
+
+        # Clean up orphaned --- that was between signature and footnotes
+        body = re.sub(r'\n---\s*\n\s*$', '\n', body)
+
+        # 2. Replace inline [^N] references with superscript
+        body = re.sub(r'\[\^(\d+)\]', r'<sup>[\1]</sup>', body)
+
+        # 3. Append formatted footnotes section if any exist
+        if footnotes:
+            fn_lines = ['<section style="margin-top:30px;padding-top:16px;border-top:1px dashed #ccc;">',
+                         '<p style="font-size:14px;font-weight:bold;color:#888;margin-bottom:8px;">参考文献</p>']
+            for num in sorted(footnotes.keys(), key=int):
+                # Strip markdown links to plain text (WeChat filters external URLs)
+                text = footnotes[num]
+                text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+                fn_lines.append(f'<p style="font-size:13px;color:#999;line-height:1.7;margin:4px 0;padding-left:1.5em;text-indent:-1.5em;">{num}. {text}</p>')
+            fn_lines.append('</section>')
+            body += '\n' + '\n'.join(fn_lines)
 
         # Convert with markdown-it (enable table support)
         md = MarkdownIt().enable('table')
@@ -145,6 +173,7 @@ class WeChatMPPublisher:
             'hr': 'border:none;border-top:1px dashed #ccc;margin:30px 0;',
             'code': 'background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:14px;color:#c7254e;font-family:Consolas,monospace;',
             'pre': 'background:#2d2d2d;color:#f8f8f2;padding:16px;border-radius:6px;overflow-x:auto;margin:18px 0;line-height:1.5;font-size:14px;',
+            'sup': 'font-size:12px;color:#07c160;vertical-align:super;line-height:0;',
         }
 
         for tag, style in style_map.items():
