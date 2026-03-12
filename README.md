@@ -15,6 +15,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.1 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI conversation analysis | v0.4.0 |
 | [evolution-engine](./evolution-engine/) | PCEC v3 — anti-entropy self-evolution engine | v1.2.0 |
+| [feed-collector](./feed-collector/) | AI news feed collector with auto-scoring and publishing | v1.1.0 |
 | [gemini-imagegen](./gemini-imagegen/) | Image generation and editing with Gemini 3.1 Flash Image (Nano Banana 2) | v0.3.4 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.0 |

@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.0.0
+version: 1.1.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -93,13 +93,65 @@ sourceName: "OpenAI"
 正文内容（2-3 段摘要 + 要点）
 ```
 
+**⚠️ Frontmatter YAML 安全规则（必须遵守）：**
+- 双引号包裹的值内部 **禁止出现裸 ASCII 双引号 `"`**，会截断 YAML 字符串
+- 需要引用时使用中文引号 `「」` 或 `『』`，不要用 `""` `""` 或裸 `"`
+- 冒号 `:` 后紧跟空格会被 YAML 误解析，标题/描述中避免英文冒号，用中文冒号 `：` 代替
+- 生成后心里默念：*这个值放到 `yaml.parse()` 里会不会炸？*
+
 sourceType 枚举：`anthropic-blog`, `openai-blog`, `deepmind-blog`, `meta-ai-blog`, `hacker-news`, `reddit`, `github-trending`, `arxiv`, `web-search`, `rss`, `jiqizhixin`, `qbitai`, `36kr`, `other`
 
 ### Step 6: 清理 seen.json
 
 删除 `data/seen.json` 中超过 `retention_days`（默认 30 天）的条目。
 
-### Step 7: 提交推送
+### Step 7: Frontmatter 校验与自动修复（必选）
+
+在 git commit **之前**，对本次新增/修改的所有 `.md` 文件执行 YAML frontmatter 校验：
+
+```bash
+cd /data/code/github.com/astralor/feed
+# 用 node 一行搞定：解析所有今天的 md 文件的 frontmatter
+node -e "
+const fs = require('fs');
+const yaml = require('./node_modules/js-yaml');
+const glob = require('fs').readdirSync('src/data/blog').flatMap(d =>
+  fs.readdirSync('src/data/blog/'+d).filter(f=>f.endsWith('.md')).map(f=>'src/data/blog/'+d+'/'+f)
+);
+let errors = [];
+for (const f of glob) {
+  const content = fs.readFileSync(f, 'utf8');
+  const m = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) continue;
+  try { yaml.load(m[1]); }
+  catch(e) { errors.push({ file: f, error: e.message, line: e.mark?.line }); }
+}
+if (errors.length) { console.error(JSON.stringify(errors, null, 2)); process.exit(1); }
+else console.log('✅ All frontmatter valid');
+"
+```
+
+**如果校验失败：**
+1. 读取报错文件的 frontmatter
+2. 自动修复常见问题：
+   - ASCII `"` 在双引号值内部 → 替换为 `「」`
+   - 英文冒号 `:` 后跟空格在值内部 → 替换为中文冒号 `：`
+   - 缩进错误 → 重新对齐
+3. 修复后**再次运行校验**，确认通过
+4. 如果自动修复无法解决 → 删除问题文件（宁可少一条也不能炸构建）并记录日志
+
+### Step 8: 构建验证（必选）
+
+```bash
+cd /data/code/github.com/astralor/feed
+npx astro check
+```
+
+- `astro check` 必须 0 errors 才能继续
+- 如果失败，回到 Step 7 排查修复
+- **不通过不许 push**
+
+### Step 9: 提交推送
 
 ```bash
 cd /data/code/github.com/astralor/feed
@@ -108,7 +160,7 @@ git commit -m "feed: YYYY-MM-DD HH:mm - N items from [sources]"
 git push
 ```
 
-### Step 8: Discord 推送
+### Step 10: Discord 推送
 
 使用 `message` 工具发送到 📡丨ai-feed 频道（ID: `1481477340717383721`）：
 
@@ -128,10 +180,6 @@ git push
 - `📰` 用于 score < 8.0
 - 按分数降序排列
 - 推送 top 15 条，超出部分引导去网站查看
-
-### Step 9: 构建验证（可选）
-
-本地跑 `npm run build` 确认构建通过。Cloudflare Pages 会自动触发。
 
 ## 注意事项
 
