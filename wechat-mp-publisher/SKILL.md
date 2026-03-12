@@ -1,6 +1,6 @@
 ---
 name: wechat-mp-publisher
-version: 0.2.0
+version: 0.3.0
 description: "Publish Markdown articles to WeChat Official Account draft box. Use when user wants to push blog posts to 微信公众号, convert Markdown to WeChat format, or create 公众号草稿."
 ---
 
@@ -11,7 +11,7 @@ Publish Markdown articles to WeChat Official Account (微信公众号) draft box
 ## Usage
 
 ```bash
-uv run <skill_dir>/scripts/publish.py -f <markdown-file> [-u <source-url>] [-c <cover-image>] [-t <title-override>]
+uv run <skill_dir>/scripts/publish.py -f <markdown-file> [-u <source-url>] [-c <cover-image>] [-t <title-override>] [-a <author>]
 ```
 
 The script:
@@ -28,6 +28,7 @@ The script:
 - `-u, --url` — Original article URL (set as "阅读原文" link)
 - `-c, --cover` — Cover image path (defaults to first image in article)
 - `-t, --title` — Override title (defaults to frontmatter title)
+- `-a, --author` — Author name (defaults to "张昊辰(Astralor)")
 
 ## Environment Variables
 
@@ -60,6 +61,7 @@ Draft created in WeChat MP backend (mp.weixin.qq.com). User confirms and publish
 - **Bold regex cross-line bug (v0.2.0 fix)**: The bold pre-processor uses `[^*\n]+?` (not `[^*]+?`) to prevent matching across paragraph boundaries. Without the `\n` exclusion, `**end of paragraph` pairs with `beginning of next**`, corrupting entire sections.
 - **Orphaned `---` separators**: If the source Markdown has a horizontal rule between content and footnote definitions, the footnote extraction leaves an orphan `---`. The script cleans trailing `\n---\n` before rendering.
 - **WeChat external URL filtering**: All `[text](url)` links in footnotes are stripped to plain text because WeChat silently drops external links from article content.
+- **Inline code layout break (v0.3.0 fix)**: Inline `<code>` elements without explicit `display:inline` may be rendered as inline-block on WeChat mobile, causing surrounding text to break with large gaps. The style now includes `display:inline;word-break:break-all;line-height:inherit;`.
 
 ## Limitations
 
@@ -67,4 +69,4 @@ Draft created in WeChat MP backend (mp.weixin.qq.com). User confirms and publish
 - Images must be uploaded to WeChat CDN (external URLs filtered)
 - Content size limit: 2MB, <20k characters
 - Each push creates a new draft; old drafts must be manually deleted
-- WeChat title limit: 32 characters (auto-truncated with …)
+- WeChat title limit: 64 characters (auto-truncated with …)

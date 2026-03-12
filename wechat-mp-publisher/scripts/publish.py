@@ -173,7 +173,7 @@ class WeChatMPPublisher:
             'th': 'border:1px solid #e0e0e0;padding:10px 14px;text-align:left;font-weight:bold;color:#333;',
             'td': 'border:1px solid #e0e0e0;padding:10px 14px;color:#555;line-height:1.6;',
             'hr': 'border:none;border-top:1px solid #e5e5e5;margin:36px 0;',
-            'code': 'background:#f4f5f7;padding:2px 6px;border-radius:3px;font-size:14px;color:#476582;font-family:Consolas,monospace;',
+            'code': 'display:inline;background:#f4f5f7;padding:2px 6px;border-radius:3px;font-size:14px;color:#476582;font-family:Consolas,monospace;word-break:break-all;line-height:inherit;',
             'pre': 'background:#1e1e2e;color:#cdd6f4;padding:18px;border-radius:8px;overflow-x:auto;margin:20px 0;line-height:1.6;font-size:14px;',
             'sup': 'font-size:11px;color:#07c160;vertical-align:super;line-height:0;',
         }
@@ -199,8 +199,8 @@ class WeChatMPPublisher:
     def create_draft(self, title: str, content: str, cover_media_id: str,
                      author: str = "张昊辰(Astralor)", source_url: str = "") -> Dict:
         token = self.get_access_token()
-        if len(title) > 32:
-            title = title[:31] + "…"
+        if len(title) > 64:
+            title = title[:63] + "…"
 
         payload = {
             "articles": [{
@@ -225,7 +225,8 @@ class WeChatMPPublisher:
         return data
 
     def publish(self, md_path: str, cover_path: Optional[str] = None,
-                title_override: Optional[str] = None, source_url: str = ""):
+                title_override: Optional[str] = None, source_url: str = "",
+                author: str = "张昊辰(Astralor)"):
         print(f"📄 Reading {md_path}...")
         title, html, local_images = self.convert_markdown(md_path)
         if title_override:
@@ -260,7 +261,7 @@ class WeChatMPPublisher:
         cover_media_id = self.upload_cover(cover_path)
 
         print(f"✍️  Creating draft: {title}...")
-        result = self.create_draft(title, html, cover_media_id, source_url=source_url)
+        result = self.create_draft(title, html, cover_media_id, author=author, source_url=source_url)
 
         print(f"✅ Draft created! media_id: {result.get('media_id')}")
         print("👉 Go to mp.weixin.qq.com to review and publish.")
@@ -272,11 +273,12 @@ def main():
     parser.add_argument("-c", "--cover", help="Cover image path")
     parser.add_argument("-t", "--title", help="Override title")
     parser.add_argument("-u", "--url", help="Original article URL", default="")
+    parser.add_argument("-a", "--author", help="Author name", default="张昊辰(Astralor)")
     args = parser.parse_args()
 
     try:
         publisher = WeChatMPPublisher()
-        publisher.publish(args.file, args.cover, title_override=args.title, source_url=args.url)
+        publisher.publish(args.file, args.cover, title_override=args.title, source_url=args.url, author=args.author)
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         sys.exit(1)
