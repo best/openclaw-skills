@@ -88,10 +88,12 @@ class WeChatMPPublisher:
         local_images = re.findall(r'!\[.*?\]\((.+?)\)', body)
 
         # Pre-process: fix bold markers that markdown-it can't parse
-        # **text：**followed-by-text → **text：** followed-by-text (add space)
+        # **sentence with punct.**followed → **sentence with punct.** followed
         # IMPORTANT: [^*\n]+? must NOT cross newlines, otherwise it pairs
         # the closing ** of one paragraph with the opening ** of the next
-        body = re.sub(r'\*\*([^*\n]+?)\*\*(?=[^\s*])', r'**\1** ', body)
+        # Exclude CJK punctuation from lookahead — markdown-it handles them
+        # fine natively, and the extra space breaks WeChat list rendering
+        body = re.sub(r'\*\*([^*\n]+?)\*\*(?=[^\s*\u3000-\u303f\uff00-\uffef])', r'**\1** ', body)
 
         # Pre-process: handle footnotes (markdown-it doesn't support [^N] syntax)
         # 1. Extract footnote definitions
@@ -167,14 +169,14 @@ class WeChatMPPublisher:
             'em': 'color:#777;font-style:italic;',
             'ul': 'margin:14px 0;padding-left:24px;',
             'ol': 'margin:14px 0;padding-left:24px;',
-            'li': 'font-size:16px;color:#333;line-height:2;margin:6px 0;letter-spacing:0.5px;',
+            'li': 'font-size:16px;color:#333;line-height:1.75;margin:8px 0;letter-spacing:0.5px;',
             'img': 'max-width:100%;height:auto;display:block;margin:24px auto;border-radius:8px;',
             'table': 'width:100%;border-collapse:collapse;margin:20px 0;font-size:14px;',
             'th': 'border:1px solid #e0e0e0;padding:10px 14px;text-align:left;font-weight:bold;color:#333;',
             'td': 'border:1px solid #e0e0e0;padding:10px 14px;color:#555;line-height:1.6;',
             'hr': 'border:none;border-top:1px solid #e5e5e5;margin:36px 0;',
             'code': 'display:inline;background:#f4f5f7;padding:2px 6px;border-radius:3px;font-size:14px;color:#476582;font-family:Consolas,monospace;word-break:break-all;line-height:inherit;',
-            'pre': 'background:#1e1e2e;color:#cdd6f4;padding:18px;border-radius:8px;overflow-x:auto;margin:20px 0;line-height:1.6;font-size:14px;',
+            'pre': 'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;overflow-x:auto;margin:20px 0;line-height:1.7;font-size:14px;white-space:pre-wrap;word-wrap:break-word;',
             'sup': 'font-size:11px;color:#07c160;vertical-align:super;line-height:0;',
         }
 
@@ -185,7 +187,7 @@ class WeChatMPPublisher:
         # pre > code: override inline code style
         for pre in soup.find_all('pre'):
             for code in pre.find_all('code'):
-                code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#f8f8f2;background:none;'
+                code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre-wrap;word-wrap:break-word;'
 
         # Wrap in section
         wrapper = soup.new_tag('section')

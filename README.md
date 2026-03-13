@@ -19,7 +19,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [gemini-image-gen](./gemini-image-gen/) | Image generation and editing with Gemini API + provider fallback | v1.0.0 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.0 |
-| [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.2.0 |
+| [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.4.0 |
 
 ## Install
 

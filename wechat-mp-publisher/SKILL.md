@@ -1,6 +1,6 @@
 ---
 name: wechat-mp-publisher
-version: 0.3.0
+version: 0.4.0
 description: "Publish Markdown articles to WeChat Official Account draft box. Use when user wants to push blog posts to 微信公众号, convert Markdown to WeChat format, or create 公众号草稿."
 ---
 
@@ -62,6 +62,8 @@ Draft created in WeChat MP backend (mp.weixin.qq.com). User confirms and publish
 - **Orphaned `---` separators**: If the source Markdown has a horizontal rule between content and footnote definitions, the footnote extraction leaves an orphan `---`. The script cleans trailing `\n---\n` before rendering.
 - **WeChat external URL filtering**: All `[text](url)` links in footnotes are stripped to plain text because WeChat silently drops external links from article content.
 - **Inline code layout break (v0.3.0 fix)**: Inline `<code>` elements without explicit `display:inline` may be rendered as inline-block on WeChat mobile, causing surrounding text to break with large gaps. The style now includes `display:inline;word-break:break-all;line-height:inherit;`.
+- **Bold preprocessor breaks list items (v0.4.0 fix)**: The bold regex `**text**：` added a space before CJK punctuation (`**text** ：`), causing WeChat to render extra visual gaps in list items. Fixed by excluding CJK punctuation (U+3000-303F, U+FF00-FFEF) from the lookahead.
+- **Code block whitespace (v0.4.0 fix)**: `<pre>` blocks lacked `white-space:pre-wrap`, causing indentation and line breaks to collapse in WeChat. Code block colors updated from Catppuccin to One Dark (#282c34) for better readability.
 
 ## Limitations
 
