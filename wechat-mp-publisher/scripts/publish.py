@@ -175,7 +175,6 @@ class WeChatMPPublisher:
             'h3': 'font-size:17px;font-weight:bold;color:#2c2c2c;margin:26px 0 12px;',
             'p': 'font-size:16px;color:#333;line-height:2;margin:16px 0;letter-spacing:0.5px;',
             'blockquote': 'border-left:3px solid #07c160;padding:10px 16px;margin:16px 0;color:#555;font-size:15px;line-height:1.75;',
-            'strong': 'color:#2e7d32;font-weight:600;display:inline;',
             'em': 'color:#777;font-style:italic;',
             'ul': 'margin:14px 0;padding-left:24px;',
             'ol': 'margin:14px 0;padding-left:24px;',
@@ -197,6 +196,7 @@ class WeChatMPPublisher:
         # pre > code: override inline code style + convert \n to <br> for WeChat editor compatibility
         # WeChat MP editor strips \n and collapses spaces in code blocks when edited;
         # using <br> for line breaks and &nbsp; for indentation survives the editor.
+        # Wrap <pre> in scrollable <section> for mobile horizontal scroll.
         for pre in soup.find_all('pre'):
             for code in pre.find_all('code'):
                 code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre;'
@@ -213,6 +213,12 @@ class WeChatMPPublisher:
                     line_htmls.append('&nbsp;' * leading + escaped)
                 code.clear()
                 code.append(BeautifulSoup('<br>'.join(line_htmls), 'html.parser'))
+            # Wrap <pre> in scrollable container for mobile
+            scroll_wrapper = soup.new_tag('section')
+            scroll_wrapper['style'] = 'overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;'
+            pre.wrap(scroll_wrapper)
+            # Move margin from pre to wrapper, keep pre clean
+            pre['style'] = 'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;line-height:1.7;font-size:14px;margin:0;white-space:pre;overflow-x:auto;'
 
         # blockquote > p: tighter margins to reduce vertical bloat
         for bq in soup.find_all('blockquote'):
@@ -222,6 +228,14 @@ class WeChatMPPublisher:
         # Strip <a> tags — WeChat rejects articles containing links (errcode 45166)
         for a in soup.find_all('a'):
             a.replace_with(a.get_text())
+
+        # Replace <strong> with <span> — WeChat renders <strong> as block-level
+        # regardless of display:inline, causing line breaks in list items
+        for strong in soup.find_all('strong'):
+            span = soup.new_tag('span')
+            span['style'] = 'color:#2e7d32;font-weight:600;'
+            span.string = strong.get_text()
+            strong.replace_with(span)
 
         # Wrap in section
         wrapper = soup.new_tag('section')
