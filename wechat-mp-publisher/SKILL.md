@@ -1,6 +1,6 @@
 ---
 name: wechat-mp-publisher
-version: 0.4.1
+version: 0.5.0
 description: "Publish Markdown articles to WeChat Official Account draft box. Use when user wants to push blog posts to 微信公众号, convert Markdown to WeChat format, or create 公众号草稿."
 ---
 
@@ -28,7 +28,7 @@ The script:
 - `-u, --url` — Original article URL (set as "阅读原文" link)
 - `-c, --cover` — Cover image path (defaults to first image in article)
 - `-t, --title` — Override title (defaults to frontmatter title)
-- `-a, --author` — Author name (defaults to "张昊辰(Astralor)")
+- `-a, --author` — Author name (defaults to "张昊辰")
 
 ## Environment Variables
 
@@ -41,7 +41,8 @@ Required (set in `env.vars`):
 - **Footnotes**: `[^N]` references become green superscript numbers; definitions at bottom become styled "参考文献" section with small gray text. External links in footnotes are converted to plain text (WeChat filters external URLs).
 - **Bold**: Handles `**text**immediately-followed` patterns that markdown-it can't parse.
 - **Images**: Local images uploaded to WeChat CDN; external URLs kept as-is.
-- **Code blocks**: Dark theme (Catppuccin-inspired), inline code in blue-gray.
+- **Code blocks**: Dark theme (One Dark), uses `<section>` instead of `<pre>/<code>` to bypass WeChat's forced `pre-wrap`.
+- **Lists**: Converted to `<p>` + bullet/number characters (WeChat adds block-level wrappers inside `<li>`, breaking inline formatting).
 - **Tables**: Fully styled with borders and alternating header.
 
 ## Style Design
@@ -63,6 +64,11 @@ Draft created in WeChat MP backend (mp.weixin.qq.com). User confirms and publish
 - **WeChat external URL filtering**: All `[text](url)` links in footnotes are stripped to plain text because WeChat silently drops external links from article content.
 - **Inline code layout break (v0.3.0 fix)**: Inline `<code>` elements without explicit `display:inline` may be rendered as inline-block on WeChat mobile, causing surrounding text to break with large gaps. The style now includes `display:inline;word-break:break-all;line-height:inherit;`.
 - **Bold preprocessor breaks list items (v0.4.0 fix)**: The bold regex `**text**：` added a space before CJK punctuation (`**text** ：`), causing WeChat to render extra visual gaps in list items. Fixed by excluding CJK punctuation (U+3000-303F, U+FF00-FFEF) from the lookahead.
+- **Bold cross-boundary matching (v0.4.1 fix)**: Bold regex `\*\*([^*\n]+?)\*\*` matched across two bold boundaries when the closing `**` of one bold and the opening `**` of the next were on the same line, producing literal `**` in output. Fixed with negative lookahead `(?![。！？.!?\s])`.
+- **Code block `white-space:pre-wrap` (v0.5.0 fix)**: WeChat mobile (especially iOS) forcibly overrides `white-space:pre` to `pre-wrap` on `<pre>/<code>` elements, causing code to wrap instead of horizontal scroll. Fixed by replacing `<pre><code>` with `<section>` elements — WeChat preserves `<section>` styles as-is.
+- **List items line break before colon (v0.5.0 fix)**: WeChat wraps text after styled elements inside `<li>` in block-level `<section>`, causing a line break between bold labels and their descriptions. Fixed by converting `<ul>/<ol>` to `<p>` tags with bullet/number characters.
+- **`<a>` tag rejection (v0.4.0 fix)**: WeChat errcode 45166 caused by `<a>` tags; all links stripped keeping text.
+- **`<strong>` block rendering (v0.4.0 fix)**: WeChat forces `<strong>` to block display; replaced with `<span style="font-weight:600">`.
 - **Code block whitespace (v0.4.0 fix)**: `<pre>` blocks lacked `white-space:pre-wrap`, causing indentation and line breaks to collapse in WeChat. Code block colors updated from Catppuccin to One Dark (#282c34) for better readability.
 
 ## Limitations

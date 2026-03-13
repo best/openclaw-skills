@@ -188,7 +188,8 @@ class WeChatMPPublisher:
             'td': 'border:1px solid #e0e0e0;padding:10px 14px;color:#555;line-height:1.6;',
             'hr': 'border:none;border-top:1px solid #e5e5e5;margin:36px 0;',
             'code': 'display:inline;background:#f4f5f7;padding:2px 6px;border-radius:3px;font-size:14px;color:#476582;font-family:Consolas,monospace;word-break:break-all;line-height:inherit;',
-            'pre': 'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;line-height:1.7;font-size:14px;',
+            # NOTE: 'pre' removed from style_map — code blocks are fully handled below
+            # using <section> to bypass WeChat's forced pre-wrap on <pre>/<code> tags
             'sup': 'font-size:11px;color:#07c160;vertical-align:super;line-height:0;',
         }
 
@@ -196,32 +197,40 @@ class WeChatMPPublisher:
             for el in soup.find_all(tag):
                 el['style'] = style + el.get('style', '')
 
-        # pre > code: override inline code style + convert \n to <br> for WeChat editor compatibility
-        # WeChat MP editor strips \n and collapses spaces in code blocks when edited;
-        # using <br> for line breaks and &nbsp; for indentation survives the editor.
-        # Wrap <pre> in scrollable <section> for mobile horizontal scroll.
+        # Code blocks: use <section> instead of <pre>/<code> to bypass WeChat's
+        # forced white-space:pre-wrap override on <pre>/<code> tags.
+        # WeChat mobile (especially iOS) converts pre→pre-wrap, killing horizontal scroll.
+        # <section> styles are preserved as-is by WeChat's sanitizer.
         for pre in soup.find_all('pre'):
-            for code in pre.find_all('code'):
-                code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre;'
+            code = pre.find('code')
+            if code:
                 raw_text = code.get_text()
-                lines = raw_text.split('\n')
-                # Remove trailing empty line (markdown-it often adds one)
-                if lines and not lines[-1].strip():
-                    lines = lines[:-1]
-                line_htmls = []
-                for line in lines:
-                    stripped = line.lstrip(' ')
-                    leading = len(line) - len(stripped)
-                    escaped = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    line_htmls.append('&nbsp;' * leading + escaped)
-                code.clear()
-                code.append(BeautifulSoup('<br>'.join(line_htmls), 'html.parser'))
-            # Wrap <pre> in scrollable container for mobile
+            else:
+                raw_text = pre.get_text()
+            lines = raw_text.split('\n')
+            # Remove trailing empty line (markdown-it often adds one)
+            if lines and not lines[-1].strip():
+                lines = lines[:-1]
+            line_htmls = []
+            for line in lines:
+                stripped = line.lstrip(' ')
+                leading = len(line) - len(stripped)
+                escaped = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                line_htmls.append('&nbsp;' * leading + escaped)
+
+            # Build replacement: outer scroll wrapper + inner code section
+            # No <pre> or <code> tags — pure <section> to dodge WeChat sanitizer
             scroll_wrapper = soup.new_tag('section')
             scroll_wrapper['style'] = 'overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;'
-            pre.wrap(scroll_wrapper)
-            # Move margin from pre to wrapper, keep pre clean
-            pre['style'] = 'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;line-height:1.7;font-size:14px;margin:0;white-space:pre;overflow-x:auto;'
+            code_section = soup.new_tag('section')
+            code_section['style'] = (
+                'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;'
+                'line-height:1.7;font-size:14px;font-family:Consolas,monospace;'
+                'white-space:nowrap;overflow-x:auto;'
+            )
+            code_section.append(BeautifulSoup('<br>'.join(line_htmls), 'html.parser'))
+            scroll_wrapper.append(code_section)
+            pre.replace_with(scroll_wrapper)
 
         # blockquote > p: tighter margins to reduce vertical bloat
         for bq in soup.find_all('blockquote'):
@@ -240,6 +249,43 @@ class WeChatMPPublisher:
             span.string = strong.get_text()
             strong.replace_with(span)
 
+        # Convert <ul>/<ol> lists to <p> tags with bullet/number characters.
+        # WeChat wraps text after styled elements in <li> with block-level <section>,
+        # causing unwanted line breaks (e.g., bold label then colon on new line).
+        # Using <p> with bullet chars bypasses WeChat's <li> transformation entirely.
+        for ul in soup.find_all('ul'):
+            items = ul.find_all('li', recursive=False)
+            replacement_tags = []
+            for li in items:
+                p = soup.new_tag('p')
+                p['style'] = 'font-size:16px;color:#333;line-height:1.75;margin:8px 0;padding-left:1.5em;text-indent:-1.5em;letter-spacing:0.5px;'
+                # Bullet character prefix
+                bullet = soup.new_string('• ')
+                p.append(bullet)
+                # Move all children from <li> to <p>
+                for child in list(li.children):
+                    p.append(child.extract() if hasattr(child, 'extract') else child)
+                replacement_tags.append(p)
+            # Replace <ul> with the <p> tags
+            for tag in reversed(replacement_tags):
+                ul.insert_after(tag)
+            ul.decompose()
+
+        for ol in soup.find_all('ol'):
+            items = ol.find_all('li', recursive=False)
+            replacement_tags = []
+            for idx, li in enumerate(items, 1):
+                p = soup.new_tag('p')
+                p['style'] = 'font-size:16px;color:#333;line-height:1.75;margin:8px 0;padding-left:1.5em;text-indent:-1.5em;letter-spacing:0.5px;'
+                num = soup.new_string(f'{idx}. ')
+                p.append(num)
+                for child in list(li.children):
+                    p.append(child.extract() if hasattr(child, 'extract') else child)
+                replacement_tags.append(p)
+            for tag in reversed(replacement_tags):
+                ol.insert_after(tag)
+            ol.decompose()
+
         # Wrap in section
         wrapper = soup.new_tag('section')
         wrapper['style'] = 'padding:5px 0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",sans-serif;'
@@ -249,17 +295,12 @@ class WeChatMPPublisher:
 
         result = str(wrapper)
 
-        # Strip whitespace between list tags — WeChat renders \n as empty bullets
-        result = re.sub(r'(<ul[^>]*>)\s+', r'\1', result)
-        result = re.sub(r'\s+(</ul>)', r'\1', result)
-        result = re.sub(r'(<ol[^>]*>)\s+', r'\1', result)
-        result = re.sub(r'\s+(</ol>)', r'\1', result)
-        result = re.sub(r'(</li>)\s+(<li)', r'\1\2', result)
+        # (list whitespace stripping removed — lists now use <p> tags, no <ul>/<li>)
 
         return result
 
     def create_draft(self, title: str, content: str, cover_media_id: str,
-                     author: str = "张昊辰(Astralor)", source_url: str = "") -> Dict:
+                     author: str = "张昊辰", source_url: str = "") -> Dict:
         token = self.get_access_token()
         if len(title) > 64:
             title = title[:63] + "…"
