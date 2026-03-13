@@ -174,7 +174,7 @@ class WeChatMPPublisher:
             'h2': 'font-size:20px;font-weight:bold;color:#1a1a1a;margin:32px 0 16px;padding-bottom:10px;border-bottom:2px solid #07c160;',
             'h3': 'font-size:17px;font-weight:bold;color:#2c2c2c;margin:26px 0 12px;',
             'p': 'font-size:16px;color:#333;line-height:2;margin:16px 0;letter-spacing:0.5px;',
-            'blockquote': 'border-left:3px solid #07c160;padding:14px 20px;margin:22px 0;color:#555;font-size:15px;line-height:1.85;',
+            'blockquote': 'border-left:3px solid #07c160;padding:10px 16px;margin:16px 0;color:#555;font-size:15px;line-height:1.75;',
             'strong': 'color:#2e7d32;font-weight:600;',
             'em': 'color:#777;font-style:italic;',
             'ul': 'margin:14px 0;padding-left:24px;',
@@ -198,6 +198,11 @@ class WeChatMPPublisher:
         for pre in soup.find_all('pre'):
             for code in pre.find_all('code'):
                 code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre-wrap;word-wrap:break-word;'
+
+        # blockquote > p: tighter margins to reduce vertical bloat
+        for bq in soup.find_all('blockquote'):
+            for p in bq.find_all('p'):
+                p['style'] = 'font-size:15px;color:#555;line-height:1.75;margin:6px 0;letter-spacing:0.5px;'
 
         # Wrap in section
         wrapper = soup.new_tag('section')
