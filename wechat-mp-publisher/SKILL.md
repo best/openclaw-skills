@@ -1,6 +1,6 @@
 ---
 name: wechat-mp-publisher
-version: 0.4.0
+version: 0.4.1
 description: "Publish Markdown articles to WeChat Official Account draft box. Use when user wants to push blog posts to 微信公众号, convert Markdown to WeChat format, or create 公众号草稿."
 ---
 

@@ -90,10 +90,13 @@ class WeChatMPPublisher:
         # Pre-process: fix bold markers that markdown-it can't parse
         # **sentence with punct.**followed → **sentence with punct.** followed
         # IMPORTANT: [^*\n]+? must NOT cross newlines, otherwise it pairs
-        # the closing ** of one paragraph with the opening ** of the next
+        # the closing ** of one paragraph with the opening ** of the next.
+        # (?![。！？.!?\s]) prevents matching from a CLOSING ** to the next
+        # OPENING ** — such false matches start with sentence-ending punctuation
+        # (e.g. **。text between two bolds：**) and corrupt the second bold.
         # Exclude CJK punctuation from lookahead — markdown-it handles them
         # fine natively, and the extra space breaks WeChat list rendering
-        body = re.sub(r'\*\*([^*\n]+?)\*\*(?=[^\s*\u3000-\u303f\uff00-\uffef])', r'**\1** ', body)
+        body = re.sub(r'\*\*(?![。！？\.\!\?\s])([^*\n]+?)\*\*(?=[^\s*\u3000-\u303f\uff00-\uffef])', r'**\1** ', body)
 
         # Pre-process: handle footnotes (markdown-it doesn't support [^N] syntax)
         # 1. Extract footnote definitions
