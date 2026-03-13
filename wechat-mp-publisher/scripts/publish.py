@@ -230,7 +230,16 @@ class WeChatMPPublisher:
         for child in children:
             wrapper.append(child.extract() if hasattr(child, 'extract') else child)
 
-        return str(wrapper)
+        result = str(wrapper)
+
+        # Strip whitespace between list tags — WeChat renders \n as empty bullets
+        result = re.sub(r'(<ul[^>]*>)\s+', r'\1', result)
+        result = re.sub(r'\s+(</ul>)', r'\1', result)
+        result = re.sub(r'(<ol[^>]*>)\s+', r'\1', result)
+        result = re.sub(r'\s+(</ol>)', r'\1', result)
+        result = re.sub(r'(</li>)\s+(<li)', r'\1\2', result)
+
+        return result
 
     def create_draft(self, title: str, content: str, cover_media_id: str,
                      author: str = "张昊辰(Astralor)", source_url: str = "") -> Dict:
