@@ -219,6 +219,10 @@ class WeChatMPPublisher:
             for p in bq.find_all('p'):
                 p['style'] = 'font-size:15px;color:#555;line-height:1.75;margin:6px 0;letter-spacing:0.5px;'
 
+        # Strip <a> tags — WeChat rejects articles containing links (errcode 45166)
+        for a in soup.find_all('a'):
+            a.replace_with(a.get_text())
+
         # Wrap in section
         wrapper = soup.new_tag('section')
         wrapper['style'] = 'padding:5px 0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",sans-serif;'
