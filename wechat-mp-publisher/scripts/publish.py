@@ -175,7 +175,7 @@ class WeChatMPPublisher:
             'h3': 'font-size:17px;font-weight:bold;color:#2c2c2c;margin:26px 0 12px;',
             'p': 'font-size:16px;color:#333;line-height:2;margin:16px 0;letter-spacing:0.5px;',
             'blockquote': 'border-left:3px solid #07c160;padding:10px 16px;margin:16px 0;color:#555;font-size:15px;line-height:1.75;',
-            'strong': 'color:#2e7d32;font-weight:600;',
+            'strong': 'color:#2e7d32;font-weight:600;display:inline;',
             'em': 'color:#777;font-style:italic;',
             'ul': 'margin:14px 0;padding-left:24px;',
             'ol': 'margin:14px 0;padding-left:24px;',
