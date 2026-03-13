@@ -1,12 +1,12 @@
 ---
 name: discord-thread-archiver
-version: 0.4.0
+version: 0.5.0
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and archives concluded threads."
 ---
 
 # Discord Thread Archiver
 
-Evaluate active threads and archive concluded conversations. AI judgment is the primary decision mechanism — time alone is never sufficient reason to archive.
+Evaluate active threads and archive concluded conversations. AI judgment is the sole decision mechanism — time is context, not criteria.
 
 ## Procedure
 
@@ -18,34 +18,28 @@ Call `thread-list` exactly **once** with `guildId`. This returns ALL active thre
 message(action="thread-list", channel="discord", guildId="<guild>")
 ```
 
-### 2. Filter — skip before reading messages
+### 2. Skip pinned threads
 
-Apply these rules first (no message reading needed):
+Only skip threads with `last_pin_timestamp` present — these are explicitly marked for retention.
 
-| Rule | Condition | Action |
-|------|-----------|--------|
-| Pinned | `last_pin_timestamp` exists | Skip |
-| Too fresh | < 2h since last message | Skip |
+All other threads proceed to AI judgment.
 
-Inactive time = `now − last_message_timestamp`. If unavailable, use `archive_timestamp` from `thread_metadata`.
+### 3. AI judgment — read messages and decide
 
-### 3. AI judgment — read messages only for candidates
-
-For threads that pass the filter (2h+ inactive), read the last 10 messages:
+For every non-pinned thread, read the last 5 messages:
 
 ```
-message(action="read", channel="discord", target="channel:<thread_id>", limit=10)
+message(action="read", channel="discord", target="channel:<thread_id>", limit=5)
 ```
 
 Classify the conversation:
 
 | Verdict | Criteria | Action |
 |---------|----------|--------|
-| **Concluded** | Clear resolution: thanks/confirmation, question answered, task completed, explicit "done"/"结束" | Archive |
-| **Bot-only** | All messages from bots + 4h inactive | Archive |
-| **Safety net** | 7d+ inactive regardless of content | Archive |
-| **Ongoing** | Open question unanswered, action items pending, waiting for response | **Keep** |
-| **Uncertain** | Can't determine from context | **Keep** |
+| **Concluded** | Clear resolution: thanks/confirmation, question answered, task completed, explicit "done"/"结束", or notification consumed with no follow-up needed | Archive |
+| **Bot-only** | All messages from bots, no human participation | Archive |
+| **Ongoing** | Open question unanswered, action items pending, waiting for response, active discussion | **Keep** |
+| **Uncertain** | Can't determine from 5 messages | **Keep** |
 
 **When in doubt, keep the thread.** A user not responding ≠ conversation over.
 
@@ -76,16 +70,11 @@ Send a summary to the designated channel. Format:
 🗂️ Thread 归档报告 · YYYY-MM-DD HH:MM
 - ✅ <thread_name> — <reason>
 - ⏸️ <thread_name> — <reason>
-归档 X / 保留 Y / 跳过 Z
+归档 X / 保留 Y / 跳过(pinned) Z
 ```
 
 ## Token Optimization Rules
 
 1. **ONE thread-list call per guild** — never per-channel
-2. **Skip before read** — filter by time first, only read messages for 2h+ inactive threads
-3. **limit=10** for message reads — don't fetch entire thread history
-
-## Requirements
-
-- Bot needs `MANAGE_THREADS` permission in target channels
-- Scheduling and result delivery are the caller's responsibility
+2. **limit=5** for message reads — last 5 messages is sufficient for judgment
+3. Only pinned threads skip message reading; all others are evaluated
