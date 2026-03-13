@@ -186,7 +186,7 @@ class WeChatMPPublisher:
             'td': 'border:1px solid #e0e0e0;padding:10px 14px;color:#555;line-height:1.6;',
             'hr': 'border:none;border-top:1px solid #e5e5e5;margin:36px 0;',
             'code': 'display:inline;background:#f4f5f7;padding:2px 6px;border-radius:3px;font-size:14px;color:#476582;font-family:Consolas,monospace;word-break:break-all;line-height:inherit;',
-            'pre': 'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;overflow-x:auto;margin:20px 0;line-height:1.7;font-size:14px;white-space:pre-wrap;word-wrap:break-word;',
+            'pre': 'background:#282c34;color:#abb2bf;padding:18px;border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;line-height:1.7;font-size:14px;',
             'sup': 'font-size:11px;color:#07c160;vertical-align:super;line-height:0;',
         }
 
@@ -199,7 +199,7 @@ class WeChatMPPublisher:
         # using <br> for line breaks and &nbsp; for indentation survives the editor.
         for pre in soup.find_all('pre'):
             for code in pre.find_all('code'):
-                code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre-wrap;word-wrap:break-word;'
+                code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre;'
                 raw_text = code.get_text()
                 lines = raw_text.split('\n')
                 # Remove trailing empty line (markdown-it often adds one)
