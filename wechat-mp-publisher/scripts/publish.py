@@ -114,9 +114,19 @@ class WeChatMPPublisher:
             fn_lines = ['<section style="margin-top:36px;padding-top:20px;border-top:1px solid #e5e5e5;">',
                          '<p style="font-size:14px;font-weight:600;color:#999;margin-bottom:10px;letter-spacing:1px;">参考文献</p>']
             for num in sorted(footnotes.keys(), key=int):
-                # Strip markdown links to plain text (WeChat filters external URLs)
+                # Convert markdown links to plain text with URL shown
+                # WeChat filters clickable external URLs, so show them as text
                 text = footnotes[num]
-                text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+                def expand_link(m):
+                    link_text = m.group(1)
+                    url = m.group(2)
+                    # Convert relative URLs to full URLs using source_url domain
+                    if url.startswith('/') and hasattr(self, '_source_domain'):
+                        url = self._source_domain.rstrip('/') + url
+                    if url.startswith(('http://', 'https://')):
+                        return f'{link_text}（{url}）'
+                    return link_text
+                text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', expand_link, text)
                 fn_lines.append(f'<p style="font-size:13px;color:#999;line-height:1.7;margin:4px 0;padding-left:1.5em;text-indent:-1.5em;">{num}. {text}</p>')
             fn_lines.append('</section>')
             body += '\n' + '\n'.join(fn_lines)
@@ -228,8 +238,13 @@ class WeChatMPPublisher:
 
     def publish(self, md_path: str, cover_path: Optional[str] = None,
                 title_override: Optional[str] = None, source_url: str = "",
-                author: str = "张昊辰(Astralor)"):
+                author: str = "张昊辰"):
         print(f"📄 Reading {md_path}...")
+        # Extract domain from source_url for relative link expansion in footnotes
+        if source_url:
+            from urllib.parse import urlparse
+            parsed = urlparse(source_url)
+            self._source_domain = f"{parsed.scheme}://{parsed.netloc}"
         title, html, local_images = self.convert_markdown(md_path)
         if title_override:
             title = title_override
@@ -275,7 +290,7 @@ def main():
     parser.add_argument("-c", "--cover", help="Cover image path")
     parser.add_argument("-t", "--title", help="Override title")
     parser.add_argument("-u", "--url", help="Original article URL", default="")
-    parser.add_argument("-a", "--author", help="Author name", default="张昊辰(Astralor)")
+    parser.add_argument("-a", "--author", help="Author name", default="张昊辰")
     args = parser.parse_args()
 
     try:
