@@ -66,12 +66,32 @@ curl -s -o /dev/null -w "%{http_code}" -X PATCH \
 
 Send a summary to the designated channel. Format:
 
+**When threads were archived:**
 ```
 🗂️ Thread 归档报告 · YYYY-MM-DD HH:MM
-- ✅ <thread_name> — <reason>
-- ⏸️ <thread_name> — <reason>
+
+✅ <thread_name> — 归档：<brief reason based on message content>
+⏸️ <thread_name> — 保留：<brief reason, e.g. 最后 5 条消息显示仍有未回答的问题>
+⏭️ <thread_name> — 跳过(pinned)
+
 归档 X / 保留 Y / 跳过(pinned) Z
 ```
+
+**When no threads need archiving:**
+```
+🗂️ Thread 归档报告 · YYYY-MM-DD HH:MM
+
+无需归档的 Thread
+⏸️ <thread_name> — 保留：<brief reason>
+⏭️ <thread_name> — 跳过(pinned)
+
+归档 0 / 保留 X / 跳过(pinned) Y
+```
+
+**Report rules:**
+- Every thread must appear in the report with its verdict and reason
+- Reasons should reference what was observed in the messages (e.g. "最后 5 条消息显示对话停在开放问题上")
+- Do NOT include internal implementation details (API calls, curl commands, constraints) in the report
 
 ## Token Optimization Rules
 
