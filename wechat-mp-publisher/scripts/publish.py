@@ -194,10 +194,25 @@ class WeChatMPPublisher:
             for el in soup.find_all(tag):
                 el['style'] = style + el.get('style', '')
 
-        # pre > code: override inline code style
+        # pre > code: override inline code style + convert \n to <br> for WeChat editor compatibility
+        # WeChat MP editor strips \n and collapses spaces in code blocks when edited;
+        # using <br> for line breaks and &nbsp; for indentation survives the editor.
         for pre in soup.find_all('pre'):
             for code in pre.find_all('code'):
                 code['style'] = 'font-size:14px;font-family:Consolas,monospace;color:#abb2bf;background:none;display:block;white-space:pre-wrap;word-wrap:break-word;'
+                raw_text = code.get_text()
+                lines = raw_text.split('\n')
+                # Remove trailing empty line (markdown-it often adds one)
+                if lines and not lines[-1].strip():
+                    lines = lines[:-1]
+                line_htmls = []
+                for line in lines:
+                    stripped = line.lstrip(' ')
+                    leading = len(line) - len(stripped)
+                    escaped = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    line_htmls.append('&nbsp;' * leading + escaped)
+                code.clear()
+                code.append(BeautifulSoup('<br>'.join(line_htmls), 'html.parser'))
 
         # blockquote > p: tighter margins to reduce vertical bloat
         for bq in soup.find_all('blockquote'):
