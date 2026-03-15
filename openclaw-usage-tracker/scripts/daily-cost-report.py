@@ -775,10 +775,12 @@ def format_discord(output, is_range):
     models = output.get("models", [])
     visible_models = [m for m in models if m["cost"] > 0 or m["entries"] > 0]
     if visible_models:
+        model_icons = ["🟣", "🟢", "🔵", "🟠", "🟡", "⚪"]
         lines.append("### 🔮 模型")
-        for m in visible_models:
+        for i, m in enumerate(visible_models):
+            icon = model_icons[i] if i < len(model_icons) else "⬥"
             lines.append(
-                f"⬥ **{m['name']}**　`${m['cost']}` (`{m['pct_cost']}%`)"
+                f"{icon} **{m['name']}**　`${m['cost']}` (`{m['pct_cost']}%`)"
                 f"　`{m['tokens_fmt']}` (`{m['pct_tokens']}%`)"
                 f"　`{m['entries']}` 次 (`{pct_e(m['entries'])}%`)"
             )
