@@ -683,22 +683,22 @@ def _build_trend(args, target_day, cost_map, file_category, session_meta):
             break
 
     lines = []
-    lines.append(f"**📈 趋势（近 {stats['days']} 天）**")
-    lines.append(f"> 日均 `${stats['avgCost']}` · {stats['avgTokens_fmt']} tokens")
+    lines.append(f"### 📈 趋势（近 {stats['days']} 天）")
+    lines.append(f"📊 日均 `${stats['avgCost']}` · `{stats['avgTokens_fmt']}` tokens")
 
     delta_avg = round(today_cost - stats["avgCost"], 2)
     sign_avg = "+" if delta_avg >= 0 else ""
-    lines.append(f"> 本日 `${today_cost}`（较日均 {sign_avg}${delta_avg}）")
+    lines.append(f"📍 本日 `${today_cost}`（较日均 `{sign_avg}${delta_avg}`）")
 
     if "lastDelta" in stats:
         ld = stats["lastDelta"]
         sign = "+" if ld["delta"] >= 0 else ""
-        pct_str = f" {sign}{ld['pct']}%" if ld["pct"] is not None else ""
-        lines.append(f"> 较昨日 {sign}${ld['delta']}{pct_str}")
+        pct_str = f" `{sign}{ld['pct']}%`" if ld["pct"] is not None else ""
+        lines.append(f"🔄 较昨日 `{sign}${ld['delta']}`{pct_str}")
 
     lines.append(
-        f"> 峰值 {stats['maxCost']['date']} `${stats['maxCost']['cost']}`"
-        f" · 低谷 {stats['minCost']['date']} `${stats['minCost']['cost']}`"
+        f"⬆️ 峰值 {stats['maxCost']['date']} `${stats['maxCost']['cost']}`"
+        f" · ⬇️ 低谷 {stats['minCost']['date']} `${stats['minCost']['cost']}`"
     )
 
     return "\n".join(lines)
@@ -707,11 +707,12 @@ def _build_trend(args, target_day, cost_map, file_category, session_meta):
 def format_discord(output, is_range):
     """Format output dict as Discord markdown with quote blocks."""
 
+    SEP = "―――――――――――――――――"
     lines = []
     t = output["total"]
     total_entries = t["entries"]
 
-    def pct_entries(n):
+    def pct_e(n):
         return round(n / total_entries * 100) if total_entries > 0 else 0
 
     # Header
@@ -721,101 +722,99 @@ def format_discord(output, is_range):
     else:
         lines.append(f"## 💰 {output.get('date', '?')} 费用日报")
 
-    lines.append("")
-    lines.append(f"**${t['cost']}** · {t['entries']} 次调用 · {t['tokens_fmt']} tokens")
+    lines.append(SEP)
 
-    # Range stats inline
+    # Total
+    lines.append("### 💵 总计")
+    lines.append(
+        f"💲 费用 `${t['cost']}` · 🔢 调用 `{t['entries']}` 次 · 🪙 Token `{t['tokens_fmt']}`"
+    )
+
+    # Range stats
     if is_range and "stats" in output:
         s = output["stats"]
-        lines.append(f"日均 `${s['avgCost']}` · {s['avgTokens_fmt']} tokens")
+        lines.append(f"📊 日均 `${s['avgCost']}` · `{s['avgTokens_fmt']}` tokens")
 
-    lines.append("")
+    lines.append(SEP)
 
     # Categories
     cat_labels = {"interactive": "💬 对话", "cron": "⏰ Cron", "heartbeat": "💓 心跳"}
     cats = output.get("categories", {})
-    visible_cats = [(n, cats[n]) for n in ["interactive", "cron", "heartbeat"] if n in cats and cats[n]["entries"] > 0]
+    visible_cats = [
+        (n, cats[n])
+        for n in ["interactive", "cron", "heartbeat"]
+        if n in cats and cats[n]["entries"] > 0
+    ]
     if visible_cats:
-        lines.append("**┈ 分类**")
+        lines.append("### 📂 分类")
         for cat_name, c in visible_cats:
             label = cat_labels.get(cat_name, cat_name)
             lines.append(
-                f"> {label}　`${c['cost']}` ({c.get('pct_cost', 0)}%)"
-                f"　{c['tokens_fmt']} ({c.get('pct_tokens', 0)}%)"
-                f"　{c['entries']} 次 ({pct_entries(c['entries'])}%)"
+                f"{label}　`${c['cost']}` (`{c.get('pct_cost', 0)}%`)"
+                f"　`{c['tokens_fmt']}` (`{c.get('pct_tokens', 0)}%`)"
+                f"　`{c['entries']}` 次 (`{pct_e(c['entries'])}%`)"
             )
-        lines.append("")
+        lines.append(SEP)
 
     # Providers
     providers = output.get("providers", [])
     visible_providers = [p for p in providers if p["cost"] > 0 or p["entries"] > 0]
     if visible_providers:
-        lines.append("**┈ 供应商**")
-        for p in visible_providers:
+        provider_icons = ["🔹", "🔸", "🔻", "🔺", "◽"]
+        lines.append("### 🏢 供应商")
+        for i, p in enumerate(visible_providers):
+            icon = provider_icons[i] if i < len(provider_icons) else "▪️"
             lines.append(
-                f"> `{p['name']}`　`${p['cost']}` ({p['pct_cost']}%)"
-                f"　{p['tokens_fmt']} ({p['pct_tokens']}%)"
-                f"　{p['entries']} 次 ({pct_entries(p['entries'])}%)"
+                f"{icon} {p['name']}　`${p['cost']}` (`{p['pct_cost']}%`)"
+                f"　`{p['tokens_fmt']}` (`{p['pct_tokens']}%`)"
+                f"　`{p['entries']}` 次 (`{pct_e(p['entries'])}%`)"
             )
-        lines.append("")
+        lines.append(SEP)
 
     # Models
     models = output.get("models", [])
     visible_models = [m for m in models if m["cost"] > 0 or m["entries"] > 0]
     if visible_models:
-        lines.append("**┈ 模型**")
+        lines.append("### 🔮 模型")
         for m in visible_models:
             lines.append(
-                f"> **{m['name']}**　`${m['cost']}` ({m['pct_cost']}%)"
-                f"　{m['tokens_fmt']} ({m['pct_tokens']}%)"
-                f"　{m['entries']} 次 ({pct_entries(m['entries'])}%)"
+                f"⬥ **{m['name']}**　`${m['cost']}` (`{m['pct_cost']}%`)"
+                f"　`{m['tokens_fmt']}` (`{m['pct_tokens']}%`)"
+                f"　`{m['entries']}` 次 (`{pct_e(m['entries'])}%`)"
             )
             lines.append(
-                f"> In {m['input_fmt']} · Out {m['output_fmt']}"
-                f" · CR {m['cacheRead_fmt']} · CW {m['cacheWrite_fmt']}"
+                f"-# In `{m['input_fmt']}` · Out `{m['output_fmt']}`"
+                f" · CR `{m['cacheRead_fmt']}` · CW `{m['cacheWrite_fmt']}`"
             )
-            lines.append("> ")
-        # Remove trailing empty quote
-        if lines[-1] == "> ":
-            lines.pop()
-        lines.append("")
-
-    # Token summary
-    lines.append("**┈ Token 汇总**")
-    lines.append(
-        f"> In `{t['input_fmt']}` · Out `{t['output_fmt']}`"
-        f" · CR `{t['cacheRead_fmt']}` · CW `{t['cacheWrite_fmt']}`"
-    )
-    lines.append("")
+        lines.append(SEP)
 
     # Daily breakdown (range only)
     if is_range and "daily" in output:
-        lines.append("**┈ 逐日**")
+        lines.append("### 📅 逐日")
         for d in output["daily"]:
-            lines.append(f"> {d['date']}　`${d['cost']}`　{d['tokens_fmt']}")
-        lines.append("")
+            lines.append(f"▫️ {d['date']}　`${d['cost']}`　`{d['tokens_fmt']}`")
 
         if "stats" in output:
             s = output["stats"]
             lines.append(
-                f"> 峰值 {s['maxCost']['date']} `${s['maxCost']['cost']}`"
+                f"📍 峰值 {s['maxCost']['date']} `${s['maxCost']['cost']}`"
                 f"　低谷 {s['minCost']['date']} `${s['minCost']['cost']}`"
             )
-            lines.append("")
+        lines.append(SEP)
 
     # Top sessions
     top = output.get("topSessions", [])
     if top:
-        lines.append(f"**🔥 最贵 Session Top {len(top)}**")
+        lines.append(f"### 🔥 最贵 Session Top {len(top)}")
         for i, s in enumerate(top, 1):
             lines.append(
-                f"> {i}) [{s['category']}] {s['model']}"
-                f"　`${s['cost']}` ({s['pct_cost']}%)"
-                f"　{s['tokens_fmt']}　{s['entries']} 次"
+                f"{i}) [{s['category']}] {s['model']}"
+                f"　`${s['cost']}` (`{s['pct_cost']}%`)"
+                f"　`{s['tokens_fmt']}`　`{s['entries']}` 次"
             )
             if s.get("preview"):
-                lines.append(f"> 　{s['preview'][:80]}")
-        lines.append("")
+                lines.append(f"-# {s['preview'][:80]}")
+        lines.append(SEP)
 
     return "\n".join(lines).rstrip()
 
