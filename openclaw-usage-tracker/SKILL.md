@@ -2,22 +2,19 @@
 name: openclaw-usage-tracker
 description: >
   Track and report OpenClaw model usage and costs. Generate daily/weekly cost reports
-  with per-model token breakdowns, interactive vs cron classification, and trend analysis.
-  Use when: (1) user asks about model costs, usage, spending, or token consumption,
-  (2) setting up automated daily/weekly cost reports via cron,
-  (3) analyzing which models or sessions consume the most tokens/money,
-  (4) comparing interactive chat vs cron job costs.
+  with per-model token breakdowns, interactive vs cron classification, provider summary,
+  and trend analysis.
 ---
 
 # OpenClaw Usage Tracker
 
-Scan OpenClaw session transcripts (.jsonl) to report model usage and estimated costs.
+Scan OpenClaw session transcripts (`*.jsonl`) to report token usage and estimated costs.
 
 ## How It Works
 
 Each assistant message in `~/.openclaw/agents/<agent>/sessions/*.jsonl` carries a
-`usage` object (input, output, cache_read, cache_write tokens). Cost comes from the
-API response or is estimated via per-model pricing in `openclaw.json`.
+`usage` object (input, output, cache read, cache write). Cost comes from the provider
+API response (`usage.cost.total`) or is estimated via per-model pricing in `openclaw.json`.
 
 ## Usage
 
@@ -45,51 +42,64 @@ python3 scripts/daily-cost-report.py --all --top-sessions 5
 
 JSON output. Structure adapts to mode:
 
-**Single day** → `{date, total, categories, models}`
-**Range/all** → `{range: {from, to}, total, daily: [{date, ...}], categories, models}`
-**--top-sessions** → adds `topSessions: [{agent, category, session_key, preview, cost, ...}]`
+- **Single day** → `{date, total, categories, providers, models, topSessions?}`
+- **Range/all** → `{range: {from, to}, total, daily: [{date, ...}], stats, categories, providers, models, topSessions?}`
 
-Fields in `total` / each daily entry / each model:
-`cost`, `entries`, `tokens`/`tokens_fmt`, `input`/`input_fmt`, `output`/`output_fmt`,
-`cacheRead`/`cacheRead_fmt`, `cacheWrite`/`cacheWrite_fmt`
+`total` / each daily entry / each provider / each model / each topSession includes:
+- `cost`, `entries`, `tokens`/`tokens_fmt`
+- `input`/`input_fmt`, `output`/`output_fmt`, `cacheRead`/`cacheRead_fmt`, `cacheWrite`/`cacheWrite_fmt`
+- `pct_cost`, `pct_tokens` (share within the report scope)
 
-## Discord Output Format
+`models[]` uses a display-safe `name` that includes provider + model:
+- Example: `astralor/Opus-4.6`, `gptclub/GPT-5.4`, `minimax/M2.5`
+
+## Daily Report Template (Discord)
+
+Goal: clear view (token + money), not maximum density.
 
 ```
 💰 {date} 费用日报
 
-总计: ${cost} | {entries}次调用 | {tokens_fmt} tokens
-  Input: {input_fmt} | Output: {output_fmt}
-  Cache Read: {cacheRead_fmt} | Cache Write: {cacheWrite_fmt}
+总计
+  费用  ${total.cost}
+  调用  {total.entries} 次
+  Token {total.tokens_fmt}
+    In {total.input_fmt} · Out {total.output_fmt}
+    Cache Read {total.cacheRead_fmt} · Write {total.cacheWrite_fmt}
 
-💬 对话: {entries}次 | {tokens_fmt} | ${cost} ({pct}%)
-  {model}: {entries}次 ${cost}
-⏰ Cron: {entries}次 | {tokens_fmt} | ${cost} ({pct}%)
-  {model}: {entries}次 ${cost}
+分类
+  💬 对话   ${interactive.cost} ({interactive.pct_cost}%) · {interactive.tokens_fmt} ({interactive.pct_tokens}%)
+  ⏰ Cron   ${cron.cost} ({cron.pct_cost}%) · {cron.tokens_fmt} ({cron.pct_tokens}%)
+  💓 心跳   ${heartbeat.cost} ({heartbeat.pct_cost}%) · {heartbeat.tokens_fmt} ({heartbeat.pct_tokens}%)
 
-📋 模型汇总:
-  {model}: {entries}次 | {tokens_fmt} | ${cost}
+供应商（按费用）
+  {provider.name}  ${provider.cost} ({provider.pct_cost}%) · {provider.tokens_fmt} ({provider.pct_tokens}%)
+
+模型（按费用）
+  {model.name}  ${model.cost} ({model.pct_cost}%) · {model.tokens_fmt} ({model.pct_tokens}%) · {model.entries} 次
+    In {model.input_fmt} · Out {model.output_fmt} · CR {model.cacheRead_fmt} · CW {model.cacheWrite_fmt}
+
+趋势（近 7 天）
+  日均 ${avg_cost} · {avg_tokens}
+  本日 ${today_cost}（较日均 {delta_vs_avg}，较昨日 {delta_vs_prev}）
+  峰值 {max_day} ${max_cost} · 低谷 {min_day} ${min_cost}
 ```
 
-Skip categories with 0 entries. Skip models with $0.00 cost and 0 entries.
+Skip categories with 0 entries. Skip models/providers with `$0.00` and 0 entries.
 
 ## Daily Cron Setup
 
-Create an isolated cron job (00:05 Asia/Shanghai, cost-effective model like sonnet,
-delivery=none since the agent sends via message tool). Prompt template:
+Recommended: isolated cron, delivery=none (agent sends via `message` tool).
 
-```
-执行每日费用账单推送。
-1. 运行脚本：python3 <skill_dir>/scripts/daily-cost-report.py
-2. 解析 JSON 输出，按 SKILL.md 格式模板格式化
-3. 用 message 工具发送到目标 Discord 频道
-跳过费用 $0 且调用 0 的模型，跳过无数据的分类。
-```
+Daily job should generate a report for **yesterday** plus a short 7-day trend summary:
+
+- Run once for yesterday (no args) → build the main report
+- Run once for last 7 days (yesterday-6 .. yesterday) → compute avg/max/min + deltas
 
 ## Session Classification
 
 1. **Session key** — `cron:` → cron, `heartbeat` → heartbeat, else → interactive
-2. **Content fallback** — orphaned sessions checked for `[cron:...]` prefix in first user message
+2. **Content fallback** — orphaned sessions checked for `[cron:...]` prefix in the first user message
 
 ## Cost Calculation
 
@@ -101,5 +111,5 @@ Pricing: `models.providers.<provider>.models[].cost` in `openclaw.json` ($/M tok
 ## Notes
 
 - Scans all agent directories (`~/.openclaw/agents/*/sessions/`)
-- Filters out `delivery-mirror` and `acp-runtime` (no real token usage)
-- Cache Read typically dominates total tokens (80%+) due to prompt caching
+- Filters out `delivery-mirror` and `acp-runtime` in display output
+- Cache Read typically dominates total tokens due to prompt caching
