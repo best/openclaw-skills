@@ -27,10 +27,31 @@ python3 scripts/daily-cost-report.py
 
 # Specific date
 python3 scripts/daily-cost-report.py 2026-03-14
+
+# Date range (逐日明细 + 汇总)
+python3 scripts/daily-cost-report.py 2026-03-10 2026-03-15
+
+# All history
+python3 scripts/daily-cost-report.py --all
+
+# Include top N most expensive sessions
+python3 scripts/daily-cost-report.py 2026-03-14 --top-sessions 10
+
+# Combine: range + top sessions
+python3 scripts/daily-cost-report.py --all --top-sessions 5
 ```
 
-Output is JSON with `date`, `total`, `categories` (interactive/cron/heartbeat), and
-`models` (per-model breakdown). Parse and format for the target channel.
+## Output Schema
+
+JSON output. Structure adapts to mode:
+
+**Single day** → `{date, total, categories, models}`
+**Range/all** → `{range: {from, to}, total, daily: [{date, ...}], categories, models}`
+**--top-sessions** → adds `topSessions: [{agent, category, session_key, preview, cost, ...}]`
+
+Fields in `total` / each daily entry / each model:
+`cost`, `entries`, `tokens`/`tokens_fmt`, `input`/`input_fmt`, `output`/`output_fmt`,
+`cacheRead`/`cacheRead_fmt`, `cacheWrite`/`cacheWrite_fmt`
 
 ## Discord Output Format
 
