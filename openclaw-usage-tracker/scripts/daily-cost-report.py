@@ -39,6 +39,19 @@ def parse_args():
         metavar="N",
         help="Include top N most expensive sessions",
     )
+    p.add_argument(
+        "--format",
+        choices=["json", "discord"],
+        default="json",
+        help="Output format: json (default) or discord (pre-formatted text)",
+    )
+    p.add_argument(
+        "--trend-days",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Append N-day trend summary (discord format only, runs extra scan)",
+    )
     return p.parse_args()
 
 
@@ -581,7 +594,219 @@ def main():
             )
         output["topSessions"] = top_list
 
-    print(json.dumps(output, ensure_ascii=False, indent=2))
+    # Output
+    if args.format == "discord":
+        text = format_discord(output, is_range)
+        # Trend summary (discord only)
+        if args.trend_days > 0 and not is_range:
+            trend_text = _build_trend(args, date_from, cost_map, file_category, session_meta)
+            if trend_text:
+                text += "\n" + trend_text
+        print(text)
+    else:
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+def _build_trend(args, target_day, cost_map, file_category, session_meta):
+    """Build trend summary by scanning the last N days."""
+
+    try:
+        dt = datetime.datetime.strptime(target_day, "%Y-%m-%d")
+    except ValueError:
+        return ""
+
+    dt_from = dt - datetime.timedelta(days=args.trend_days - 1)
+    d_from = dt_from.strftime("%Y-%m-%d")
+    d_to = target_day
+
+    agents_dir = os.path.expanduser("~/.openclaw/agents")
+    daily = defaultdict(make_bucket)
+
+    for agent in os.listdir(agents_dir):
+        sessions_dir = os.path.join(agents_dir, agent, "sessions")
+        if not os.path.isdir(sessions_dir):
+            continue
+        for fname in os.listdir(sessions_dir):
+            if not fname.endswith(".jsonl"):
+                continue
+            fpath = os.path.join(sessions_dir, fname)
+            try:
+                with open(fpath) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            entry = json.loads(line)
+                        except Exception:
+                            continue
+                        ts = entry.get("timestamp", "")
+                        if not date_matches(ts, d_from, d_to):
+                            continue
+                        msg = entry.get("message", {})
+                        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+                            continue
+                        usage = msg.get("usage") or entry.get("usage")
+                        if not usage or not isinstance(usage, dict):
+                            continue
+                        provider = msg.get("provider", entry.get("provider", ""))
+                        model_id = msg.get("model", entry.get("model", ""))
+                        mk = f"{provider}/{model_id}" if provider else model_id
+                        inp, out, cr, cw = extract_usage(usage)
+                        cost_val = calc_cost(usage, mk, cost_map)
+                        day = ts[:10]
+                        add_to_bucket(daily[day], inp, out, cr, cw, cost_val)
+            except Exception:
+                pass
+
+    if not daily:
+        return ""
+
+    daily_list = []
+    for day in sorted(daily.keys()):
+        d = bucket_to_dict(daily[day])
+        d["date"] = day
+        daily_list.append(d)
+
+    stats = compute_range_stats(daily_list)
+    if not stats:
+        return ""
+
+    today_cost = 0.0
+    for d in daily_list:
+        if d["date"] == target_day:
+            today_cost = d["cost"]
+            break
+
+    lines = []
+    lines.append(f"📈 趋势（近 {stats['days']} 天）")
+    lines.append(f"  日均  ${stats['avgCost']} · {stats['avgTokens_fmt']} tokens")
+
+    delta_avg = round(today_cost - stats["avgCost"], 2)
+    sign_avg = "+" if delta_avg >= 0 else ""
+    lines.append(f"  本日  ${today_cost}（较日均 {sign_avg}${delta_avg}）")
+
+    if "lastDelta" in stats:
+        ld = stats["lastDelta"]
+        sign = "+" if ld["delta"] >= 0 else ""
+        pct_str = f" {sign}{ld['pct']}%" if ld["pct"] is not None else ""
+        lines.append(f"  较昨日  {sign}${ld['delta']}{pct_str}")
+
+    lines.append(
+        f"  峰值  {stats['maxCost']['date']} ${stats['maxCost']['cost']}"
+        f" · 低谷  {stats['minCost']['date']} ${stats['minCost']['cost']}"
+    )
+
+    return "\n".join(lines)
+
+
+def format_discord(output, is_range):
+    """Format output dict as Discord-ready plain text."""
+
+    lines = []
+
+    # Header
+    if is_range:
+        r = output.get("range", {})
+        lines.append(f"📊 {r.get('from', '?')} ~ {r.get('to', '?')} 费用报告")
+    else:
+        lines.append(f"💰 {output.get('date', '?')} 费用日报")
+
+    lines.append("")
+
+    # Total
+    t = output["total"]
+    lines.append("总计")
+    lines.append(f"  费用   ${t['cost']}")
+    lines.append(f"  调用   {t['entries']} 次")
+    lines.append(f"  Token  {t['tokens_fmt']}")
+    lines.append(f"    In {t['input_fmt']}  Out {t['output_fmt']}")
+    lines.append(f"    Cache Read {t['cacheRead_fmt']}  Write {t['cacheWrite_fmt']}")
+
+    # Range stats
+    if is_range and "stats" in output:
+        s = output["stats"]
+        lines.append(f"  日均   ${s['avgCost']} · {s['avgTokens_fmt']} tokens")
+
+    lines.append("")
+
+    # Categories
+    cat_labels = {
+        "interactive": "💬 对话",
+        "cron": "⏰ Cron",
+        "heartbeat": "💓 心跳",
+    }
+    cats = output.get("categories", {})
+    if cats:
+        lines.append("分类")
+        for cat_name in ["interactive", "cron", "heartbeat"]:
+            c = cats.get(cat_name)
+            if not c or c["entries"] == 0:
+                continue
+            label = cat_labels.get(cat_name, cat_name)
+            lines.append(
+                f"  {label}   ${c['cost']} ({c.get('pct_cost', 0)}%)"
+                f"  {c['tokens_fmt']} ({c.get('pct_tokens', 0)}%)"
+            )
+        lines.append("")
+
+    # Providers (all with cost > 0)
+    providers = output.get("providers", [])
+    visible_providers = [p for p in providers if p["cost"] > 0]
+    if visible_providers:
+        lines.append("供应商")
+        for p in visible_providers:
+            lines.append(
+                f"  {p['name']}   ${p['cost']} ({p['pct_cost']}%)"
+                f"  {p['tokens_fmt']} ({p['pct_tokens']}%)"
+            )
+        lines.append("")
+
+    # Models (all with cost > 0)
+    models = output.get("models", [])
+    visible_models = [m for m in models if m["cost"] > 0]
+    if visible_models:
+        lines.append("模型")
+        for m in visible_models:
+            lines.append(
+                f"  {m['name']}   ${m['cost']} ({m['pct_cost']}%)"
+                f"  {m['tokens_fmt']} ({m['pct_tokens']}%)  {m['entries']} 次"
+            )
+            lines.append(
+                f"    In {m['input_fmt']}  Out {m['output_fmt']}"
+                f"  CR {m['cacheRead_fmt']}  CW {m['cacheWrite_fmt']}"
+            )
+        lines.append("")
+
+    # Daily breakdown (range only)
+    if is_range and "daily" in output:
+        lines.append("逐日")
+        for d in output["daily"]:
+            lines.append(f"  {d['date']}  ${d['cost']}  {d['tokens_fmt']}")
+        lines.append("")
+
+        if "stats" in output:
+            s = output["stats"]
+            lines.append(
+                f"  峰值  {s['maxCost']['date']} ${s['maxCost']['cost']}"
+                f"  低谷  {s['minCost']['date']} ${s['minCost']['cost']}"
+            )
+            lines.append("")
+
+    # Top sessions
+    top = output.get("topSessions", [])
+    if top:
+        lines.append(f"🔥 最贵 Session Top {len(top)}")
+        for i, s in enumerate(top, 1):
+            lines.append(
+                f"  {i}) [{s['category']}] {s['model']}"
+                f"  ${s['cost']} ({s['pct_cost']}%)  {s['tokens_fmt']}  {s['entries']} 次"
+            )
+            if s.get("preview"):
+                lines.append(f"     {s['preview'][:80]}")
+        lines.append("")
+
+    return "\n".join(lines).rstrip()
 
 
 if __name__ == "__main__":
