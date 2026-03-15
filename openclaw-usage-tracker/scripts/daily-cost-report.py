@@ -751,8 +751,9 @@ def format_discord(output, is_range):
             label = cat_labels.get(cat_name, cat_name)
             lines.append(
                 f"{label}　`${c['cost']}` (`{c.get('pct_cost', 0)}%`)"
-                f"　`{c['tokens_fmt']}` (`{c.get('pct_tokens', 0)}%`)"
-                f"　`{c['entries']}` 次 (`{pct_e(c['entries'])}%`)"
+            )
+            lines.append(
+                f"　　`{c['tokens_fmt']}` tokens · `{c['entries']}` 次"
             )
         lines.append(SEP)
 
@@ -765,9 +766,11 @@ def format_discord(output, is_range):
         for i, p in enumerate(visible_providers):
             icon = provider_icons[i] if i < len(provider_icons) else "▪️"
             lines.append(
-                f"{icon} {p['name']}　`${p['cost']}` (`{p['pct_cost']}%`)"
-                f"　`{p['tokens_fmt']}` (`{p['pct_tokens']}%`)"
-                f"　`{p['entries']}` 次 (`{pct_e(p['entries'])}%`)"
+                f"{icon} **{p['name']}**"
+            )
+            lines.append(
+                f"　　`${p['cost']}` (`{p['pct_cost']}%`)"
+                f" · `{p['tokens_fmt']}` · `{p['entries']}` 次"
             )
         lines.append(SEP)
 
@@ -779,10 +782,13 @@ def format_discord(output, is_range):
         lines.append("### 🔮 模型")
         for i, m in enumerate(visible_models):
             icon = model_icons[i] if i < len(model_icons) else "⬥"
+            lines.append(f"{icon} **{m['name']}**")
             lines.append(
-                f"{icon} **{m['name']}**　`${m['cost']}` (`{m['pct_cost']}%`)"
-                f"　`{m['tokens_fmt']}` (`{m['pct_tokens']}%`)"
-                f"　`{m['entries']}` 次 (`{pct_e(m['entries'])}%`)"
+                f"　　`${m['cost']}` (`{m['pct_cost']}%`)"
+                f" · `{m['entries']}` 次 (`{pct_e(m['entries'])}%`)"
+            )
+            lines.append(
+                f"　　`{m['tokens_fmt']}` tokens (`{m['pct_tokens']}%`)"
             )
             lines.append(
                 f"-# In `{m['input_fmt']}` · Out `{m['output_fmt']}`"
