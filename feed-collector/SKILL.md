@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.5.0
+version: 1.6.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -37,6 +37,17 @@ git pull --rebase
 - 搜索时使用时间过滤参数（`freshness: "day"` 或 `date_after`）收窄结果
 - 无法判断发布时间的内容，默认跳过
 - 例外：Tier 1 官方博客可放宽到 7 天（重要发布不容遗漏）
+
+**📅 原文发布日期提取（必须遵守）：**
+- 采集每篇文章时，**必须提取原文的发布日期**，用于 frontmatter 的 `pubDatetime`
+- 提取来源（按优先级）：
+  1. 文章页面中的 `<time>` 标签、`datePublished`、`article:published_time` meta
+  2. `web_fetch` 返回内容中明确标注的日期（如 "Published March 15, 2026"）
+  3. 搜索结果中的 `published` 字段
+  4. RSS/API 返回的发布时间戳
+- 如果**确实无法获取**原文日期，使用当前采集时间，但尽量避免
+- 日期格式统一为 ISO 8601：`YYYY-MM-DDTHH:mm:ss+08:00`
+- 如果原文只有日期没有时间，默认使用 `T12:00:00`（正午）加原文时区
 
 **Tier 1 — 官方博客（全量，不过滤）**
 - Anthropic: `web_fetch https://www.anthropic.com/research`
@@ -88,7 +99,8 @@ git pull --rebase
 ---
 title: "标题"
 description: "一句话描述"
-pubDatetime: YYYY-MM-DDTHH:mm:ss+08:00
+pubDatetime: YYYY-MM-DDTHH:mm:ss+08:00  # ⚠️ 必须是原文发布时间，不是采集时间
+category: "行业格局"  # 五选一，见下方分类规则
 tags: [tag1, tag2]
 featured: true/false  # score >= 8.0 时为 true
 score: 8.5
@@ -99,6 +111,20 @@ sourceName: "OpenAI"
 ogImage: ""  # 原文 hero/og 图片的转存 URL（见图片处理规则）
 ---
 ```
+
+**📂 分类规则（category 字段，单选）：**
+
+| 分类 | 适用内容 |
+|------|---------|
+| `模型动态` | 新模型发布、架构创新、评测基准、模型能力对比 |
+| `工程实践` | 开源项目、Agent 框架、开发工具、SDK、技术教程、工程经验分享 |
+| `学术前沿` | 论文解读、可解释性研究、安全对齐、训练方法、学术突破 |
+| `行业格局` | 企业动态、融资并购、产品发布、战略合作、市场数据、人事变动 |
+| `深度观点` | 评论分析、社会影响、开发者体验、趋势洞察、争议话题 |
+
+分类判断原则：
+- 同一事件不同角度可归不同类：产品发布公告 → 行业格局，技术拆解 → 工程实践
+- 边界模糊时看**文章侧重点**：侧重"发生了什么" → 行业格局，侧重"怎么做" → 工程实践，侧重"为什么/意味着什么" → 深度观点
 
 **正文结构（必须包含以下部分）：**
 
