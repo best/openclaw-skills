@@ -1,6 +1,6 @@
 ---
 name: discord-thread-archiver
-version: 0.6.0
+version: 0.7.0
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and returns structured verdicts."
 ---
 
@@ -38,12 +38,16 @@ Classify the conversation:
 
 | Verdict | Criteria |
 |---------|----------|
-| **archive** | Clear resolution: thanks/confirmation, question answered, task completed, explicit "done"/"结束", or notification consumed with no follow-up needed |
+| **archive** | Clear resolution: thanks/confirmation, question answered, explicit "done"/"结束", or notification consumed with no follow-up needed |
 | **archive** | All messages from bots, no human participation |
 | **keep** | Open question unanswered, action items pending, waiting for response, active discussion |
+| **keep** | Last message implies a next step: "wait for results", "let's see", "看看效果", "等结果", "触发一下" — a completed sub-task does NOT mean the discussion is over |
+| **keep** | Bot/assistant sent a proposal, analysis, or question but the human hasn't replied yet — they may be busy, not disengaged |
 | **keep** | Can't determine from 5 messages |
 
-**When in doubt, keep the thread.** A user not responding ≠ conversation over.
+**When in doubt, keep the thread.** Archiving a live conversation is worse than keeping a finished one.
+
+**Critical rule:** "task completed" means the *entire discussion's purpose* is resolved with explicit human confirmation, not that a single action or sub-step was performed. A user not responding ≠ conversation over — humans have other things to do.
 
 For each thread, produce a verdict with a one-sentence reason summarizing what was observed in the messages.
 
