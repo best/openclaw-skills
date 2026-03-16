@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.2.0
+version: 1.3.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -92,12 +92,34 @@ pubDatetime: YYYY-MM-DDTHH:mm:ss+08:00
 tags: [tag1, tag2]
 featured: true/false  # score >= 8.0 时为 true
 score: 8.5
+scoreReason: "评分依据的简短说明"
 sourceUrl: "https://..."
 sourceType: "openai-blog"  # 见下方枚举
 sourceName: "OpenAI"
+ogImage: ""  # 原文 hero/og 图片的转存 URL（见图片处理规则）
 ---
+```
 
-正文内容（2-3 段摘要 + 要点）
+**正文结构（必须包含以下部分）：**
+
+```markdown
+> **评分 8.5** · 来源：[NVIDIA Blog](https://blogs.nvidia.com/...) · 发布于 2026-03-16
+>
+> 评分依据：一句话说明为什么给这个分
+
+## 要点
+
+正文摘要内容。2-3 段，提炼核心信息和关键数据。
+使用 bullet list 列出关键要点。
+
+## 🤖 AI 点评
+
+用 2-3 句话给出分析视角：
+- 这条新闻**为什么重要**？对行业意味着什么？
+- 有哪些**值得关注的信号**或后续影响？
+- 与近期其他事件有什么**关联**？
+
+点评要有观点、有洞察，不要复述摘要。语气自然，像一个懂行的人在跟你聊。
 ```
 
 **⚠️ Frontmatter YAML 安全规则（必须遵守）：**
@@ -105,6 +127,13 @@ sourceName: "OpenAI"
 - 需要引用时使用中文引号 `「」` 或 `『』`，不要用 `""` `""` 或裸 `"`
 - 冒号 `:` 后紧跟空格会被 YAML 误解析，标题/描述中避免英文冒号，用中文冒号 `：` 代替
 - 生成后心里默念：*这个值放到 `yaml.parse()` 里会不会炸？*
+
+**🖼️ 图片处理规则：**
+- 采集时检查原文是否有 hero image / Open Graph image（`og:image` meta tag）
+- 如果有，用 `exec` 下载图片到 `/tmp/`，然后调用 chevereto-upload 技能上传到 imglab.cc
+- 上传后将返回的 `direct_url` 填入 frontmatter 的 `ogImage` 字段
+- 如果图片获取失败或原文无图片，`ogImage` 留空字符串
+- **不要直接引用原站图片 URL**（防盗链 + 可能失效）
 
 sourceType 枚举：`anthropic-blog`, `openai-blog`, `deepmind-blog`, `meta-ai-blog`, `hacker-news`, `reddit`, `github-trending`, `arxiv`, `web-search`, `rss`, `jiqizhixin`, `qbitai`, `36kr`, `other`
 
