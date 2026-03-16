@@ -1,6 +1,6 @@
 ---
 name: discord-thread-archiver
-version: 0.7.0
+version: 0.7.1
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and returns structured verdicts."
 ---
 
@@ -48,6 +48,8 @@ Classify the conversation:
 **When in doubt, keep the thread.** Archiving a live conversation is worse than keeping a finished one.
 
 **Critical rule:** "task completed" means the *entire discussion's purpose* is resolved with explicit human confirmation, not that a single action or sub-step was performed. A user not responding ≠ conversation over — humans have other things to do.
+
+**Anti-hallucination guard:** Use ONLY the criteria listed in the table above. Do NOT invent time thresholds (e.g. "24h inactive"), activity metrics, or any rules not explicitly written in this document. If the table doesn't cover a case, the verdict is **keep**.
 
 For each thread, produce a verdict with a one-sentence reason summarizing what was observed in the messages.
 
