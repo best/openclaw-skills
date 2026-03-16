@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.3.0
+version: 1.4.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -130,10 +130,21 @@ ogImage: ""  # 原文 hero/og 图片的转存 URL（见图片处理规则）
 
 **🖼️ 图片处理规则：**
 - 采集时检查原文是否有 hero image / Open Graph image（`og:image` meta tag）
-- 如果有，用 `exec` 下载图片到 `/tmp/`，然后调用 chevereto-upload 技能上传到 imglab.cc
-- 上传后将返回的 `direct_url` 填入 frontmatter 的 `ogImage` 字段
+- 如果有，用 `exec` 下载到文章同目录，文件名与文章对应：`NNN-slug.jpg`
+  ```bash
+  curl -sL -o "src/data/blog/YYYY-MM-DD/NNN-slug.jpg" "原图URL"
+  ```
+- 下载后压缩（目标 < 200KB，宽度 ≤ 1200px）：
+  ```bash
+  # 如果有 sharp-cli 或 ImageMagick：
+  convert "NNN-slug.jpg" -resize '1200x>' -quality 80 "NNN-slug.jpg"
+  # 或者不压缩也行，Astro 构建时会自动优化
+  ```
+- frontmatter 使用相对路径引用：`ogImage: "./NNN-slug.jpg"`
+- Astro 的 `image()` schema 会自动处理优化（resize、WebP 转换）
 - 如果图片获取失败或原文无图片，`ogImage` 留空字符串
 - **不要直接引用原站图片 URL**（防盗链 + 可能失效）
+- 图片存仓库，随代码一起 commit + push
 
 sourceType 枚举：`anthropic-blog`, `openai-blog`, `deepmind-blog`, `meta-ai-blog`, `hacker-news`, `reddit`, `github-trending`, `arxiv`, `web-search`, `rss`, `jiqizhixin`, `qbitai`, `36kr`, `other`
 
