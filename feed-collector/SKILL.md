@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.6.0
+version: 1.7.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -100,6 +100,7 @@ git pull --rebase
 title: "标题"
 description: "一句话描述"
 pubDatetime: YYYY-MM-DDTHH:mm:ss+08:00  # ⚠️ 必须是原文发布时间，不是采集时间
+collectedAt: YYYY-MM-DDTHH:mm:ss+08:00  # 采集时间（当前时间）
 category: "行业格局"  # 五选一，见下方分类规则
 tags: [tag1, tag2]
 featured: true/false  # score >= 8.0 时为 true
