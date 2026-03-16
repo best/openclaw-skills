@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.1.0
+version: 1.2.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -29,7 +29,14 @@ git pull --rebase
 
 ### Step 2: 采集
 
-按优先级从以下源采集，**跳过 seen.json 中已有的 URL**：
+按优先级从以下源采集，**跳过 seen.json 中已有的 URL**。
+
+**⏰ 时间窗口规则（必须遵守）：**
+- 只采集**最近 48 小时内发布**的内容
+- 判断依据：文章页面上标注的发布日期、搜索结果中的 `published` 字段
+- 搜索时使用时间过滤参数（`freshness: "day"` 或 `date_after`）收窄结果
+- 无法判断发布时间的内容，默认跳过
+- 例外：Tier 1 官方博客可放宽到 7 天（重要发布不容遗漏）
 
 **Tier 1 — 官方博客（全量，不过滤）**
 - Anthropic: `web_fetch https://www.anthropic.com/research`
