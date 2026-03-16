@@ -538,16 +538,26 @@ def main():
             ],
         }
 
-    # Providers
-    output["providers"] = []
-    for p, b in sorted(provider_total.items(), key=lambda x: -x[1]["cost"]):
+    # Providers (aggregate by short name)
+    merged_providers = defaultdict(make_bucket)
+    for p, b in provider_total.items():
         p_short = short_provider(p)
-        if p_short in ("delivery-mirror", "acp-runtime"):
+        if p_short in ("delivery-mirror", "acp-runtime", "openclaw"):
             continue
+        mb = merged_providers[p_short]
+        mb["input"] += b["input"]
+        mb["output"] += b["output"]
+        mb["cacheRead"] += b["cacheRead"]
+        mb["cacheWrite"] += b["cacheWrite"]
+        mb["cost"] += b["cost"]
+        mb["entries"] += b["entries"]
+
+    output["providers"] = []
+    for p_short, b in sorted(merged_providers.items(), key=lambda x: -x[1]["cost"]):
         d = bucket_to_dict(b)
         output["providers"].append(
             {
-                "provider": p,
+                "provider": p_short,
                 "name": p_short,
                 **d,
                 "pct_cost": round(d["cost"] / total_cost * 100, 1) if total_cost > 0 else 0,
