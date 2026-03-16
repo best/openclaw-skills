@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.8.0
+version: 1.8.1
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -254,6 +254,19 @@ git push
 - `📰` 用于 score < 8.0
 - 按分数降序排列
 - 推送 top 15 条，超出部分引导去网站查看
+
+## 网站代码变更（非内容采集）
+
+当修改 Astro 组件、布局、Schema 等网站代码时（区别于日常内容采集），push 前**必须**：
+
+```bash
+cd /data/code/github.com/astralor/feed
+npm run build   # 完整流水线：astro check && astro build && pagefind
+```
+
+- **不要单独跑 `astro build`** — CF 部署命令包含 `astro check`，类型错误会导致部署失败
+- `astro check` 0 errors 才能 push
+- 教训（2026-03-16）：只跑了 `astro build`，漏了 `astro check`，类型错误导致 CF 部署失败
 
 ## 注意事项
 
