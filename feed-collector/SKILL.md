@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.9.0
+version: 1.10.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -161,6 +161,68 @@ git pull --rebase
 - 行业八卦/人事变动
 - "第 N 个做 X 的产品"
 - 有价值但不紧迫的内容（正常入库就够了）
+
+#### 评分执行方式（必须遵守：评分由 subagent 完成）
+
+为避免采集任务上下文混杂导致规则漂移，**本次采集的 Step 4 评分必须由专职评分 subagent 完成**。
+
+主采集智能体职责：
+- 把本批次候选条目整理成紧凑 JSON（只保留打分需要的信息）
+- 读取 `data/seen.json` 的近期条目，整理出**近 48 小时已收录标题列表**（用于同事件重复减分）
+- `sessions_spawn` 启动评分 subagent
+- `sessions_yield` 等待评分结果回传
+- 解析评分结果，决定入库/featured，并用于生成 Markdown frontmatter
+
+评分 subagent 输入（建议 JSON 结构）：
+```json
+{
+  "candidates": [
+    {
+      "id": "c1",
+      "title": "...",
+      "sourceUrl": "https://...",
+      "sourceName": "...",
+      "sourceType": "...",
+      "pubDatetime": "YYYY-MM-DDTHH:mm:ss+08:00",
+      "snippet": "正文关键摘录（<=600字）"
+    }
+  ],
+  "recentTitles48h": ["...", "..."]
+}
+```
+
+评分 subagent 运行要求：
+- 只做评分与去重判定，不做采集、不写文件、不构建、不 git 操作
+- 对 `recentTitles48h` 进行**事件聚类/同事件识别**，并按本 Step 4 的减分项执行扣分
+- 对每条候选输出三维度分数、减分、总分、是否入库、是否 featured
+
+评分 subagent 输出格式（必须严格，便于解析）：
+- 必须输出在 `BEGIN_JSON` 与 `END_JSON` 之间
+- 除 JSON 外不输出任何文本
+
+输出 JSON schema：
+```json
+{
+  "results": [
+    {
+      "id": "c1",
+      "include": true,
+      "score": 7.2,
+      "featured": false,
+      "scoreReason": "...（<=160字）",
+      "scoreBreakdown": "信息增量:7 内容质量:6 实用价值:7 减分:-1.5",
+      "dedup": {
+        "isDuplicateEvent": true,
+        "duplicateOfTitle": "...",
+        "penalty": -1.5
+      }
+    }
+  ]
+}
+```
+
+主采集智能体必须将以上结构回填到文章 frontmatter：
+- `score`、`featured`、`scoreReason`、`scoreBreakdown`
 
 #### 评分输出格式（每篇必须）
 
