@@ -1,6 +1,6 @@
 ---
 name: evolution-engine
-version: 1.2.0
+version: 1.3.0
 description: "PCEC v3 — Anti-entropy self-evolution engine. Discovers behavioral issues from daily operations, self-corrects, and tracks convergence."
 ---
 
@@ -18,9 +18,9 @@ PCEC v1 accumulated genes (pattern catalog). v2 waited for errors (passive repai
 
 v3 is **introspection-driven**. The most valuable evolution signals are not in error logs — they're in daily conversations where humans had to fix your problems.
 
-## Three-Phase Cycle
+## Five-Phase Cycle
 
-Every cycle runs all three phases. **There is no skip.**
+Every cycle runs all five phases. **There is no skip.**
 
 ### Phase 1: Discover
 
@@ -105,6 +105,11 @@ Track whether fixes actually work.
 - Recurred → `"status": "regressed"` — the fix wasn't sufficient, needs deeper root cause analysis
 - Regressed items get highest priority in next cycle
 
+**Convergence tracker archival:**
+- Terminal entries (converged/closed/superseded) older than 5 cycles → move to `{baseDir}/gep/convergence-archive.jsonl`
+- Keep only recent terminal entries + any open/regressed entries in the active tracker
+- This reduces per-cycle context load without losing institutional memory
+
 ### When Daily Logs Have No New Signals
 
 Even when everything is quiet, do one of:
@@ -115,7 +120,7 @@ Even when everything is quiet, do one of:
 
 Every cycle produces output.
 
-## Event Log
+### Phase 4: Log
 
 Append to `{baseDir}/gep/events.jsonl`:
 ```json
@@ -123,6 +128,12 @@ Append to `{baseDir}/gep/events.jsonl`:
 ```
 
 Prune to 30 entries; archive older to `events-archive.jsonl`.
+
+### Phase 5: Deliver
+
+Send a brief summary to the designated Discord channel using the `message` tool. Do NOT rely on announce delivery — always use explicit `message(action="send")`.
+
+Summary should be concise but substantive: what signals were found, what actions were taken, convergence status.
 
 ## Work Items
 
