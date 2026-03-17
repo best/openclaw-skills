@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.11.0
+version: 1.12.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -29,14 +29,16 @@ git pull --rebase
 
 ### Step 2: 采集
 
-按优先级从以下源采集，**跳过 seen.json 中已有的 URL**。
+从以下源清单采集，**跳过 seen.json 中已有的 URL**。
+
+**⚠️ 硬规则：所有源每轮必须全部检查，不允许提前终止。** 每个源至少发起一次请求。采集阶段只管"拿到内容"，质量筛选在 Step 4 评分阶段完成。
 
 **⏰ 时间窗口规则（必须遵守）：**
 - 只采集**最近 48 小时内发布**的内容
 - 判断依据：文章页面上标注的发布日期、搜索结果中的 `published` 字段
 - 搜索时使用时间过滤参数（`freshness: "day"` 或 `date_after`）收窄结果
 - 无法判断发布时间的内容，默认跳过
-- 例外：Tier 1 官方博客可放宽到 7 天（重要发布不容遗漏）
+- 例外：官方博客（Anthropic/OpenAI/DeepMind/Meta）可放宽到 7 天（重要发布不容遗漏）
 
 **📅 原文发布日期提取（必须遵守）：**
 - 采集每篇文章时，**必须提取原文的发布日期**，用于 frontmatter 的 `pubDatetime`
@@ -49,29 +51,31 @@ git pull --rebase
 - 日期格式统一为 ISO 8601：`YYYY-MM-DDTHH:mm:ss+08:00`
 - 如果原文只有日期没有时间，默认使用 `T12:00:00`（正午）加原文时区
 
-**Tier 1 — 官方博客（全量，不过滤）**
-- Anthropic: `web_fetch https://www.anthropic.com/research`
-- OpenAI: `web_search "site:openai.com/index" + 时间过滤`（JS 渲染页面无 RSS，用搜索代替；注意 freshness:day 可能返回 0 结果，可补充 freshness:week）
-- DeepMind: `web_fetch https://deepmind.google/blog/rss.xml`（RSS，直接解析 `<item>` 提取标题/链接/日期）
-- Meta AI: `web_search "site:ai.meta.com/blog" + 时间过滤`（直接 fetch 被 WAF 拦截，用搜索代替）
+**📋 源清单（全部必查，每轮逐个请求）：**
 
-**Tier 2 — 社区与媒体（AI 打分过滤）**
-- Hacker News Algolia: `web_fetch "https://hn.algolia.com/api/v1/search_by_date?query=AI+LLM+agent+model&tags=story&numericFilters=points>30&hitsPerPage=20"`（单次请求，返回 JSON，含标题/URL/points，替代 Firebase 多次请求）
-- GitHub Trending: `web_fetch https://github.com/trending` 过滤 AI 相关
-- TechCrunch AI: `web_fetch https://techcrunch.com/category/artificial-intelligence/feed/`（RSS）
-- Wired AI: `web_fetch https://www.wired.com/feed/tag/ai/latest/rss`（RSS，深度报道多）
-- Hugging Face Blog: `web_fetch https://huggingface.co/blog/feed.xml`（RSS，开源模型/工具一手信息）
+| # | 源名称 | 方法 | URL / 说明 |
+|---|--------|------|-----------|
+| 1 | Anthropic | `web_fetch` | `https://www.anthropic.com/research` |
+| 2 | OpenAI | `web_search` | `site:openai.com/index` + 时间过滤（JS 渲染无 RSS；freshness:day 可能返回 0，补充 freshness:week） |
+| 3 | DeepMind | `web_fetch` RSS | `https://deepmind.google/blog/rss.xml`（解析 `<item>` 提取标题/链接/日期） |
+| 4 | Meta AI | `web_search` | `site:ai.meta.com/blog` + 时间过滤（直接 fetch 被 WAF 拦截） |
+| 5 | Hacker News | `web_fetch` API | `https://hn.algolia.com/api/v1/search_by_date?query=AI+LLM+agent+model&tags=story&numericFilters=points>30&hitsPerPage=20` |
+| 6 | GitHub Trending | `web_fetch` | `https://github.com/trending`（过滤 AI 相关） |
+| 7 | TechCrunch AI | `web_fetch` RSS | `https://techcrunch.com/category/artificial-intelligence/feed/` |
+| 8 | Wired AI | `web_fetch` RSS | `https://www.wired.com/feed/tag/ai/latest/rss`（深度报道多） |
+| 9 | HuggingFace Blog | `web_fetch` RSS | `https://huggingface.co/blog/feed.xml`（开源模型/工具一手信息） |
+| 10 | MIT Tech Review | `web_fetch` RSS | `https://www.technologyreview.com/feed/`（偏分析和观点） |
+| 11 | Simon Willison | `web_fetch` Atom | `https://simonwillison.net/atom/everything/`（AI 工具实践者视角） |
+| 12 | arXiv | `web_fetch` API | `https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG&sortBy=submittedDate&max_results=20` |
+| 13 | 36kr AI | `web_fetch` | `https://36kr.com/information/AI/` |
+| 14 | 动态搜索 | `web_search` | 当前 AI 热点关键词（基于前面源发现的趋势补充搜索） |
 
-**Tier 3 — 学术论文与深度博客**
-- arXiv: `web_fetch https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG&sortBy=submittedDate&max_results=20`
-- MIT Technology Review: `web_fetch https://www.technologyreview.com/feed/`（RSS，偏分析和观点）
-- Simon Willison: `web_fetch https://simonwillison.net/atom/everything/`（Atom，AI 工具实践者视角，常有首发工具评测）
-
-**Tier 4 — 国内源**
-- 36kr AI: `web_fetch https://36kr.com/information/AI/`
-
-**Tier 5 — 动态搜索**
-- `web_search` 当前 AI 热点关键词（基于 Tier 1-3 发现的趋势）
+**执行要求：**
+- 源 1-13 为**固定源**，必须逐个请求，不论前面的源是否已找到足够内容
+- 源 14（动态搜索）在固定源全部完成后执行，基于已采集内容中发现的热点趋势补充搜索
+- 单个源 `web_fetch` 失败时 fallback 到 `web_search`
+- 国内源 `web_fetch` 返回空时用 `web_search` 代替
+- RSS/Atom 源解析 `<item>` 或 `<entry>` 提取标题、链接、发布日期，与 seen.json 比对后筛选新条目
 
 ### Step 3: 去重
 
