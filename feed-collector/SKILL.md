@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.12.2
+version: 1.13.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -81,7 +81,11 @@ git pull --rebase
 
 对采集到的每条素材，检查 URL 是否在 `data/seen.json` 中：
 - 已存在 → 跳过
-- 不存在 → 继续处理，将 URL 加入 seen.json
+- 不存在 → 加入候选列表（暂不写 seen.json，见 Step 5a）
+
+**⚠️ Step 2-3 的输出是一个内存中的候选列表（title, url, snippet, pubDatetime, sourceType, sourceName），不是 .md 文件！**
+**在 Step 4 评分 subagent 返回结果之前，禁止创建任何 .md 文件、禁止 git commit、禁止写 seen.json。**
+**违反此规则会导致重复文章——这是已发生过的生产事故（ct_031）。**
 
 ### Step 4: 打分
 
@@ -244,6 +248,27 @@ Featured: 否
 ```
 
 ### Step 5: 生成 Markdown
+
+**⚠️ 前置条件检查（必须全部通过才能开始生成 .md 文件）：**
+1. ✅ Step 4 评分 subagent 已返回 `BEGIN_JSON`/`END_JSON` 结果
+2. ✅ 结果已解析为 JSON，每条 include=true 的候选都有 score/scoreBreakdown/scoreReason/featured
+3. ✅ 当前目录下没有本轮产生的未提交 .md 文件（如果有，说明步骤顺序错误）
+
+**只为 subagent 返回 `include=true` 的候选生成 .md 文件。** 不要为未经评分的候选生成任何文件。
+
+### Step 5a: 更新 seen.json
+
+在 .md 文件全部生成完成后，将**所有 Step 3 的候选 URL**（包括 include=true 和 include=false 的）写入 `data/seen.json`。这样下次采集不会重复处理被排除的低分候选。
+
+格式：
+```json
+{
+  "url": {
+    "seen_at": "ISO-8601",
+    "date": "YYYY-MM-DD"
+  }
+}
+```
 
 在 `src/data/blog/YYYY-MM-DD/` 目录下创建文件，文件名格式 `NNN-slug.md`（NNN 为三位数序号，如 001、012）。
 
