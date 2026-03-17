@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.12.1
+version: 1.12.2
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -245,7 +245,14 @@ Featured: 否
 
 ### Step 5: 生成 Markdown
 
-在 `src/data/blog/YYYY-MM-DD/` 目录下创建文件，文件名格式 `NNN-slug.md`（NNN 为序号）。
+在 `src/data/blog/YYYY-MM-DD/` 目录下创建文件，文件名格式 `NNN-slug.md`（NNN 为三位数序号，如 001、012）。
+
+**⚠️ 序号必须从已有文件的最大序号 +1 开始，不要从 001 重新编号！**
+每天可能有多次采集，每次都从 001 开始会覆盖之前的文件。检查方法：
+```bash
+ls src/data/blog/YYYY-MM-DD/*.md 2>/dev/null | sed 's/.*\///' | sort -rn | head -1 | grep -oP '^\d+'
+```
+如果目录为空或不存在，从 001 开始。否则从最大值 +1 开始。
 
 每个文件的 frontmatter 格式：
 ```yaml
@@ -359,7 +366,16 @@ else console.log('✅ All frontmatter valid');
 "
 ```
 
-**如果校验失败：**
+**必填字段检查（在 YAML 语法校验之后）：**
+对本次新增的每个 `.md` 文件，确认以下字段都存在且非空：
+- `title`, `description`, `pubDatetime`, `collectedAt`, `category`
+- `score`, `scoreBreakdown`, `scoreReason`, `featured`
+- `sourceUrl`, `sourceType`, `sourceName`
+
+**scoreBreakdown 格式必须为：** `"信息增量:N 内容质量:N 实用价值:N 减分:N"`
+如果缺失 scoreBreakdown 或格式不符：从 subagent 返回的 JSON 中重新提取。如果 subagent 未返回 scoreBreakdown，根据 score 反推各维度分并补填。
+
+**如果 YAML 语法校验失败：**
 1. 读取报错文件的 frontmatter
 2. 自动修复常见问题：
    - ASCII `"` 在双引号值内部 → 替换为 `「」`
