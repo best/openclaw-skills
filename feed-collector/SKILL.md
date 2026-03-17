@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.12.0
+version: 1.12.1
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -198,9 +198,11 @@ git pull --rebase
 ```
 
 评分 subagent 运行要求：
+- **⚠️ 反幻觉约束：subagent 必须先 `read` 本文件（SKILL.md），使用且仅使用本文件 Step 4 定义的三维度加权评分体系（信息增量 35% + 内容质量 35% + 实用价值 30%）。禁止发明任何不在本文件中的评分维度、权重、量表或规则。如果 subagent 的输出使用了本文件未定义的维度名称，主 agent 必须拒绝该结果并重新 spawn。**
 - 只做评分与去重判定，不做采集、不写文件、不构建、不 git 操作
 - 对 `recentTitles48h` 进行**事件聚类/同事件识别**，并按本 Step 4 的减分项执行扣分
 - 对每条候选输出三维度分数、减分、总分、是否入库、是否 featured
+- 输出的 `scoreBreakdown` 格式必须为：`"信息增量:N 内容质量:N 实用价值:N 减分:N"`——使用这三个中文维度名称，不得替换
 
 评分 subagent 输出格式（必须严格，便于解析）：
 - 必须输出在 `BEGIN_JSON` 与 `END_JSON` 之间
