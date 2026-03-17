@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.10.0
+version: 1.11.0
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -51,21 +51,23 @@ git pull --rebase
 
 **Tier 1 — 官方博客（全量，不过滤）**
 - Anthropic: `web_fetch https://www.anthropic.com/research`
-- OpenAI: `web_search "site:openai.com/index" + 时间过滤`（JS 渲染页面用搜索代替）
-- DeepMind: `web_search "site:deepmind.google/blog" + 时间过滤`
-- Meta AI: `web_fetch https://ai.meta.com/blog/`
+- OpenAI: `web_search "site:openai.com/index" + 时间过滤`（JS 渲染页面无 RSS，用搜索代替；注意 freshness:day 可能返回 0 结果，可补充 freshness:week）
+- DeepMind: `web_fetch https://deepmind.google/blog/rss.xml`（RSS，直接解析 `<item>` 提取标题/链接/日期）
+- Meta AI: `web_search "site:ai.meta.com/blog" + 时间过滤`（直接 fetch 被 WAF 拦截，用搜索代替）
 
-**Tier 2 — 社区聚合（AI 打分过滤）**
-- Hacker News: `web_fetch https://hacker-news.firebaseio.com/v0/topstories.json`，取 top 20 的详情，过滤 AI/ML 相关
-- Reddit: `web_fetch` RSS feeds for r/MachineLearning, r/LocalLLaMA, r/artificial
+**Tier 2 — 社区与媒体（AI 打分过滤）**
+- Hacker News Algolia: `web_fetch "https://hn.algolia.com/api/v1/search_by_date?query=AI+LLM+agent+model&tags=story&numericFilters=points>30&hitsPerPage=20"`（单次请求，返回 JSON，含标题/URL/points，替代 Firebase 多次请求）
 - GitHub Trending: `web_fetch https://github.com/trending` 过滤 AI 相关
+- TechCrunch AI: `web_fetch https://techcrunch.com/category/artificial-intelligence/feed/`（RSS）
+- Wired AI: `web_fetch https://www.wired.com/feed/tag/ai/latest/rss`（RSS，深度报道多）
+- Hugging Face Blog: `web_fetch https://huggingface.co/blog/feed.xml`（RSS，开源模型/工具一手信息）
 
-**Tier 3 — 学术论文（每天 1 次）**
+**Tier 3 — 学术论文与深度博客**
 - arXiv: `web_fetch https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG&sortBy=submittedDate&max_results=20`
+- MIT Technology Review: `web_fetch https://www.technologyreview.com/feed/`（RSS，偏分析和观点）
+- Simon Willison: `web_fetch https://simonwillison.net/atom/everything/`（Atom，AI 工具实践者视角，常有首发工具评测）
 
 **Tier 4 — 国内源**
-- 机器之心: `web_fetch https://www.jiqizhixin.com/`
-- 量子位: `web_fetch https://www.qbitai.com/`
 - 36kr AI: `web_fetch https://36kr.com/information/AI/`
 
 **Tier 5 — 动态搜索**
@@ -319,7 +321,7 @@ ogImage: ""  # 原文 hero/og 图片的转存 URL（见图片处理规则）
 - **不要直接引用原站图片 URL**（防盗链 + 可能失效）
 - 不抓正文插图——读者点击原文链接查看完整内容更合适
 
-sourceType 枚举：`anthropic-blog`, `openai-blog`, `deepmind-blog`, `meta-ai-blog`, `hacker-news`, `reddit`, `github-trending`, `arxiv`, `web-search`, `rss`, `jiqizhixin`, `qbitai`, `36kr`, `other`
+sourceType 枚举：`anthropic-blog`, `openai-blog`, `deepmind-blog`, `meta-ai-blog`, `hacker-news`, `github-trending`, `arxiv`, `techcrunch`, `wired`, `huggingface-blog`, `mit-tech-review`, `simon-willison`, `rss`, `36kr`, `web-search`, `other`
 
 ### Step 6: 清理 seen.json
 
