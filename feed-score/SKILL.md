@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 1.1.0
+version: 1.1.1
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，生成 Markdown 文件并发布到仓库。"
 ---
 
@@ -22,6 +22,13 @@ description: "AI Feed 评分与发布技能。读取 candidates.json，执行三
 ```bash
 cd /data/code/github.com/astralor/feed
 git pull --rebase
+
+# Guardrail: avoid accidentally committing unrelated local changes.
+if [ -n "$(git status --porcelain)" ]; then
+  echo "❌ Repo is dirty before scoring; refusing to proceed."
+  git status --short
+  exit 2
+fi
 ```
 
 读取 `data/candidates.json`。如果文件不存在或为空数组 `[]`，直接结束（无候选）。
@@ -156,6 +163,7 @@ ogImage: ""
 ### Step 5: 校验
 
 ```bash
+# 5a) Frontmatter must be valid YAML for ALL blog posts.
 node -e "
 const fs = require('fs');
 const yaml = require('./node_modules/js-yaml');
@@ -173,6 +181,46 @@ for (const f of glob) {
 if (errors.length) { console.error(JSON.stringify(errors, null, 2)); process.exit(1); }
 else console.log('✅ All frontmatter valid');
 "
+
+# 5b) Guardrail: scoreBreakdown must include all 4 keys (including `减分:0`).
+TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
+YESTERDAY=$(TZ=Asia/Shanghai date -d yesterday +%Y-%m-%d)
+TODAY="$TODAY" YESTERDAY="$YESTERDAY" node - <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const yaml = require('./node_modules/js-yaml');
+
+const days = [process.env.TODAY, process.env.YESTERDAY].filter(Boolean);
+const bad = [];
+
+for (const day of days) {
+  const dir = path.join('src/data/blog', day);
+  if (!fs.existsSync(dir)) continue;
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.endsWith('.md')) continue;
+    const fp = path.join(dir, name);
+    const content = fs.readFileSync(fp, 'utf8');
+    const m = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!m) continue;
+
+    let fm;
+    try { fm = yaml.load(m[1]) || {}; }
+    catch { continue; }
+
+    const sb = (fm.scoreBreakdown || '').toString();
+    const ok = /信息增量:\s*\d/.test(sb) && /内容质量:\s*\d/.test(sb) && /实用价值:\s*\d/.test(sb) && /减分:\s*-?\d/.test(sb);
+    if (!ok) bad.push({ file: fp, scoreBreakdown: sb });
+  }
+}
+
+if (bad.length) {
+  console.error('❌ scoreBreakdown invalid/missing (must include 信息增量/内容质量/实用价值/减分, and keep 减分:0 when none):');
+  console.error(JSON.stringify(bad, null, 2));
+  process.exit(1);
+} else {
+  console.log('✅ scoreBreakdown format OK');
+}
+NODE
 ```
 
 YAML 失败则修复（`"` → `「」`，`: ` → `：`）或删除问题文件。
@@ -188,7 +236,25 @@ npm run build
 ### Step 7: 提交发布
 
 ```bash
-git add -A
+TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
+YESTERDAY=$(TZ=Asia/Shanghai date -d yesterday +%Y-%m-%d)
+
+# Do NOT use `git add -A` here; it can accidentally commit unrelated local changes.
+git add "src/data/blog/$TODAY" 2>/dev/null || true
+git add "src/data/blog/$YESTERDAY" 2>/dev/null || true
+
+if git diff --cached --quiet; then
+  echo "❌ Nothing staged (no new articles?)"
+  exit 2
+fi
+
+BAD=$(git diff --cached --name-only | grep -Ev "^src/data/blog/(${TODAY}|${YESTERDAY})/" || true)
+if [ -n "$BAD" ]; then
+  echo "❌ Unexpected staged files (refusing to commit):"
+  echo "$BAD"
+  exit 2
+fi
+
 git commit -m "feed: YYYY-MM-DD HH:mm - N items from [sources]"
 git push
 ```
