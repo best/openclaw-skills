@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 1.0.0
+version: 1.0.1
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，生成 Markdown 文件并发布到仓库。"
 ---
 
@@ -192,7 +192,7 @@ git push
 
 ## 注意事项
 
-- scoreBreakdown 格式必须为 `"信息增量:N 内容质量:N 实用价值:N 减分:N"`
+- scoreBreakdown 格式必须为 `"信息增量:N 内容质量:N 实用价值:N 减分:N"`，减分为 0 时写 `减分:0`，不可省略
 - 不要发明任何不在本文件中的评分维度
 - 每篇文章必须是独立 .md 文件，禁止聚合
 - 如果 candidates.json 为空或不存在，直接结束，不报错
