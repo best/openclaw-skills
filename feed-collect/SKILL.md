@@ -1,6 +1,6 @@
 ---
 name: feed-collect
-version: 1.0.0
+version: 1.0.1
 description: "AI Feed 采集技能。从 14 个信息源采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
@@ -53,9 +53,13 @@ git pull --rebase
 
 ### Step 3: URL 去重
 
-对每条采集到的素材，检查 URL 是否在 `data/seen.json` 的 `entries` 中：
+**URL 归一化（去重前必须执行）：**
+- arXiv：统一为 `https://arxiv.org/abs/XXXX.XXXXX`（去掉 `pdf/`、`export.arxiv.org`、版本号 `vN`）
+- 去除 URL 尾部的 `#` 锚点和 `?utm_*` 跟踪参数
+
+对每条采集到的素材，用归一化后的 URL 检查是否在 `data/seen.json` 的 `entries` 中：
 - 已存在 → 跳过
-- 不存在 → 加入候选列表
+- 不存在 → 加入候选列表（写入 seen.json 也用归一化后的 URL）
 
 ### Step 4: 输出 candidates.json
 
