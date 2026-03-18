@@ -1,6 +1,6 @@
 ---
 name: feed-collector
-version: 1.13.0
+version: 1.13.1
 description: "AI 信息流采集技能。定时从多个源采集 AI 领域动态，打分筛选后生成 Markdown 并推送到 Discord 和 feed.astralor.com。"
 ---
 
@@ -258,9 +258,20 @@ Featured: 否
 
 ### Step 5a: 更新 seen.json
 
-在 .md 文件全部生成完成后，将**所有 Step 3 的候选 URL**（包括 include=true 和 include=false 的）写入 `data/seen.json`。这样下次采集不会重复处理被排除的低分候选。
+在 .md 文件全部生成完成后，将**所有 Step 3 的候选 URL**（包括 include=true 和 include=false 的）写入 `data/seen.json` 的 **`entries` 子字典**中。这样下次采集不会重复处理被排除的低分候选。
 
-格式：
+**⚠️ 结构约束（严格遵守）：**
+- seen.json 的顶层结构是 `{"version":1, "description":"...", "retention_days":30, "entries":{...}}`
+- 新 URL **必须写入 `entries` 字典内部**，绝对不能写在 JSON 顶层
+- 写入后验证：读取 seen.json，检查新增 URL 存在于 `entries` 子字典中而非顶层
+- 违反此结构会导致去重完全失效（已发生过：18 个 URL 写入顶层导致大量重复采集）
+
+**URL 归一化规则：**
+- arXiv URL 去掉版本后缀（`/abs/2603.15617v1` → `/abs/2603.15617`）
+- 去掉尾部斜杠和 query 参数中的 tracking 参数
+- dedup 检查时也应用同样的归一化
+
+格式（写入 `entries` 内部）：
 ```json
 {
   "url": {
