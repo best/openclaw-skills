@@ -15,7 +15,9 @@ OpenClaw Agent 自主开发工作流技能集。
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.1 |
 | [discord-thread-archiver | 0.7.1 |
 | [evolution-engine](./evolution-engine/) | PCEC v3 — 反熵自我进化引擎 | v1.3.0 |
-| [feed-collector](./feed-collector/) | AI 信息流采集，自动打分筛选并发布 | v1.13.1 |
+| [feed-collect](./feed-collect/) | AI 信息流源采集与候选提取 | v1.0.0 |
+| [feed-collector](./feed-collector/) | AI 信息流采集（已废弃 → feed-collect + feed-score） | v1.13.1 |
+| [feed-score](./feed-score/) | AI 信息流评分、去重、Markdown 生成与发布 | v1.0.0 |
 | [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（支持多供应商降级） | v1.0.0 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.0 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
