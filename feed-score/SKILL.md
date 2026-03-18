@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 1.0.1
+version: 1.1.0
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，生成 Markdown 文件并发布到仓库。"
 ---
 
@@ -28,9 +28,21 @@ git pull --rebase
 
 ### Step 2: 提取去重上下文
 
-从 `data/seen.json` 提取近 48 小时的已收录标题列表。
-从 `src/data/blog/` 今天和昨天的目录中提取已有 .md 文件的标题。
-合并为 `recentTitles` 列表，用于后续语义去重。
+**必须在 git pull 之后执行，确保看到最新文件。**
+
+提取已有文章标题（用于去重）：
+```bash
+TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
+YESTERDAY=$(TZ=Asia/Shanghai date -d yesterday +%Y-%m-%d)
+echo "=== existing titles ==="
+for f in src/data/blog/$TODAY/*.md src/data/blog/$YESTERDAY/*.md; do
+  [ -f "$f" ] && head -15 "$f" | grep '^title:' | sed 's/^title: *//'
+done
+```
+
+从 `data/seen.json` 提取近 48 小时的已收录标题。
+
+合并为 `recentTitles` 列表。评分时，如果候选文章与 recentTitles 中任一标题描述的是**同一事件/产品/技术**（即使措辞不同），视为重复，直接跳过不评分。
 
 ### Step 3: 评分
 
@@ -91,11 +103,12 @@ git pull --rebase
 
 ### Step 4: 生成 Markdown
 
-确定序号：
+**序号检测（在 git pull 之后执行）：**
 ```bash
-ls src/data/blog/YYYY-MM-DD/*.md 2>/dev/null | sed 's/.*\///' | sort -rn | head -1 | grep -oP '^\d+'
+TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
+ls src/data/blog/$TODAY/*.md 2>/dev/null | sed 's/.*\///' | grep -oP '^\d+' | sort -n | tail -1
 ```
-从最大值 +1 开始。目录不存在则从 001。
+输出为空则从 001 开始，否则从最大值 +1 开始。**必须用此命令的实际输出，不要自己猜测序号。**
 
 文件路径：`src/data/blog/YYYY-MM-DD/NNN-slug.md`
 
