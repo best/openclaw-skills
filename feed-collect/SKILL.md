@@ -1,6 +1,6 @@
 ---
 name: feed-collect
-version: 1.0.1
+version: 1.0.2
 description: "AI Feed 采集技能。从 14 个信息源采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
@@ -23,7 +23,51 @@ cd /data/code/github.com/astralor/feed
 git pull --rebase
 ```
 
-读取 `data/seen.json` 获取已处理 URL 列表。
+**seen.json 结构校验（必做，防止去重库被写坏）：**
+- `data/seen.json` 必须是一个 JSON 对象，且包含 `entries` 字典
+- 如果发现 `data/seen.json` 是数组（历史 bug 会把 URL 写成数组），必须先迁移再继续
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+
+p = Path('data/seen.json')
+
+# Load
+if p.exists():
+    data = json.loads(p.read_text('utf-8'))
+else:
+    data = {}
+
+now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+date_cst = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
+
+# Migrate legacy/corrupt list schema -> object schema
+if isinstance(data, list):
+    urls = [x for x in data if isinstance(x, str) and x.startswith('http')]
+    # Dedup while preserving order
+    uniq = list(dict.fromkeys(urls))
+    data = {
+        'description': 'URL/title dedup store for AI Feed collection. Schema: object with entries dict.',
+        'entries': {u: {'seen_at': now_utc, 'date': date_cst, 'title': ''} for u in uniq},
+    }
+
+# Initialize empty store
+if data == {}:
+    data = {
+        'description': 'URL/title dedup store for AI Feed collection. Schema: object with entries dict.',
+        'entries': {},
+    }
+
+if not isinstance(data, dict) or not isinstance(data.get('entries'), dict):
+    raise SystemExit('Invalid data/seen.json schema. Must be an object with entries dict.')
+
+p.write_text(json.dumps(data, ensure_ascii=True, indent=2) + '\n', 'utf-8')
+print('✅ seen.json schema ok; entries =', len(data['entries']))
+PY
+```
 
 ### Step 2: 采集
 
@@ -103,6 +147,23 @@ git pull --rebase
 
 清理超过 30 天的旧条目。
 
+**写入后再次做结构校验（不通过则停止并修复，不要 commit 坏文件）：**
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path('data/seen.json')
+data = json.loads(p.read_text('utf-8'))
+if not isinstance(data, dict) or not isinstance(data.get('entries'), dict):
+    raise SystemExit('Invalid data/seen.json schema after write. Do NOT commit.')
+# Sanity: URLs must live under entries, not top-level
+bad = [k for k in data.keys() if isinstance(k, str) and k.startswith('http')]
+if bad:
+    raise SystemExit('Invalid data/seen.json: found top-level URL keys (must be under entries).')
+print('✅ seen.json post-write validation ok; entries =', len(data['entries']))
+PY
+```
+
 ### Step 6: 提交
 
 ```bash
@@ -118,3 +179,4 @@ git push
 - 效率优先，不要在单个源上花太多时间
 - 采集阶段**不做质量判断**，只管拿到内容，质量筛选由 feed-score 负责
 - candidates.json 是追加模式，不要覆盖已有内容
+- **禁止**把 `data/seen.json` 写成数组或把 URL 写到 JSON 顶层；去重库写坏会导致重复内容泛滥
