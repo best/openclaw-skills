@@ -23,6 +23,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.0 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
 | [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.0 |
+| [wechat-article-fetcher](./wechat-article-fetcher/) | 微信公众号文章内容抓取（全文+图片+元数据） | v1.0.0 |
 | [wechat-mp-publisher](./wechat-mp-publisher/) | 微信公众号 Markdown 文章发布（草稿箱） | v0.5.0 |
 
 ## 安装
