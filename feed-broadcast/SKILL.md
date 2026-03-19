@@ -1,6 +1,6 @@
 ---
 name: feed-broadcast
-version: 1.0.0
+version: 1.0.1
 description: "AI Feed 智能播报技能。检查新入库文章，自主判断是否值得推送，有价值时发送到 Discord。"
 ---
 
@@ -79,7 +79,7 @@ git log --since="<lastBroadcastAt>" --name-only --pretty=format: -- 'src/data/bl
 
 ### Step 5: 发送
 
-用 message 工具发送到 📡丨ai-feed 频道：
+用 message 工具发送到 📡丨资讯 频道：
 ```
 message(action="send", channel="discord", target="1481477340717383721", message="播报内容")
 ```
