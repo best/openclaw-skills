@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 1.1.1
+version: 1.2.0
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，生成 Markdown 文件并发布到仓库。"
 ---
 
@@ -37,17 +37,18 @@ fi
 
 **必须在 git pull 之后执行，确保看到最新文件。**
 
-提取已有文章标题（用于去重）：
+提取过去 7 天已有文章标题（用于去重）：
 ```bash
-TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
-YESTERDAY=$(TZ=Asia/Shanghai date -d yesterday +%Y-%m-%d)
 echo "=== existing titles ==="
-for f in src/data/blog/$TODAY/*.md src/data/blog/$YESTERDAY/*.md; do
-  [ -f "$f" ] && head -15 "$f" | grep '^title:' | sed 's/^title: *//'
+for i in $(seq 0 6); do
+  DAY=$(TZ=Asia/Shanghai date -d "$i days ago" +%Y-%m-%d)
+  for f in src/data/blog/$DAY/*.md; do
+    [ -f "$f" ] && head -15 "$f" | grep '^title:' | sed 's/^title: *//'
+  done
 done
 ```
 
-从 `data/seen.json` 提取近 48 小时的已收录标题。
+从 `data/seen.json` 提取近 7 天的已收录标题。
 
 合并为 `recentTitles` 列表。评分时，如果候选文章与 recentTitles 中任一标题描述的是**同一事件/产品/技术**（即使措辞不同），视为重复，直接跳过不评分。
 
