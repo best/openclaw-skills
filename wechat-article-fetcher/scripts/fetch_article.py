@@ -207,13 +207,20 @@ def html_to_markdown(body_html: str, image_urls: list = None) -> str:
 
     text = re.sub(r"<img[^>]*/?>", img_replace, text)
 
-    # Links
-    def link_replace(m):
+    # Links: convert <a href="url">text</a> to [text](url)
+    def link_full_replace(m):
         href = m.group(1)
-        # Will be closed by </a>, content is between
-        return f"["
-    text = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>', link_replace, text)
-    # Simple approach: just strip link tags
+        link_text = re.sub(r"<[^>]+>", "", m.group(2))  # strip inner tags
+        link_text = html_mod.unescape(link_text.strip())
+        if href and link_text:
+            return f"[{link_text}]({href})"
+        return link_text or ""
+
+    text = re.sub(
+        r'<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>',
+        link_full_replace, text, flags=re.DOTALL,
+    )
+    # Strip any remaining <a> tags (those without href)
     text = re.sub(r"<a[^>]*>", "", text)
     text = re.sub(r"</a>", "", text)
 
