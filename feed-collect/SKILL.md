@@ -1,6 +1,6 @@
 ---
 name: feed-collect
-version: 1.0.2
+version: 1.0.3
 description: "AI Feed 采集技能。从 14 个信息源采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
@@ -180,3 +180,4 @@ git push
 - 采集阶段**不做质量判断**，只管拿到内容，质量筛选由 feed-score 负责
 - candidates.json 是追加模式，不要覆盖已有内容
 - **禁止**把 `data/seen.json` 写成数组或把 URL 写到 JSON 顶层；去重库写坏会导致重复内容泛滥
+- **禁止使用 `edit` 工具**修改 feed 仓库中的任何文件。所有文件读写必须通过 Step 中指定的 `exec` + Python 脚本完成。`edit` 工具无法可靠处理 JSON 数据文件，会导致 oldText 匹配失败
