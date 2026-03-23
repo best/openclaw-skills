@@ -1,19 +1,19 @@
 ---
 name: feed-score
-version: 1.2.0
-description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，生成 Markdown 文件并发布到仓库。"
+version: 2.0.0
+description: "AI Feed 评分与发布技能。读取 candidates.json，spawn 评分子 Agent 执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 ---
 
 # Feed Score Skill
 
 ## 概述
 
-读取 `data/candidates.json` 中的候选文章，执行三维度加权评分和语义去重，生成 Markdown 文件，校验构建后提交发布。
+编排式评分发布流程：主 Agent 负责准备和发布，子 Agent 负责评分判断，脚本负责 .md 生成。
 
-## 仓库
+## 路径
 
-- **路径**: `/data/code/github.com/astralor/feed`
-- **站点**: https://feed.astralor.com
+- **仓库**: `/data/code/github.com/astralor/feed`
+- **技能**: `/data/code/github.com/best/openclaw-skills/feed-score`
 
 ## 执行流程
 
@@ -22,257 +22,106 @@ description: "AI Feed 评分与发布技能。读取 candidates.json，执行三
 ```bash
 cd /data/code/github.com/astralor/feed
 git pull --rebase
-
-# Guardrail: avoid accidentally committing unrelated local changes.
-if [ -n "$(git status --porcelain)" ]; then
-  echo "❌ Repo is dirty before scoring; refusing to proceed."
-  git status --short
-  exit 2
-fi
 ```
 
-读取 `data/candidates.json`。如果文件不存在或为空数组 `[]`，直接结束（无候选）。
+读取 `data/candidates.json`。为空或 `[]` → 直接结束（无候选）。
 
-### Step 2: 提取去重上下文
+### Step 2: Spawn 评分子 Agent
 
-**必须在 git pull 之后执行，确保看到最新文件。**
+```
+sessions_spawn(
+  runtime: "subagent",
+  mode: "run",
+  model: "zai/glm-5-turbo",
+  task: <见下方 Subagent Prompt>
+)
+```
 
-提取过去 7 天已有文章标题（用于去重）：
+然后调用 `sessions_yield()` 等待子 Agent 完成。
+
+#### Subagent Prompt
+
+```
+你是 AI Feed 评分员。严格按以下步骤执行：
+
+1. 读取评分规则：
+   read /data/code/github.com/best/openclaw-skills/feed-score/references/scoring-rules.md
+
+2. 读取候选文章：
+   read /data/code/github.com/astralor/feed/data/candidates.json
+
+3. 获取去重上下文（最近 7 天已入库文章标题）：
+   exec: cd /data/code/github.com/astralor/feed && for i in $(seq 0 6); do DAY=$(TZ=Asia/Shanghai date -d "$i days ago" +%Y-%m-%d); for f in src/data/blog/$DAY/*.md; do [ -f "$f" ] && head -5 "$f" | grep '^title:'; done; done
+
+4. 按评分规则逐篇评分所有候选。对入库文章（≥6.5 分）生成完整 body 内容（要点 + AI 点评）。
+
+5. 将结果严格按规则中的 JSON Schema 写入：
+   write /data/code/github.com/astralor/feed/data/scored-results.json
+
+6. 输出摘要：评估 N 篇，入库 M 篇，跳过 K 篇
+```
+
+### Step 3: 处理结果
+
+子 Agent 完成后，检查 `data/scored-results.json` 是否存在且有效。
+
+生成 .md 文件：
 ```bash
-echo "=== existing titles ==="
-for i in $(seq 0 6); do
-  DAY=$(TZ=Asia/Shanghai date -d "$i days ago" +%Y-%m-%d)
-  for f in src/data/blog/$DAY/*.md; do
-    [ -f "$f" ] && head -15 "$f" | grep '^title:' | sed 's/^title: *//'
-  done
-done
+cd /data/code/github.com/astralor/feed
+python3 /data/code/github.com/best/openclaw-skills/feed-score/scripts/generate-posts.py data/scored-results.json
 ```
 
-从 `data/seen.json` 提取近 7 天的已收录标题。
+脚本输出 JSON 摘要（generated/skipped/errors）。generated=0 → 跳到 Step 6。
 
-合并为 `recentTitles` 列表。评分时，如果候选文章与 recentTitles 中任一标题描述的是**同一事件/产品/技术**（即使措辞不同），视为重复，直接跳过不评分。
-
-### Step 3: 评分
-
-**核心原则：评价的是"这篇文章值不值得读者花 2 分钟看"，不是"这个事件有多重要"。**
-
-#### 三维度加权评分
-
-| 维度 | 权重 | 评什么 |
-|------|------|--------|
-| 信息增量 | 35% | 读完获得多少不知道的东西 |
-| 内容质量 | 35% | 文章本身写得怎么样 |
-| 实用价值 | 30% | 对 AI 从业者/爱好者的实际价值 |
-
-**总分 = 0.35 × 信息增量 + 0.35 × 内容质量 + 0.30 × 实用价值 + 减分项**
-
-**各维度评分标准：**
-
-**信息增量（35%）：**
-- 9-10：首次披露的技术细节/数据/方法论
-- 7-8：有实质新信息，但部分已知
-- 5-6：信息大部分可从其他渠道获得
-- 3-4：已知信息的重新包装
-
-**内容质量（35%）：**
-- 9-10：深度分析 + 数据支撑 + 独到观点
-- 7-8：有分析有论据，结构清晰
-- 5-6：完整报道但无深度
-- **硬规则：纯新闻稿转述（无独立分析），封顶 6.0**
-
-**实用价值（30%）：**
-- 9-10：直接可用（开源工具、代码、可复现的方法）
-- 7-8：影响认知或决策的重要信息
-- 5-6：有趣但不急着知道
-
-#### 减分项（硬扣分）
-
-**同事件重复报道（对照 recentTitles）：**
-- 判断依据：同一事件/产品/会议的不同角度报道
-- 第 2 篇：`-1.5`，scoreReason 注明"同事件第 2 篇，首篇为 [标题]"
-- 第 3 篇起：`-3.0`
-- 例外：后续文章有实质性新信息 → 减分减半
-
-**PR/软文：** `-1.5`（只有功能列表没技术细节，大量营销词）
-**标题党：** `-1.0`（标题承诺与正文交付明显不符）
-**空洞预测：** `-1.0`（无数据/案例支撑的断言）
-
-#### 阈值
-
-- **≥ 6.5** → 入库
-- **< 6.5** → 不入库
-
-#### Featured 判断（独立于分数）
-
-对所有入库文章额外判断：**"如果读者今天只有 5 分钟，这篇是否属于'错过会遗憾'的级别？"**
-
-**够 featured：** 行业转折点、即时可用的高价值工具、认知刷新、独家深度分析
-**不够 featured：** 大厂例行发布、行业八卦、"第 N 个做 X 的产品"
-
-### Step 4: 生成 Markdown
-
-**序号检测（在 git pull 之后执行）：**
-```bash
-TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
-ls src/data/blog/$TODAY/*.md 2>/dev/null | sed 's/.*\///' | grep -oP '^\d+' | sort -n | tail -1
-```
-输出为空则从 001 开始，否则从最大值 +1 开始。**必须用此命令的实际输出，不要自己猜测序号。**
-
-文件路径：`src/data/blog/YYYY-MM-DD/NNN-slug.md`
-
-**Frontmatter 模板：**
-```yaml
----
-title: "标题"
-description: "一句话描述"
-pubDatetime: YYYY-MM-DDTHH:mm:ss+08:00
-collectedAt: YYYY-MM-DDTHH:mm:ss+08:00
-category: "行业动态"
-tags: [tag1, tag2]
-featured: true/false
-score: 7.2
-scoreReason: "评分依据"
-scoreBreakdown: "信息增量:7 内容质量:6 实用价值:8 减分:-1.5"
-sourceUrl: "https://..."
-sourceType: "hacker-news"
-sourceName: "Hacker News"
-ogImage: ""
----
-```
-
-**分类（category，单选）：** `模型动态` | `工程实践` | `学术前沿` | `行业动态` | `深度观点` | `算力硬件` | `政策伦理`
-
-**正文结构：**
-```markdown
-> **评分 7.2** · 来源：[Source](url) · 发布于 YYYY-MM-DD
->
-> 评分依据：一句话
-
-## 要点
-
-2-3 段核心信息提炼。
-
-## 🤖 AI 点评
-
-2-3 句分析视角，有观点有洞察，不复述摘要。
-```
-
-**图片处理：** 从原文提取 og:image，下载到文章同目录，frontmatter 用相对路径 `./NNN-slug.jpg`。失败则 ogImage 留空。
-
-**YAML 安全规则：** 值内禁止裸 `"`（用「」代替），避免英文冒号后紧跟空格（用中文冒号 `：`）。
-
-### Step 5: 校验
+### Step 4: 构建验证
 
 ```bash
-# 5a) Frontmatter must be valid YAML for ALL blog posts.
-node -e "
-const fs = require('fs');
-const yaml = require('./node_modules/js-yaml');
-const glob = require('fs').readdirSync('src/data/blog').flatMap(d =>
-  fs.readdirSync('src/data/blog/'+d).filter(f=>f.endsWith('.md')).map(f=>'src/data/blog/'+d+'/'+f)
-);
-let errors = [];
-for (const f of glob) {
-  const content = fs.readFileSync(f, 'utf8');
-  const m = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!m) continue;
-  try { yaml.load(m[1]); }
-  catch(e) { errors.push({ file: f, error: e.message }); }
-}
-if (errors.length) { console.error(JSON.stringify(errors, null, 2)); process.exit(1); }
-else console.log('✅ All frontmatter valid');
-"
-
-# 5b) Guardrail: scoreBreakdown must include all 4 keys (including `减分:0`).
-TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
-YESTERDAY=$(TZ=Asia/Shanghai date -d yesterday +%Y-%m-%d)
-TODAY="$TODAY" YESTERDAY="$YESTERDAY" node - <<'NODE'
-const fs = require('fs');
-const path = require('path');
-const yaml = require('./node_modules/js-yaml');
-
-const days = [process.env.TODAY, process.env.YESTERDAY].filter(Boolean);
-const bad = [];
-
-for (const day of days) {
-  const dir = path.join('src/data/blog', day);
-  if (!fs.existsSync(dir)) continue;
-  for (const name of fs.readdirSync(dir)) {
-    if (!name.endsWith('.md')) continue;
-    const fp = path.join(dir, name);
-    const content = fs.readFileSync(fp, 'utf8');
-    const m = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!m) continue;
-
-    let fm;
-    try { fm = yaml.load(m[1]) || {}; }
-    catch { continue; }
-
-    const sb = (fm.scoreBreakdown || '').toString();
-    const ok = /信息增量:\s*\d/.test(sb) && /内容质量:\s*\d/.test(sb) && /实用价值:\s*\d/.test(sb) && /减分:\s*-?\d/.test(sb);
-    if (!ok) bad.push({ file: fp, scoreBreakdown: sb });
-  }
-}
-
-if (bad.length) {
-  console.error('❌ scoreBreakdown invalid/missing (must include 信息增量/内容质量/实用价值/减分, and keep 减分:0 when none):');
-  console.error(JSON.stringify(bad, null, 2));
-  process.exit(1);
-} else {
-  console.log('✅ scoreBreakdown format OK');
-}
-NODE
-```
-
-YAML 失败则修复（`"` → `「」`，`: ` → `：`）或删除问题文件。
-
-### Step 6: 构建验证
-
-```bash
+cd /data/code/github.com/astralor/feed
 npm run build
 ```
 
-必须 0 errors 才能继续。失败则回到 Step 5 排查。
+0 errors 才继续。构建失败 → 检查生成的 .md 文件修复问题后重试。
 
-### Step 7: 提交发布
+### Step 5: 提交发布
 
 ```bash
 TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
 YESTERDAY=$(TZ=Asia/Shanghai date -d yesterday +%Y-%m-%d)
 
-# Do NOT use `git add -A` here; it can accidentally commit unrelated local changes.
-git add "src/data/blog/$TODAY" 2>/dev/null || true
-git add "src/data/blog/$YESTERDAY" 2>/dev/null || true
+git add "src/data/blog/$TODAY" "src/data/blog/$YESTERDAY" 2>/dev/null || true
 
-if git diff --cached --quiet; then
-  echo "❌ Nothing staged (no new articles?)"
-  exit 2
-fi
-
+# 安全检查：不允许提交 blog 以外的文件
 BAD=$(git diff --cached --name-only | grep -Ev "^src/data/blog/(${TODAY}|${YESTERDAY})/" || true)
 if [ -n "$BAD" ]; then
-  echo "❌ Unexpected staged files (refusing to commit):"
+  echo "❌ Unexpected staged files:"
   echo "$BAD"
   exit 2
 fi
 
-git commit -m "feed: YYYY-MM-DD HH:mm - N items from [sources]"
+git commit -m "feed: $TODAY HH:MM - N items"
 git push
 ```
 
-### Step 8: 清空 candidates
+### Step 6: 清理
 
-将 `data/candidates.json` 重置为空数组 `[]`，commit + push：
 ```bash
+cd /data/code/github.com/astralor/feed
 echo '[]' > data/candidates.json
+rm -f data/scored-results.json
 git add data/candidates.json
 git commit -m "score: clear processed candidates"
 git push
 ```
 
+## 异常处理
+
+- **子 Agent 未生成 scored-results.json**：报错，不继续
+- **generate-posts.py 报错**：检查 scored-results.json 格式是否符合 schema
+- **npm run build 失败**：检查生成的 .md frontmatter（常见：YAML 特殊字符、缺失字段）
+- **git push 冲突**：`git pull --rebase` 后重试
+
 ## 注意事项
 
-- scoreBreakdown 格式必须为 `"信息增量:N 内容质量:N 实用价值:N 减分:N"`，减分为 0 时写 `减分:0`，不可省略
-- 不要发明任何不在本文件中的评分维度
-- 每篇文章必须是独立 .md 文件，禁止聚合
-- 如果 candidates.json 为空或不存在，直接结束，不报错
+- 不要发明评分规则中没有的维度
+- 每篇文章必须是独立 .md 文件
+- 评分逻辑全部在子 Agent 中完成，主 Agent 不做评分判断
