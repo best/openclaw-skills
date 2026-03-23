@@ -1,14 +1,14 @@
 ---
 name: feed-broadcast
-version: 1.0.1
-description: "AI Feed 智能播报技能。检查新入库文章，自主判断是否值得推送，有价值时发送到 Discord。"
+version: 1.1.0
+description: "AI Feed 智能播报技能。检查新入库文章，自主判断是否值得推送，格式化后推送到指定渠道。"
 ---
 
 # Feed Broadcast Skill
 
 ## 概述
 
-检查 feed 仓库是否有新入库的文章，自主判断哪些值得推送给用户，有值得推的才发消息。
+检查 feed 仓库是否有新入库的文章，自主判断哪些值得推送，格式化后推送到 Cron Prompt 指定的渠道。
 
 ## 仓库
 
@@ -63,12 +63,18 @@ git log --since="<lastBroadcastAt>" --name-only --pretty=format: -- 'src/data/bl
 
 🔥 **标题**（8.5）
 一句话为什么值得看 + 一句 AI 点评
+<https://feed.astralor.com/posts/日期/slug/>
 
 📰 **标题**（7.2）
 一句话要点
+<https://feed.astralor.com/posts/日期/slug/>
 
-→ 全部文章：https://feed.astralor.com
+→ 全部文章：<https://feed.astralor.com>
 ```
+
+**文章链接规则：**
+- 从文件路径推导：`src/data/blog/<日期>/<文件名>.md` → `https://feed.astralor.com/posts/<日期>/<文件名>/`
+- 用 `<>` 包裹链接以抑制预览展开
 
 **表情规则：**
 - score ≥ 8.0 → 🔥
@@ -79,10 +85,7 @@ git log --since="<lastBroadcastAt>" --name-only --pretty=format: -- 'src/data/bl
 
 ### Step 5: 发送
 
-用 message 工具发送到 📡丨资讯 频道：
-```
-message(action="send", channel="discord", target="1481477340717383721", message="播报内容")
-```
+按 Cron Prompt 中指定的推送目标发送播报内容。
 
 ### Step 6: 更新状态
 
@@ -92,10 +95,7 @@ echo '{"lastBroadcastAt": "<当前 ISO 时间>"}' > /root/.openclaw/workspace/st
 
 ### Step 7: 日志
 
-用 message 工具发送简短日志到 📝丨日志：
-```
-message(action="send", channel="discord", target="1476048464008839340", message="📡 播报 HH:MM — 推送 N 条 / 跳过 M 条")
-```
+按 Cron Prompt 中指定的日志目标发送简短日志，格式：`📡 播报 HH:MM — 推送 N 条 / 跳过 M 条`
 
 ## 注意事项
 
