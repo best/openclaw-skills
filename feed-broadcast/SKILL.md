@@ -1,6 +1,6 @@
 ---
 name: feed-broadcast
-version: 1.1.0
+version: 1.1.1
 description: "AI Feed 智能播报技能。检查新入库文章，自主判断是否值得推送，格式化后推送到指定渠道。"
 ---
 
@@ -85,7 +85,9 @@ git log --since="<lastBroadcastAt>" --name-only --pretty=format: -- 'src/data/bl
 
 ### Step 5: 发送
 
-按 Cron Prompt 中指定的推送目标发送播报内容。
+用 message 工具发送播报内容。投递目标以 **Cron Prompt 中指定的频道 ID 为准**。
+
+如果 Cron Prompt 未指定投递目标，**不要从 session 上下文推断**，直接报错终止。
 
 ### Step 6: 更新状态
 
@@ -95,7 +97,11 @@ echo '{"lastBroadcastAt": "<当前 ISO 时间>"}' > /root/.openclaw/workspace/st
 
 ### Step 7: 日志
 
-按 Cron Prompt 中指定的日志目标发送简短日志，格式：`📡 播报 HH:MM — 推送 N 条 / 跳过 M 条`
+用 message 工具发送简短日志。日志目标以 **Cron Prompt 中指定的日志频道 ID 为准**。
+
+格式：`📡 播报 HH:MM — 推送 N 条 / 跳过 M 条`
+
+如果 Cron Prompt 未指定日志目标，跳过日志发送（不报错）。
 
 ## 注意事项
 
