@@ -12,7 +12,7 @@ OpenClaw agent skills for autonomous development workflows.
 |-------|-------------|---------|
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.3.1 |
-| [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.1 |
+| [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v0.8.0 |
 | [evolution-engine](./evolution-engine/) | PCEC v3 — anti-entropy self-evolution engine | v1.3.0 |
 | [feed-collect](./feed-collect/) | AI news feed source collection and candidate extraction | v1.0.1 |

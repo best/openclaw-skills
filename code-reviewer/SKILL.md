@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-version: 0.1.1
+version: 0.1.2
 description: "Standardized code review checklist for AI-generated code. Supports both local diff and PR review workflows."
 ---
 
@@ -21,7 +21,7 @@ Review code against a standardized checklist. Works in two modes: local diff rev
 
 ## Mode A: Local Diff Review
 
-For reviewing code before pushing (used by cc-iterator self-check):
+For reviewing code before pushing:
 
 1. `git diff main..HEAD --stat` to see changed files
 2. Review each changed file against checklist
@@ -69,5 +69,5 @@ For review-engineer cron patrol or manual PR review:
 ## Integration Notes
 
 - The review-engineer cron patrol embeds the PR workflow inline — this skill provides the detailed checklist reference
-- When reviewing CC-generated code, pay extra attention to: test coverage gaps, over-abstraction, hardcoded paths
+- When reviewing AI-generated code, pay extra attention to: test coverage gaps, over-abstraction, hardcoded paths
 - Review cadence: every 3-4 development issues, consider a batch cross-file review for architectural consistency
