@@ -22,7 +22,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.0 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.0 |
-| [wechat-article-fetcher](./wechat-article-fetcher/) | Fetch and extract content from WeChat Official Account articles | v1.0.1 |
+| [wechat-article-fetcher](./wechat-article-fetcher/) | Fetch and extract content from WeChat Official Account articles | v1.0.2 |
 | [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.5.0 |
 
 ## Install

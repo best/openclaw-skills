@@ -1,7 +1,7 @@
 ---
 name: wechat-article-fetcher
 description: Fetch and extract content from WeChat Official Account (微信公众号) articles. Use when a user provides a mp.weixin.qq.com URL and wants to read, extract, summarize, or archive the article. Supports full text extraction, metadata (title, account name, author, publish time), and image downloading. Also use when comparing WeChat article content or ingesting 公众号 articles into other workflows.
-version: 1.0.1
+version: 1.0.2
 ---
 
 # WeChat Article Fetcher

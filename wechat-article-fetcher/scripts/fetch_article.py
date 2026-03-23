@@ -29,7 +29,7 @@ import sys
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
+    "Chrome/131.0.0.0 Safari/537.36"
 )
 
 
@@ -333,13 +333,17 @@ def main():
     # Prepare output directory
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Write Markdown
+    # Write Markdown — escape double quotes in YAML values to prevent injection
+    def yaml_escape(val: str) -> str:
+        """Escape a string for use in YAML double-quoted scalars."""
+        return val.replace("\\", "\\\\").replace('"', '\\"')
+
     md_header = f"""---
-title: "{meta.get('title', 'Untitled')}"
-account: "{meta.get('account', 'Unknown')}"
-author: "{meta.get('author', '')}"
-date: "{meta.get('publish_time', '')}"
-source: "{args.url}"
+title: "{yaml_escape(meta.get('title', 'Untitled'))}"
+account: "{yaml_escape(meta.get('account', 'Unknown'))}"
+author: "{yaml_escape(meta.get('author', ''))}"
+date: "{yaml_escape(meta.get('publish_time', ''))}"
+source: "{yaml_escape(args.url)}"
 ---
 
 """
