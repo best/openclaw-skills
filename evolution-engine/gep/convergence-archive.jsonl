@@ -49,3 +49,4 @@
 {"id": "ct_037", "ts": "2026-03-19T01:00:00Z", "category": "system-health", "signal": "记忆整合 edit idempotency fix", "status": "converged", "converged_at": "evt_176"}
 {"id":"ct_037","ts":"2026-03-19T01:00:00Z","category":"system-health","signal":"记忆整合 cron failed with edit mismatch on SOUL.md","action":"Cron prompt updated: edit idempotency + read-before-edit + one retry","status":"converged","converged_at":"evt_176","archived_at":"evt_177"}
 {"id":"ct_047","ts":"2026-03-22T10:00:00Z","category":"behavioral-drift","signal":"Credential leak in daily log","action":"Redacted 6 values","status":"converged","converged_at":"evt_179"}
+{"id":"ct_048","ts":"2026-03-23T07:00:00Z","category":"human-intervention","signal":"feed-broadcast 串台: delivery delegation without explicit target","action":"Dual-explicit principle grounded + Cron targets fixed + SKILL.md v1.1.1 enforced fail-on-missing-target","status":"converged","converged_at":"evt_182","cycles_observed":3}
