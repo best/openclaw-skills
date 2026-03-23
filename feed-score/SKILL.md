@@ -1,12 +1,12 @@
 ---
 name: feed-score
-version: 2.0.1
-description: "AI Feed 评分与发布技能。读取 candidates.json，spawn 评分子 Agent 执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
+version: 2.1.0
+description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 ---
 
 # Feed Score Skill
 
-编排式评分发布：主 Agent 准备和发布，子 Agent 评分判断，脚本生成 .md。
+单 Agent 评分发布：读取评分规则 → 评分 → 脚本生成 .md → 构建验证 → 发布。
 
 ## 路径
 
@@ -24,17 +24,14 @@ git pull --rebase
 
 读取 `data/candidates.json`。为空或 `[]` → 直接结束（无候选）。
 
-### Step 2: Spawn 评分子 Agent
+### Step 2: 评分
 
-```
-sessions_spawn(
-  runtime: "subagent",
-  mode: "run",
-  model: "zai/glm-5-turbo",
-  task: "你是 AI Feed 评分员。读取评分规则 /data/code/github.com/best/openclaw-skills/feed-score/references/scoring-rules.md，评分 /data/code/github.com/astralor/feed/data/candidates.json 中的候选文章，结果按 schema 写入 /data/code/github.com/astralor/feed/data/scored-results.json"
-)
-sessions_yield()
-```
+读取评分规则和去重上下文：
+- `references/scoring-rules.md` — 评分维度、阈值、JSON schema
+- `data/seen.json` — URL 去重
+- 最近 7 天 `src/data/blog/*/` 文章标题 — 语义去重
+
+按 scoring-rules.md 的规则评估每篇候选，将完整结果写入 `data/scored-results.json`。
 
 ### Step 3: 生成 .md
 
@@ -80,7 +77,6 @@ git push
 
 ## 异常处理
 
-- **子 Agent 未生成 scored-results.json** → 报错，不继续
 - **generate-posts.py 报错** → 检查 scored-results.json 是否符合 references/scoring-rules.md 中的 schema
-- **npm run build 失败** → 检查 .md frontmatter（常见：YAML 特殊字符）
+- **npm run build 失败** → 检查 .md frontmatter（常见：YAML 特殊字符未转义）
 - **git push 冲突** → `git pull --rebase` 后重试

@@ -17,7 +17,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [evolution-engine](./evolution-engine/) | PCEC v3 — anti-entropy self-evolution engine | v1.3.0 |
 | [feed-collect](./feed-collect/) | AI news feed source collection and candidate extraction | v1.0.1 |
 | [feed-broadcast](./feed-broadcast/) | AI news feed smart broadcast with push/skip judgment | v1.1.0 |
-| [feed-score](./feed-score/) | AI news feed scoring, dedup, Markdown generation and publishing | v2.0.1 |
+| [feed-score](./feed-score/) | AI news feed scoring, dedup, Markdown generation and publishing | v2.1.0 |
 | [gemini-image-gen](./gemini-image-gen/) | Image generation and editing with Gemini API + provider fallback | v1.0.0 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.0 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
