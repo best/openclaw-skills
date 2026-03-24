@@ -1,18 +1,36 @@
 ---
 name: feed-collect
-version: 1.0.3
-description: "AI Feed 采集技能。从 14 个信息源采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
+version: 2.0.1
+description: "AI Feed 采集技能。从 Miniflux 聚合器 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
 # Feed Collect Skill
 
 ## 概述
 
-从 14 个信息源采集 AI 领域新内容，URL 去重后写入 `data/candidates.json`，供 feed-score 技能评分。
+从 Miniflux RSS 聚合器拉取增量文章，辅以 Hacker News API 和 GitHub Trending，URL 去重后写入 `data/candidates.json`，供 feed-score 技能评分。
 
 ## 仓库
 
 - **路径**: `/data/code/github.com/astralor/feed`
+
+## 数据源架构
+
+```
+Miniflux (26 feeds) ─── 主力，一次 API 调用拿全部增量
+Hacker News API ─────── 补充，社区热点
+GitHub Trending ─────── 补充，开源项目趋势
+```
+
+### Miniflux 订阅源（26 个 feed，5 个分类）
+
+| 分类 | 源 |
+|------|-----|
+| AI Labs (7) | OpenAI · Google AI · Microsoft Research · Anthropic ×2 · DeepMind · Meta AI |
+| Tech Media (6) | TechCrunch · The Verge · Wired · Ars Technica · VentureBeat · MIT Tech Review |
+| Chinese Tech (5) | 36kr 快讯 · 36kr 科技 · AIbase · 虎嗅 · 少数派 |
+| Academic (3) | arXiv cs.AI · cs.CL · cs.LG |
+| Developer (5) | HuggingFace · PyTorch · GitHub Blog · Simon Willison · Lilian Weng |
 
 ## 执行流程
 
@@ -23,9 +41,7 @@ cd /data/code/github.com/astralor/feed
 git pull --rebase
 ```
 
-**seen.json 结构校验（必做，防止去重库被写坏）：**
-- `data/seen.json` 必须是一个 JSON 对象，且包含 `entries` 字典
-- 如果发现 `data/seen.json` 是数组（历史 bug 会把 URL 写成数组），必须先迁移再继续
+**seen.json 结构校验（必做）：**
 
 ```bash
 python3 - <<'PY'
@@ -35,7 +51,6 @@ from datetime import datetime, timezone, timedelta
 
 p = Path('data/seen.json')
 
-# Load
 if p.exists():
     data = json.loads(p.read_text('utf-8'))
 else:
@@ -44,17 +59,14 @@ else:
 now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 date_cst = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
 
-# Migrate legacy/corrupt list schema -> object schema
 if isinstance(data, list):
     urls = [x for x in data if isinstance(x, str) and x.startswith('http')]
-    # Dedup while preserving order
     uniq = list(dict.fromkeys(urls))
     data = {
         'description': 'URL/title dedup store for AI Feed collection. Schema: object with entries dict.',
         'entries': {u: {'seen_at': now_utc, 'date': date_cst, 'title': ''} for u in uniq},
     }
 
-# Initialize empty store
 if data == {}:
     data = {
         'description': 'URL/title dedup store for AI Feed collection. Schema: object with entries dict.',
@@ -62,50 +74,78 @@ if data == {}:
     }
 
 if not isinstance(data, dict) or not isinstance(data.get('entries'), dict):
-    raise SystemExit('Invalid data/seen.json schema. Must be an object with entries dict.')
+    raise SystemExit('Invalid data/seen.json schema.')
 
 p.write_text(json.dumps(data, ensure_ascii=True, indent=2) + '\n', 'utf-8')
 print('✅ seen.json schema ok; entries =', len(data['entries']))
 PY
 ```
 
-### Step 2: 采集
+### Step 2: 从 Miniflux 拉取增量
 
-**⚠️ 所有 14 个源必须逐个请求，不允许跳过任何一个。**
+用一次 API 调用拉取所有未读文章：
 
-只采集**最近 48 小时内发布**的内容（官方博客可放宽到 7 天）。
+```bash
+curl -sf "https://rss.astralor.com/v1/entries?status=unread&order=published_at&direction=desc&limit=200" \
+  -u "admin:${MINIFLUX_API_KEY}"
+```
 
-| # | 源 | 方法 | URL |
-|---|------|------|-----|
-| 1 | Anthropic | `web_fetch` | `https://www.anthropic.com/research` |
-| 2 | OpenAI | `web_search` | `site:openai.com/index`（freshness:day，无结果补 week） |
-| 3 | DeepMind | `web_fetch` RSS | `https://deepmind.google/blog/rss.xml` |
-| 4 | Meta AI | `web_search` | `site:ai.meta.com/blog` |
-| 5 | Hacker News | `web_fetch` API | `https://hn.algolia.com/api/v1/search_by_date?query=AI+LLM+agent+model&tags=story&numericFilters=points>30&hitsPerPage=20` |
-| 6 | GitHub Trending | `web_fetch` | `https://github.com/trending`（过滤 AI 相关） |
-| 7 | TechCrunch AI | `web_fetch` RSS | `https://techcrunch.com/category/artificial-intelligence/feed/` |
-| 8 | Wired AI | `web_fetch` RSS | `https://www.wired.com/feed/tag/ai/latest/rss` |
-| 9 | HuggingFace Blog | `web_fetch` RSS | `https://huggingface.co/blog/feed.xml` |
-| 10 | MIT Tech Review | `web_fetch` RSS | `https://www.technologyreview.com/feed/` |
-| 11 | Simon Willison | `web_fetch` Atom | `https://simonwillison.net/atom/everything/` |
-| 12 | arXiv | `web_fetch` API | `https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG&sortBy=submittedDate&max_results=20` |
-| 13 | 36kr AI | `web_fetch` | `https://36kr.com/information/AI/` |
-| 14 | 动态搜索 | `web_search` | 基于前面源发现的热点趋势补充搜索 |
+> 环境变量 `MINIFLUX_API_KEY` 已配置在 OpenClaw env.vars 中，exec 自动注入。
 
-- `web_fetch` 失败时 fallback 到 `web_search`
-- RSS/Atom 源解析 `<item>` 或 `<entry>` 提取标题、链接、发布日期
+**响应结构：**
+```json
+{
+  "total": 100,
+  "entries": [
+    {
+      "id": 123,
+      "title": "...",
+      "url": "https://...",
+      "content": "HTML全文或摘要",
+      "published_at": "2026-03-24T10:00:00Z",
+      "feed": {
+        "id": 1,
+        "title": "OpenAI News",
+        "category": {"title": "AI Labs"}
+      }
+    }
+  ]
+}
+```
 
-### Step 3: URL 去重
+**处理逻辑：**
+- 用 `exec` 调用 curl 获取 JSON，再用 Python 脚本处理
+- 如果 `total > 200`，用 `offset` 参数分页拉取
+- 提取每条 entry 的 `title`、`url`、`content`、`published_at`、`feed.title`、`feed.category.title`
+
+### Step 3: 补充源采集
+
+#### Hacker News（Algolia API）
+
+```
+web_fetch: https://hn.algolia.com/api/v1/search_by_date?query=AI+LLM+agent+model&tags=story&numericFilters=points>30&hitsPerPage=20
+```
+
+#### GitHub Trending
+
+```
+web_fetch: https://github.com/trending
+```
+过滤 AI/ML 相关项目（关键词匹配 description）。
+
+- 两个补充源失败时跳过，不阻塞主流程
+
+### Step 4: URL 去重
 
 **URL 归一化（去重前必须执行）：**
 - arXiv：统一为 `https://arxiv.org/abs/XXXX.XXXXX`（去掉 `pdf/`、`export.arxiv.org`、版本号 `vN`）
 - 去除 URL 尾部的 `#` 锚点和 `?utm_*` 跟踪参数
 
-对每条采集到的素材，用归一化后的 URL 检查是否在 `data/seen.json` 的 `entries` 中：
+对每条素材，用归一化后的 URL 检查 `data/seen.json` 的 `entries`：
 - 已存在 → 跳过
-- 不存在 → 加入候选列表（写入 seen.json 也用归一化后的 URL）
+- 不存在 → 加入候选列表
 
-### Step 4: 输出 candidates.json
+### Step 5: 输出 candidates.json
 
 将所有新候选**追加**到 `data/candidates.json`（文件可能已有之前未处理的候选）。
 
@@ -114,22 +154,66 @@ PY
   {
     "title": "文章标题",
     "url": "https://...",
-    "source": "Hacker News",
-    "sourceType": "hacker-news",
-    "pubDatetime": "2026-03-18T08:00:00+08:00",
+    "source": "OpenAI News",
+    "sourceType": "openai-blog",
+    "category": "AI Labs",
+    "pubDatetime": "2026-03-24T10:00:00Z",
     "snippet": "正文关键摘录（300-600字，包含核心数据和关键信息）",
-    "collectedAt": "2026-03-18T09:30:00+08:00"
+    "collectedAt": "2026-03-24T09:30:00+08:00"
   }
 ]
 ```
 
-**snippet 要求：** 必须包含足够信息让评分 agent 判断质量。不是一句话摘要，而是关键段落的提炼。包含具体数据、技术参数、对比信息等。
+**snippet 生成规则：**
+- Miniflux 条目的 `content` 字段已有 HTML 全文/摘要
+- 用 Python 去除 HTML 标签，截取前 300-600 字符作为 snippet
+- 包含具体数据、技术参数、对比信息
+- HN/GitHub Trending 的 snippet 可从标题+描述生成
 
-**pubDatetime 提取：** 优先从 `<time>` 标签、`datePublished` meta、RSS 时间戳提取。无法获取时用采集时间。
+**sourceType 映射表：**
 
-**sourceType 枚举：** `anthropic-blog`, `openai-blog`, `deepmind-blog`, `meta-ai-blog`, `hacker-news`, `github-trending`, `arxiv`, `techcrunch`, `wired`, `huggingface-blog`, `mit-tech-review`, `simon-willison`, `rss`, `36kr`, `web-search`, `other`
+| feed.title 包含 | sourceType |
+|----------------|------------|
+| Anthropic | anthropic-blog |
+| OpenAI | openai-blog |
+| DeepMind | deepmind-blog |
+| Meta AI | meta-ai-blog |
+| Google AI / "AI" (Google) | google-ai-blog |
+| Microsoft | microsoft-research |
+| TechCrunch | techcrunch |
+| Verge | the-verge |
+| Wired | wired |
+| Ars Technica | ars-technica |
+| VentureBeat | venturebeat |
+| MIT | mit-tech-review |
+| arXiv | arxiv |
+| 36氪 | 36kr |
+| AIbase / AI日报 | aibase |
+| 虎嗅 | huxiu |
+| 少数派 | sspai |
+| Hugging Face | huggingface-blog |
+| PyTorch | pytorch-blog |
+| GitHub Blog | github-blog |
+| Simon Willison | simon-willison |
+| Lil'Log / Lilian | lilian-weng |
+| Hacker News | hacker-news |
+| GitHub Trending | github-trending |
+| 其他 | other |
 
-### Step 5: 更新 seen.json
+**category 字段：** 直接使用 Miniflux 的 `feed.category.title`（AI Labs / Tech Media / Chinese Tech / Academic / Developer）。HN 用 `Community`，GitHub Trending 用 `Developer`。
+
+### Step 6: 标记 Miniflux 已读
+
+处理完成后，批量标记已处理的 entry 为已读：
+
+```bash
+curl -sf -X PUT "https://rss.astralor.com/v1/entries" \
+  -u "admin:${MINIFLUX_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"entry_ids": [123, 456, 789], "status": "read"}'
+```
+
+### Step 7: 更新 seen.json
 
 将新候选的 URL 和标题写入 `data/seen.json`：
 
@@ -137,8 +221,8 @@ PY
 {
   "entries": {
     "https://...": {
-      "seen_at": "2026-03-18T09:30:00Z",
-      "date": "2026-03-18",
+      "seen_at": "2026-03-24T09:30:00Z",
+      "date": "2026-03-24",
       "title": "文章标题"
     }
   }
@@ -147,7 +231,7 @@ PY
 
 清理超过 30 天的旧条目。
 
-**写入后再次做结构校验（不通过则停止并修复，不要 commit 坏文件）：**
+**写入后结构校验：**
 ```bash
 python3 - <<'PY'
 import json
@@ -155,16 +239,15 @@ from pathlib import Path
 p = Path('data/seen.json')
 data = json.loads(p.read_text('utf-8'))
 if not isinstance(data, dict) or not isinstance(data.get('entries'), dict):
-    raise SystemExit('Invalid data/seen.json schema after write. Do NOT commit.')
-# Sanity: URLs must live under entries, not top-level
+    raise SystemExit('Invalid data/seen.json schema after write.')
 bad = [k for k in data.keys() if isinstance(k, str) and k.startswith('http')]
 if bad:
-    raise SystemExit('Invalid data/seen.json: found top-level URL keys (must be under entries).')
+    raise SystemExit('Found top-level URL keys (must be under entries).')
 print('✅ seen.json post-write validation ok; entries =', len(data['entries']))
 PY
 ```
 
-### Step 6: 提交
+### Step 8: 提交
 
 ```bash
 git add data/candidates.json data/seen.json
@@ -176,8 +259,10 @@ git push
 
 ## 注意事项
 
-- 效率优先，不要在单个源上花太多时间
-- 采集阶段**不做质量判断**，只管拿到内容，质量筛选由 feed-score 负责
+- **效率优先**：Miniflux 一次调用替代原来 14 次逐源爬取
+- 采集阶段**不做质量判断**，质量筛选由 feed-score 负责
 - candidates.json 是追加模式，不要覆盖已有内容
-- **禁止**把 `data/seen.json` 写成数组或把 URL 写到 JSON 顶层；去重库写坏会导致重复内容泛滥
-- **禁止使用 `edit` 工具**修改 feed 仓库中的任何文件。所有文件读写必须通过 Step 中指定的 `exec` + Python 脚本完成。`edit` 工具无法可靠处理 JSON 数据文件，会导致 oldText 匹配失败
+- **禁止**把 `data/seen.json` 写成数组或把 URL 写到 JSON 顶层
+- **禁止使用 `edit` 工具**修改 feed 仓库中的任何文件，用 `exec` + Python 脚本
+- Miniflux API 认证：HTTP Basic Auth `admin:${MINIFLUX_API_KEY}`（环境变量自动注入）
+- 标记已读很重要，否则下次会重复拉取
