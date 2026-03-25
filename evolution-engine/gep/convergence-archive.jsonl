@@ -52,3 +52,21 @@
 {"id":"ct_048","ts":"2026-03-23T07:00:00Z","category":"human-intervention","signal":"feed-broadcast 串台: delivery delegation without explicit target","action":"Dual-explicit principle grounded + Cron targets fixed + SKILL.md v1.1.1 enforced fail-on-missing-target","status":"converged","converged_at":"evt_182","cycles_observed":3}
 {"id":"ct_049","ts":"2026-03-23T10:00:00Z","category":"system-health","signal":"feed-collect cron failed: GLM model used edit tool with 3-char oldText on feed repo file instead of prescribed exec/python workflow.","action":"Added explicit forbid edit tool guardrail to feed-collect SKILL.md v1.0.3.","status":"converged","converged_at":"evt_184","cycles_observed":3}
 {"id":"ct_050","ts":"2026-03-23T13:00:00Z","category":"system-health","signal":"OpenClaw 版本更新检查 cron error: consecutiveErrors 1, lastDeliveryError Message failed.","action":"Observation only — single occurrence. Monitor for recurrence.","status":"converged","converged_at":"evt_185","evidence":"3 clean cycles (evt_183→evt_185), version-check cron running normally, consecutiveErrors 0."}
+{"id":"ct_033","archived_at":"evt_192","status":"converged","signal":"PCEC cron timeout from large daily logs","converged_at":"evt_158"}
+{"id":"ct_034","archived_at":"evt_192","status":"converged","signal":"feed-score incomplete scoreBreakdown + git add -A risk","converged_at":"evt_157"}
+{"id":"ct_035","archived_at":"evt_192","status":"converged","signal":"Heartbeat misdiagnosed SIGUSR1 as crash pattern","converged_at":"evt_158"}
+{"id":"ct_036","archived_at":"evt_192","status":"converged","signal":"GLM-5-turbo cron timeout without lightContext","converged_at":"evt_158"}
+{"id":"ct_037","archived_at":"evt_192","status":"converged","signal":"记忆整合 edit mismatch on SOUL.md","converged_at":"evt_176"}
+{"id":"ct_038","archived_at":"evt_192","status":"converged","signal":"feed-collect/score timeout at 600s","converged_at":"evt_158"}
+{"id":"ct_039","archived_at":"evt_192","status":"converged","signal":"Scripted error-handling rejected in cron prompts","converged_at":"evt_158"}
+{"id":"ct_040","archived_at":"evt_192","status":"converged","signal":"Nested lane concurrency bug (maxConcurrentRuns no-op)","converged_at":"evt_162"}
+{"id":"ct_041","archived_at":"evt_192","status":"converged","signal":"feed-score wrong path before reading SKILL.md","converged_at":"evt_162"}
+{"id":"ct_042","archived_at":"evt_192","status":"converged","signal":"ENOENT daily log errors from cron agents","converged_at":"evt_164"}
+{"id":"ct_043","archived_at":"evt_192","status":"converged","signal":"Feed播报 timeout without lightContext","converged_at":"evt_165"}
+{"id":"ct_044","archived_at":"evt_192","status":"converged","signal":"Thread归档 timeout at 300s","converged_at":"evt_171"}
+{"id":"ct_045","archived_at":"evt_192","status":"converged","signal":"Thread归档 wrong SKILL.md path with lightContext","converged_at":"evt_172"}
+{"id":"ct_046","archived_at":"evt_192","status":"converged","signal":"ZAI glm-5-turbo sporadic parameter drop","converged_at":"evt_173"}
+{"id":"ct_047","archived_at":"evt_192","status":"converged","signal":"Credential leak in daily log","converged_at":"evt_179"}
+{"id":"ct_048","archived_at":"evt_192","status":"converged","signal":"feed-broadcast delivery delegation串台","converged_at":"evt_182"}
+{"id":"ct_049","archived_at":"evt_192","status":"converged","signal":"feed-collect GLM used edit instead of exec/python","converged_at":"evt_184"}
+{"id":"ct_050","archived_at":"evt_192","status":"converged","signal":"版本检查 cron single delivery failure","converged_at":"evt_185"}
