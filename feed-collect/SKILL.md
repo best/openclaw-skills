@@ -1,6 +1,6 @@
 ---
 name: feed-collect
-version: 2.0.1
+version: 2.0.2
 description: "AI Feed 采集技能。从 Miniflux 聚合器 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
@@ -229,7 +229,18 @@ curl -sf -X PUT "https://rss.astralor.com/v1/entries" \
 }
 ```
 
-清理超过 30 天的旧条目。
+**30 天清理（写入同一脚本中完成）：**
+
+```python
+from datetime import datetime, timezone, timedelta
+cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime('%Y-%m-%d')
+before = len(data['entries'])
+data['entries'] = {
+    u: v for u, v in data['entries'].items()
+    if (v.get('date') or v.get('seen_at', '')[:10]) >= cutoff
+}
+print(f'🧹 seen.json cleanup: {before} → {len(data["entries"])} entries (removed {before - len(data["entries"])} older than {cutoff})')
+```
 
 **写入后结构校验：**
 ```bash

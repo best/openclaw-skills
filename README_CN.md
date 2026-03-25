@@ -15,7 +15,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v0.8.0 |
 | [evolution-engine](./evolution-engine/) | PCEC v3 — 反熵自我进化引擎 | v1.3.0 |
-| [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux API + HN + GitHub Trending） | v2.0.1 |
+| [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux API + HN + GitHub Trending） | v2.0.2 |
 | [feed-broadcast](./feed-broadcast/) | AI 信息流智能播报（自主判断推送/跳过） | v1.1.1 |
 | [feed-collector](./feed-collector/) | AI 信息流采集（已废弃 → feed-collect + feed-score） | v1.13.1 |
 | [feed-score](./feed-score/) | AI 信息流评分、去重、Markdown 生成与发布 | v2.1.0 |
