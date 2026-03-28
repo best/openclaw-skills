@@ -1,6 +1,6 @@
 ---
 name: feed-collect
-version: 2.0.2
+version: 2.0.3
 description: "AI Feed 采集技能。从 Miniflux 聚合器 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
@@ -13,6 +13,15 @@ description: "AI Feed 采集技能。从 Miniflux 聚合器 + HN API + GitHub Tr
 ## 仓库
 
 - **路径**: `/data/code/github.com/astralor/feed`
+
+## ⛔ Git 操作硬性约束
+
+- ✅ 允许：`git add data/candidates.json data/seen.json`
+- ❌ **严禁**：`git add -A`、`git add .`、`git add --all`
+- ❌ **严禁**：添加 `data/` 目录以外的任何文件
+- ❌ **严禁**：在 `/root/.openclaw/workspace` 目录下执行任何 git 操作
+- 遇到 git 冲突时：只用 `git checkout --theirs data/` 解决，不要用 `git add -A`
+- 仓库路径必须是 `/data/code/github.com/astralor/feed`，不是 workspace
 
 ## 数据源架构
 

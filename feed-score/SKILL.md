@@ -13,6 +13,15 @@ description: "AI Feed 评分与发布技能。读取 candidates.json，执行三
 - **仓库**: `/data/code/github.com/astralor/feed`
 - **技能**: `/data/code/github.com/best/openclaw-skills/feed-score`
 
+## ⛔ Git 操作硬性约束
+
+- ✅ 允许：`git add src/data/blog/` `git add data/candidates.json` `git add data/scored-results.json`
+- ❌ **严禁**：`git add -A`、`git add .`、`git add --all`
+- ❌ **严禁**：添加 `data/` 和 `src/data/blog/` 以外的任何文件
+- ❌ **严禁**：在 `/root/.openclaw/workspace` 目录下执行任何 git 操作
+- 遇到 git 冲突时：只用 `git checkout --theirs data/` 解决，不要用 `git add -A`
+- 仓库路径必须是 `/data/code/github.com/astralor/feed`，不是 workspace
+
 ## 执行流程
 
 ### Step 1: 准备
