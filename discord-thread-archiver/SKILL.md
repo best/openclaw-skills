@@ -1,130 +1,77 @@
 ---
 name: discord-thread-archiver
-version: 0.9.0
-description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent reads thread messages, judges conversation status, and returns structured verdicts."
+version: 1.0.0
+description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent lists active threads, reads messages, judges conversation status, archives resolved threads, and produces a structured report."
 ---
 
 # Discord Thread Archiver
 
-Evaluate active Discord threads and judge whether conversations have concluded. This skill handles **judgment only** — the caller decides how to act on results (archive, report, notify).
+Scan active Discord threads, judge whether conversations have concluded, archive resolved ones, and produce a structured report.
 
-## Procedure
+## Parameters
 
-### 1. List threads (ONE call per guild)
+The caller provides:
+- `guildId` — Discord guild to scan
+- `logChannel` — Channel ID for the report
 
-Call `thread-list` exactly **once** with `guildId`. This returns ALL active threads across every channel in the guild. Do NOT loop over channels — that produces duplicate data and wastes tokens.
+## Workflow
+
+### 1. List threads
+
+Call `thread-list` exactly **once** with the provided `guildId`. This returns ALL active threads across every channel. Do NOT loop over channels.
 
 ```
-message(action="thread-list", channel="discord", guildId="<guild>")
+message(action="thread-list", channel="discord", guildId="<guildId>")
 ```
 
-If the result is empty (no active threads), return immediately with an empty verdict list.
+If empty → send "⏸️ 无 Thread" report (see format below) and stop.
 
-### 2. Skip pinned threads
+### 2. Evaluate each thread
 
-Only skip threads with `last_pin_timestamp` present — these are explicitly marked for retention. Mark them as `skipped (pinned)`.
+Skip threads with `last_pin_timestamp` present → mark `skipped (pinned)`.
 
-All other threads proceed to AI judgment.
-
-### 3. AI judgment — read messages and decide
-
-For every non-pinned thread, read the last 5 messages:
-
+For all others, read the last 5 messages:
 ```
 message(action="read", channel="discord", target="channel:<thread_id>", limit=5)
 ```
 
-#### 3a. Bot-only lookback
+Apply judgment rules:
+- **Bot-only lookback**: All 5 from bots → expand to limit=20 to check for earlier human participation
+- **24h recency protection**: Last message within 24h → only archive with explicit closure signal
+- **Classification**: Resolved with confirmation → archive; open/uncertain → keep
 
-If the last 5 messages are **all from bots** (no human messages in the window), read more messages to check for human participation earlier in the thread:
+For detailed criteria, examples, and edge cases: read `references/judgment-guide.md`
 
+### 3. Archive
+
+For each thread judged **archive**, run the archive script:
+```bash
+bash <skill_dir>/scripts/archive-thread.sh <thread_id>
 ```
-message(action="read", channel="discord", target="channel:<thread_id>", limit=20)
+Pause 0.5s between calls. Non-2xx response → note in report (e.g. "403 权限不足").
+
+### 4. Report
+
+**When threads exist** (regardless of whether any were archived):
+```
+🗂️ Thread 归档 · HH:MM
+✅ thread名 — 归档：一句话原因
+⏸️ thread名 — 保留：一句话原因
+⏭️ thread名 — 跳过(pinned)
+归档 X / 保留 Y / 跳过 Z
 ```
 
-- If human messages are found in the expanded window → this is a **human-bot collaboration thread** where the bot was recently doing work (exec outputs, research, tool calls). The human initiated the discussion and may still be engaged. Verdict: **keep**, unless there is an explicit closure signal.
-- If still no human messages after 20 → truly a bot-only thread (e.g. automated notifications). Proceed to classification normally.
+**When thread-list returned empty**:
+```
+🗂️ Thread 归档 · HH:MM
+⏸️ 无 Thread
+```
 
-#### 3b. Recency protection
+Every evaluated thread MUST appear in the report with its verdict icon. Use only the icons that apply to each thread.
 
-Compare the thread's last message timestamp against the current time:
+### 5. Deliver
 
-- **Last message within 24h** → only archive if there is an **explicit closure signal** (thanks, confirmation, "done", "结束", "搞定了"). Do NOT archive based on "all bot messages" or inactivity alone. Recent threads are likely still active.
-- **Last message older than 24h** → classify normally using the table below.
-
-This is the ONLY time-based rule. Do not invent additional time thresholds.
-
-#### 3c. Classification
-
-| Verdict | Criteria |
-|---------|----------|
-| **archive** | Clear resolution: thanks/confirmation, question answered, explicit "done"/"结束", or notification consumed with no follow-up needed |
-| **archive** | All messages from bots after lookback (3a), no human participation at all, AND last message older than 24h (3b) |
-| **keep** | Open question unanswered, action items pending, waiting for response, active discussion |
-| **keep** | Last message implies a next step: "wait for results", "let's see", "看看效果", "等结果", "触发一下" — a completed sub-task does NOT mean the discussion is over |
-| **keep** | Bot/assistant sent a proposal, analysis, or question but the human hasn't replied yet — they may be busy, not disengaged |
-| **keep** | Human-bot collaboration thread identified by lookback (3a) — bot was doing work on behalf of human |
-| **keep** | Thread is within 24h recency protection (3b) and has no explicit closure signal |
-| **keep** | Can't determine from messages read |
-
-**When in doubt, keep the thread.** Archiving a live conversation is worse than keeping a finished one.
-
-**Critical rule:** "task completed" means the *entire discussion's purpose* is resolved with explicit human confirmation, not that a single action or sub-step was performed. A user not responding ≠ conversation over — humans have other things to do.
-
-**Anti-hallucination guard:** Use ONLY the criteria listed in the table above plus rules 3a (lookback) and 3b (24h recency protection). Do NOT invent additional time thresholds (e.g. "48h inactive", "1 week old"), activity metrics, cross-thread relationships (e.g. "absorbed by another thread"), or any rules not explicitly written in this document. Each thread is judged independently. If the table doesn't cover a case, the verdict is **keep**.
-
-For each thread, produce a verdict with a one-sentence reason summarizing what was observed in the messages.
-
-### Examples
-
-**✅ Correct: archive**
-
-> Thread: "CI 构建失败排查"
-> Last messages: Bot found the issue → User: "好了，问题解决了，谢谢"
-> Verdict: archive — user explicitly confirmed resolution
-
-> Thread: "版本发布通知"
-> Last messages: Bot posted changelog, no human replied, all messages are from bot
-> Verdict: archive — all messages from bots, no human participation
-
-**✅ Correct: keep**
-
-> Thread: "服务器搭建讨论"
-> Last messages: Bot proposed a plan and asked "你觉得用方案 A 还是方案 B？"
-> Verdict: keep — bot asked a question, waiting for user response
-
-> Thread: "密钥配置"
-> Last messages: Bot gave user an SSH public key and said "你把这个加到目标机器上就行，然后告诉我端口"
-> Verdict: keep — action item pending on user side, waiting for response
-
-> Thread: "架构规划"
-> Last messages: Bot outlined a directory structure and asked "仓库名字叫 X 可以吗？还是你想叫别的？"
-> Verdict: keep — bot asked a decision question, user hasn't replied yet
-
-**✅ Correct: keep (lookback + recency)**
-
-> Thread: "API 供应商评估"
-> Last 5 messages: All bot exec logs (research outputs, API checks)
-> Lookback (20 msgs): Human initiated discussion and participated earlier
-> Recency: Last message within 24h
-> Verdict: keep — human-bot collaboration thread, bot was doing research; human initiated and may still be engaged
-
-**❌ Wrong: common mistakes**
-
-> Thread: "基础设施讨论"
-> Wrong verdict: archive — "topic absorbed by another related thread, no reply for 1.5 hours"
-> Why wrong: (1) cross-thread reasoning is forbidden (2) time threshold is invented (3) bot's last message asked a question → should be keep
-
-> Thread: "部署方案讨论"
-> Wrong verdict: archive — "bot completed the deployment task"
-> Why wrong: a sub-task completing ≠ entire discussion resolved; user hasn't confirmed the discussion is done
-
-> Thread: "供应商续费讨论"
-> Wrong verdict: archive — "all 5 messages from bot, no human participation"
-> Why wrong: only looked at 5 messages; human started the discussion and was actively involved; bot messages were exec outputs from doing research on behalf of human. Lookback (3a) would have found human messages. Recency (3b) would have protected it (within 24h).
-
-## Token Optimization
-
-1. **ONE thread-list call per guild** — never per-channel
-2. **limit=5** for message reads — sufficient for judgment
-3. Only pinned threads skip message reading; all others are evaluated
+Send the report:
+```
+message(action="send", channel="discord", target="channel:<logChannel>")
+```
