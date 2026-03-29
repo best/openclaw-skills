@@ -1,165 +1,205 @@
 ---
 name: evolution-engine
-version: 1.3.0
-description: "PCEC v3 — Anti-entropy self-evolution engine. Discovers behavioral issues from daily operations, self-corrects, and tracks convergence."
+version: 2.0.0
+description: "PCEC v4 — Data-driven skill evolution engine. Analyzes skill execution data to detect degradation, proactively optimize skills, predict issues, and verify improvements. Pairs with Dream for memory consolidation."
 ---
 
-# Evolution Engine — PCEC v3
+# Evolution Engine — PCEC v4
 
-Periodic Cognitive Expansion Cycle. **Evolution = anti-entropy.**
+Periodic Cognitive Evolution Cycle. **Evolution = anti-entropy + anticipation.**
 
-Core mission: continuously review your own behavior, discover drift and problems, self-correct, and drive the system toward increasing order. The same class of problem should never require human intervention twice.
+Core mission: make every skill and cron job measurably better over time. The same class of problem should never require human intervention twice, and degradation trends should be caught before they become failures.
 
 ## Design Philosophy
 
-PCEC v1 accumulated genes (pattern catalog). v2 waited for errors (passive repair). Both failed:
-- v1 built knowledge only PCEC could see
-- v2 skipped endlessly when the system was "clean"
+v1 accumulated genes. v2 waited for errors. v3 relied on human-intervention signals from daily logs. All three were reactive.
 
-v3 is **introspection-driven**. The most valuable evolution signals are not in error logs — they're in daily conversations where humans had to fix your problems.
+v4 is **data-driven**. The richest evolution signals are in execution metrics — duration trends, token efficiency, error patterns — not just in what humans complained about.
 
-## Five-Phase Cycle
+**Division of labor**: PCEC owns skill/cron evolution. Dream 🌙 owns memory consolidation. They share daily logs as a signal source but never modify each other's targets.
 
-Every cycle runs all five phases. **There is no skip.**
+## Four-Phase Cycle
 
-### Phase 1: Discover
+### Phase 1: Observe
 
-Read these sources in order. Extract signals — anything that indicates a problem, inefficiency, or improvement opportunity.
+Collect signals from three sources in priority order.
 
-**Primary: daily logs (richest signal source)**
+**1a. Execution data analysis**
+
+```
+cron action=list  →  all jobs: lastStatus, lastDurationMs, consecutiveErrors
+cron action=runs jobId=<id>  →  recent runs: duration, tokens, status
+```
+
+For each skill-type cron (exclude heartbeat, balance-check, and other pure-ops jobs), analyze:
+
+| Metric | How | Anomaly threshold |
+|--------|-----|-------------------|
+| Success rate | ok count in last 10 runs | <90% |
+| Duration trend | last 5 avg vs historical avg | >50% growth |
+| Token efficiency | total_tokens per run | >30% growth |
+| Consecutive errors | from job metadata | >0 |
+
+Anomalous jobs enter the evolve candidate list with specific metrics noted.
+
+**1b. Daily logs**
+
 ```bash
 cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d).md 2>/dev/null
 cat ~/.openclaw/workspace/memory/$(date -d yesterday +%Y-%m-%d).md 2>/dev/null
 ```
 
-Focus on:
-- Moments where the human had to intervene to fix your behavior
-- Decisions made about how things should work
-- Mistakes you made and their root causes
-- Patterns that repeated across multiple incidents
-- Workarounds that should be permanent fixes
+Focus: human interventions, behavioral drift, repeated patterns. Secondary signal source.
 
-**Secondary: system health**
-```bash
-# Gateway errors — use pattern that excludes false positives from cron payload text
-grep -P '^\d{4}-\d{2}.*\bERROR\b' /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log 2>/dev/null | tail -20
-```
-Also: cron tool `action=list` → check `lastStatus` and `consecutiveErrors`
+**1c. Open trackers**
 
-**Tertiary: open trackers**
 ```bash
 cat {baseDir}/gep/convergence-tracker.jsonl 2>/dev/null
-cat {baseDir}/gep/work-items.jsonl 2>/dev/null
 ```
+
+Check open/regressed items.
 
 **Signal classification:**
 
-| Type | Description | Priority |
-|------|-------------|----------|
-| Human-intervention | Human had to fix something that should have been self-managed | Highest |
-| Recurring-pattern | Same type of problem appeared 2+ times | High |
-| Behavioral-drift | Acting inconsistently with established rules | High |
-| Inefficiency | Wasting time, tokens, or human attention | Medium |
-| System-health | Errors, timeouts, cron failures | Medium |
-| Knowledge-gap | Repeatedly looking up the same thing | Low |
+| Type | Description | Source | Priority |
+|------|-------------|--------|----------|
+| degradation | Execution metrics worsening (duration/token/success trend) | exec data | Highest |
+| human-intervention | Human had to fix something that should be self-managed | daily logs | Highest |
+| recurring-pattern | Same problem type appeared 2+ times | both | High |
+| behavioral-drift | Acting inconsistently with established rules | daily logs | High |
+| inefficiency | Wasting time, tokens, or human attention | exec data | Medium |
+| system-health | Errors, timeouts, cron failures | exec data | Medium |
 
-### Phase 2: Fix
+### Phase 2: Evolve
 
-For each signal, take ONE concrete action. **Max 3 actions per cycle.** Priority order:
+For each signal from Observe, take ONE concrete action. **Max 3 actions per cycle.** Priority order:
 
 **1. Fix a skill**
 - Edit SKILL.md / scripts in `/data/code/github.com/best/openclaw-skills/`
 - Bump version (bugfix → patch, feature → minor)
-- Update repo `README.md` + `README_CN.md` version tables
-- `git add -A && git commit -m "evolve: <skill> v<version> — <what>" && git push`
+- Update repo README.md + README_CN.md version tables
+- git commit + push (format: `evolve: <skill> v<version> — <what>`)
 
 **2. Fix a cron prompt**
-- Identify the specific prompt issue from daily logs
-- Use cron tool `action=update` with corrected payload
+- cron tool `action=update` with corrected payload
 - Log what changed and why
 
-**3. Ground knowledge**
-- Write to `memory/reference/*.md`
-- Format: **Symptom → Root Cause → Fix → Prevention**
-- Only if the knowledge isn't already documented
+**3. Optimize for efficiency**
+- Token consumption growing → slim prompt or add lightContext
+- Duration trending up → analyze bottleneck (network? model? logic complexity?)
+- Reference file never read → clean up
 
-**4. Update behavioral guardrails**
-- Add rules to relevant skill or reference doc to prevent recurrence
-- Must be specific and actionable, not vague principles
+**4. Predict & prevent**
+- Duration trend approaching timeout → preemptively increase timeout or optimize
+- Success rate slowly declining → investigate root cause before outbreak
+- Any metric on a clear trajectory toward failure → intervene early
 
-**5. Create work item**
-- For complex issues that can't be resolved in one cycle
-- Must resolve within 3 cycles
+**5. Ground knowledge**
+- Write to memory/reference/*.md
+- Format: Symptom → Root Cause → Fix → Prevention
+
+### No-signal behavior
+
+When execution data and daily logs show no anomalies:
+
+1. **Convergence check** — review open tracker items, advance clean-cycle counts
+2. **Brief report and end** — no forced audit or make-work
+
+This eliminates v3's mandatory-output-every-cycle problem.
 
 ### Phase 3: Verify
 
-Track whether fixes actually work.
+**3a. Quantitative health snapshot**
 
-**Update convergence tracker** (`{baseDir}/gep/convergence-tracker.jsonl`):
+For each skill modified in Evolve, record before/after metrics in events.jsonl:
+
 ```json
-{"id":"ct_NNN","ts":"ISO-8601","category":"human-intervention|recurring|drift|inefficiency|system-health","signal":"what was found","action":"what was done","status":"open","verify_after":"evt_NNN+3"}
+{
+  "skill": "feed-collect",
+  "before": {"avg_duration_ms": 500000, "avg_tokens": 80000, "success_rate": 0.9},
+  "after": null,
+  "verified_at": null
+}
 ```
 
-**Check existing trackers:**
-- Same category of problem hasn't recurred for 3+ cycles → `"status": "converged"`
-- Recurred → `"status": "regressed"` — the fix wasn't sufficient, needs deeper root cause analysis
-- Regressed items get highest priority in next cycle
+Next cycle: fill `after` data and compare improvement.
 
-**Convergence tracker archival:**
-- Terminal entries (converged/closed/superseded) older than 5 cycles → move to `{baseDir}/gep/convergence-archive.jsonl`
-- Keep only recent terminal entries + any open/regressed entries in the active tracker
-- This reduces per-cycle context load without losing institutional memory
+**3b. Convergence tracking**
 
-### When Daily Logs Have No New Signals
-
-Even when everything is quiet, do one of:
-
-1. **Audit a skill** — pick one from the repo, check actual usage in recent session logs, look for outdated instructions / missing guards / token waste
-2. **Review convergence tracker** — verify "converged" items haven't regressed
-3. **Proactive improvement** — find one thing that works but could work better
-
-Every cycle produces output.
-
-### Phase 4: Log
-
-Append to `{baseDir}/gep/events.jsonl`:
+Maintain `{baseDir}/gep/convergence-tracker.jsonl`:
 ```json
-{"id":"evt_NNN","ts":"ISO-8601","signals_found":2,"actions":[{"type":"skill-fix|cron-fix|knowledge|guardrail|audit","target":"...","summary":"..."}],"convergence":{"open":3,"converged":5,"regressed":0}}
+{"id":"ct_NNN","ts":"ISO-8601","category":"degradation|human-intervention|recurring|drift|inefficiency|system-health","signal":"...","action":"...","status":"open","verify_after":"evt_NNN+2"}
+```
+
+- 2 clean cycles → `"status": "converged"`
+- Recurred → `"status": "regressed"` — gets highest priority next cycle
+- Terminal entries older than 3 cycles → archive to `convergence-archive.jsonl`
+
+### Phase 4: Report
+
+**4a. Write events.jsonl**
+
+```json
+{
+  "id": "evt_NNN",
+  "ts": "ISO-8601",
+  "signals": {"execution_data": 2, "daily_log": 1, "tracker": 0},
+  "actions": [{"type": "skill-fix|cron-fix|optimize|predict|knowledge", "target": "...", "summary": "..."}],
+  "health": {"jobs_analyzed": 15, "healthy": 13, "degrading": 1, "failing": 1},
+  "convergence": {"open": 1, "converged": 2, "regressed": 0}
+}
 ```
 
 Prune to 30 entries; archive older to `events-archive.jsonl`.
 
-### Phase 5: Deliver
+**4b. Deliver to Discord**
 
-Send a brief summary to the designated Discord channel using the `message` tool. Do NOT rely on announce delivery — always use explicit `message(action="send")`.
+Use message tool to send to the designated channel. Format:
 
-Summary should be concise but substantive: what signals were found, what actions were taken, convergence status.
+With signals:
+```
+🔄 PCEC evt_NNN
+
+📊 观测：分析 N 个 job — N 健康 / N 退化 / N 失败
+  [退化详情]
+
+🛠️ 进化（N actions）
+  [action 列表]
+
+✅ 验证
+  [tracker 状态 + 前次修复效果]
+
+💡 预测
+  [趋势预警，如有]
+```
+
+No signals:
+```
+🔄 PCEC evt_NNN — 系统健康 ✅
+📊 分析 N 个 job，全部健康。收敛追踪 N open。
+```
 
 ## Work Items
 
-Temporary tracker for complex issues. Same rules as v2:
+For complex issues that need multiple cycles:
 - Max 10 open items
 - Must resolve within 3 cycles or close with reason
-- Resolution always points to a concrete change
-
-Format in `{baseDir}/gep/work-items.jsonl`:
-```json
-{"id":"wi_NNN","ts":"ISO-8601","signal":"what was observed","status":"open","target":"...","cycle_created":"evt_NNN","cycle_limit":"evt_NNN+3"}
-```
+- Format in `{baseDir}/gep/work-items.jsonl`
 
 ## Anti-Entropy Lock
 
 **Stability > Explainability > Reusability > Novelty**
 
 Forbidden:
-- Empty skips — every cycle must produce substantive output
-- Self-referential knowledge accumulation
-- Changes without evidence from observed signals
-- "Feels right" as decision basis
+- Changes without evidence from observed signals or execution data
 - Inventing problems to justify changes
 - Creating GitHub issues autonomously
 - Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md) — human-owned
+- `git add -A` (must explicitly specify files)
+- Running git commands inside workspace directory
 
-## Success Metric
+## Success Metrics
 
-**Convergence rate** — the ratio of issues that get fixed once and stay fixed vs. issues that regress. PCEC succeeds when the human spends less time fixing agent problems over time.
+1. **Convergence rate** — fixed once and stays fixed vs. regresses
+2. **Prediction accuracy** — predicted degradations that actually occurred
+3. **Skill health trend** — overall healthy-job ratio over time
