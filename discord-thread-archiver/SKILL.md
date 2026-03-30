@@ -1,6 +1,6 @@
 ---
 name: discord-thread-archiver
-version: 1.0.1
+version: 1.1.0
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent lists active threads, reads messages, judges conversation status, archives resolved threads, and produces a structured report."
 ---
 
@@ -26,7 +26,14 @@ message(action="thread-list", channel="discord", guildId="<guildId>")
 
 If empty → send "⏸️ 无 Thread" report (see format below) and stop.
 
-### 2. Evaluate each thread
+### 2. Load judgment rules
+
+Read the full judgment guide before evaluating any thread:
+```
+read("references/judgment-guide.md")
+```
+
+### 3. Evaluate each thread
 
 Skip threads with `last_pin_timestamp` present → mark `skipped (pinned)`.
 
@@ -35,14 +42,29 @@ For all others, read the last 5 messages:
 message(action="read", channel="discord", target="channel:<thread_id>", limit=5)
 ```
 
-Apply judgment rules:
-- **Bot-only lookback**: All 5 from bots → expand to limit=20 to check for earlier human participation
-- **24h recency protection**: Last message within 24h → only archive with explicit closure signal
-- **Classification**: Resolved with confirmation → archive; open/uncertain → keep
+#### 3a. Bot-only lookback
 
-For detailed criteria, examples, and edge cases: read `references/judgment-guide.md`
+All 5 messages from bots → expand to limit=20 to find earlier human participation.
 
-### 3. Archive
+#### 3b. Hard gate checks
+
+Apply these mechanical checks first. If ANY gate triggers → verdict is **keep**, skip classification.
+
+| # | Condition | Verdict |
+|---|-----------|---------|
+| G1 | Last message from bot AND contains "？" or "吗" or ends with question | **keep** — 等待回复 |
+| G2 | Last message < 24h old AND no human closure signal found | **keep** — 近期无关闭 |
+| G3 | Human-bot collaboration (lookback found human messages) AND < 24h | **keep** — 协作中 |
+
+**Closure signals** (must come from a human, not bot): 好了, 搞定, done, 结束, 谢谢, thanks, 确认, 没问题, OK, 可以了
+
+#### 3c. Classify
+
+Only threads that pass ALL hard gates reach this step. Apply the classification table from the judgment guide.
+
+**Key rule:** "task completed" = entire discussion resolved with human acknowledgment, not a single sub-step done. If the thread has multiple topics and any is unresolved → **keep**.
+
+### 4. Archive
 
 For each thread judged **archive**, run the archive script:
 ```bash
@@ -50,7 +72,7 @@ bash <skill_dir>/scripts/archive-thread.sh <thread_id>
 ```
 Pause 0.5s between calls. Non-2xx response → note in report (e.g. "403 权限不足").
 
-### 4. Report
+### 5. Report
 
 **When threads exist** (regardless of whether any were archived):
 ```
@@ -69,7 +91,7 @@ Pause 0.5s between calls. Non-2xx response → note in report (e.g. "403 权限�
 
 Every evaluated thread MUST appear in the report with its verdict icon. Use only the icons that apply to each thread.
 
-### 5. Deliver
+### 6. Deliver
 
 Send the report:
 ```

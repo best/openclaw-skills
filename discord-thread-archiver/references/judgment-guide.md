@@ -2,6 +2,8 @@
 
 Detailed criteria for evaluating whether a Discord thread should be archived, kept, or skipped.
 
+**This file is mandatory reading. Do not classify any thread without loading these rules first.**
+
 ## Bot-only Lookback (Rule 3a)
 
 If the last 5 messages are **all from bots**, expand to 20 messages:
@@ -29,6 +31,7 @@ This is the ONLY time-based rule. Do not invent additional thresholds.
 | **keep** | Bot sent proposal/question but human hasn't replied — busy ≠ disengaged |
 | **keep** | Human-bot collaboration thread identified by lookback (3a) |
 | **keep** | Within 24h recency protection (3b), no closure signal |
+| **keep** | Thread has multiple topics and any topic is unresolved |
 | **keep** | Can't determine from messages read |
 
 **When in doubt, keep.** Archiving a live conversation is worse than keeping a finished one.
@@ -51,15 +54,17 @@ Each thread is judged independently. Uncovered case → **keep**.
 
 > **"CI 构建失败排查"** — User: "好了，问题解决了，谢谢" → archive (explicit confirmation)
 
-> **"版本发布通知"** — All bot messages, no human replied → archive (bot-only, no participation)
+> **"版本发布通知"** — All bot messages, no human replied, older than 24h → archive (bot-only, no participation)
 
 ### Correct: keep
 
-> **"服务器搭建讨论"** — Bot asked "方案 A 还是方案 B？" → keep (waiting for user)
+> **"服务器搭建讨论"** — Bot asked "方案 A 还是方案 B？" → keep (waiting for user response)
 
 > **"密钥配置"** — Bot said "你把这个加到目标机器上" → keep (action pending on user)
 
 > **"API 供应商评估"** — Last 5 all bot exec logs, lookback found human, within 24h → keep (collaboration + recency)
+
+> **"余额检查脚本修复"** — Bug fixed and confirmed, but bot then proposed a new solution and asked "要做吗？" with no reply → keep (unanswered bot question on second topic)
 
 ### Common mistakes
 
@@ -68,3 +73,5 @@ Each thread is judged independently. Uncovered case → **keep**.
 > ❌ archive "部署方案讨论" — "bot completed the task" → Wrong: sub-task ≠ entire discussion resolved
 
 > ❌ archive "供应商续费讨论" — "all 5 bot messages" → Wrong: didn't do lookback; human was involved earlier
+
+> ❌ archive "Cron检查问题" with reason "方案已确定" — Bot proposed a solution and asked for confirmation, human never replied → Wrong: proposal ≠ decision; unanswered question = keep
