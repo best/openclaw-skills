@@ -74,6 +74,13 @@ Pause 0.5s between calls. Non-2xx response → note in report (e.g. "403 权限�
 
 ### 5. Report
 
+**Icon-verdict mapping (STRICT — never mix these up):**
+| Icon | Verdict | Meaning |
+|------|---------|---------|
+| ✅ | archive | Thread was archived |
+| ⏸️ | keep | Thread is kept (NOT ✅) |
+| ⏭️ | skip | Thread is pinned, skipped |
+
 **When threads exist** (regardless of whether any were archived):
 ```
 🗂️ Thread 归档 · HH:MM
