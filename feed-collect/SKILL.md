@@ -50,6 +50,11 @@ cd /data/code/github.com/astralor/feed
 git pull --rebase
 ```
 
+> **⚠️ 重要：忽略 dist/ 和 src/ 中的任何 git 修改**
+> `git status` 可能显示数百个 `dist/`、`src/data/blog/` 的 modified/deleted 文件——这些是**博客网站构建产物**，与本采集任务完全无关。
+> **直接忽略这些变更，继续执行 Step 2。不要尝试提交、回滚或处理这些文件。**
+> 本技能只关注 `data/candidates.json` 和 `data/seen.json` 两个文件。
+
 **seen.json 结构校验（必做）：**
 
 ```bash

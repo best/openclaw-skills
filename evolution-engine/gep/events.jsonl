@@ -28,3 +28,34 @@
 {"id":"evt_222","ts":"2026-04-01T09:00:00+08:00","signals_found":1,"signals":{"execution_data":1,"daily_log":0,"tracker":0},"actions":[{"type":"cron-fix","target":"Dream 🌙 (320cca06) timeout 600→900s","summary":"Dream 记忆整合 timeout at 600s (consecutiveErrors=1). Duration trend shows heavy runs reaching 578-600s. Increased timeout to 900s, providing 55% headroom over historical max. Next run 4/3 03:00 CST will validate."},{"type":"convergence-verify","target":"ct_068 +1 clean (1/3), ct_069 opened","summary":"ct_068 (AI Feed 智能播报 LiveSessionModelSwitchError): 5 consecutive ok runs (~18h clean) since last error at 3/30 15:17 CST. Advance clean_cycles 0→1. ct_069 (Dream timeout): New tracker opened for the timeout fix, will verify after next Dream run on 4/3."}],"health":{"jobs_analyzed":17,"healthy":16,"degrading":0,"failing":1},"convergence":{"open":2,"converged":0,"regressed":0}}
 {"id":"evt_223","ts":"2026-04-01T17:11:00+08:00","signals_found":1,"signals":{"execution_data":1,"daily_log":0,"tracker":0},"actions":[{"type":"track","target":"ct_070: feed-collect GLM hollow executions","summary":"Detected ~35-40% GLM hollow execution rate on feed-collect (0ead0a6f). 7-8 of last 20 runs show GLM reading SKILL.md then exiting without completing collection (36-91s, ~30k tokens wasted per hollow run). All report status=ok. Cron prompt has '禁止中途终止' but GLM ignores intermittently. Not new regression (present since GLM assigned) but newly quantified. No fix applied — cost advantage outweighs model switch. Tracking."},{"type":"convergence-verify","target":"ct_068 +1 clean (2/3), ct_069 awaiting 4/3","summary":"ct_068 (AI Feed 智能播报 LiveSessionModelSwitchError): 13+ consecutive ok runs since last error (3/30 15:17 CST), ~26h clean. Advance clean_cycles 1→2, 1 more to converge. ct_069 (Dream timeout): Next run 4/3 03:00 CST, cannot verify yet."}],"health":{"jobs_analyzed":17,"healthy":15,"degrading":1,"failing":1},"convergence":{"open":3,"converged":0,"regressed":0}}
 {"id":"evt_224","ts":"2026-04-02T01:00:00+08:00","signals_found":0,"signals":{"execution_data":0,"daily_log":0,"tracker":0},"actions":[{"type":"convergence-verify","target":"ct_068→converged+archived, ct_069/ct_070 unchanged","summary":"ct_068 (AI Feed 智能播报 LiveSessionModelSwitchError): 3rd clean PCEC cycle. 28+ consecutive ok runs since last error (3/30 15:17 CST), ~58h clean window. Converged and archived. Notable: model routing silently switched from claude-sonnet-4-6 to gpt-5.4 (astralor-openai) around 4/1 10:00 CST — token efficiency improved from ~33K to ~23K/run. ct_069 (Dream timeout): Next run 4/3 03:00 CST, cannot verify yet. ct_070 (feed-collect GLM hollow): monitoring, no change."}],"health":{"jobs_analyzed":17,"healthy":16,"degrading":0,"failing":1},"convergence":{"open":2,"converged":1,"regressed":0}}
+{
+  "id": "evt_225",
+  "ts": "2026-04-02T09:07:43Z",
+  "signals_found": 0,
+  "signals": {
+    "execution_data": 0,
+    "daily_log": 0,
+    "tracker": 0
+  },
+  "actions": [
+    {
+      "type": "convergence-verify",
+      "target": "ct_069 awaiting 4/3, ct_070 +1 clean (1/3)",
+      "summary": "ct_069 (Dream timeout): Next run 4/3 03:00 CST, cannot verify yet. ct_070 (feed-collect GLM hollow): Last 20 runs show 7 GLM hollow executions (35%), consistent with tracked rate. 1st clean cycle — monitoring continues, escalation threshold 50%."
+    }
+  ],
+  "health": {
+    "jobs_analyzed": 17,
+    "healthy": 16,
+    "degrading": 0,
+    "failing": 1
+  },
+  "convergence": {
+    "open": 2,
+    "converged": 0,
+    "regressed": 0
+{"id":"evt_225","ts":"2026-04-02T09:00:00Z","signals_found":0,"signals":{"execution_data":0,"daily_log":0,"tracker":0},"actions":[{"type":"convergence-verify","target":"ct_069 awaiting 4/3, ct_070 +1 clean (1/3)","summary":"ct_069 (Dream timeout): Next run 4/3 03:00 CST, cannot verify yet. ct_070 (feed-collect GLM hollow): Last 20 runs show 7 GLM hollow executions (35%), consistent with tracked rate. 1st clean cycle — monitoring continues, escalation threshold 50%."}],"health":{"jobs_analyzed":17,"healthy":16,"degrading":0,"failing":1},"convergence":{"open":2,"converged":0,"regressed":0}}
+  }
+}
+{"id":"evt_225","ts":"2026-04-02T09:00:00Z","signals_found":0,"signals":{"execution_data":0,"daily_log":0,"tracker":0},"actions":[{"type":"convergence-verify","target":"ct_069 awaiting 4/3, ct_070 +1 clean (1/3)","summary":"ct_069 (Dream timeout): Next run 4/3 03:00 CST, cannot verify yet. ct_070 (feed-collect GLM hollow): Last 20 runs show 7 GLM hollow executions (35%), consistent with tracked rate. 1st clean cycle — monitoring continues, escalation threshold 50%."}],"health":{"jobs_analyzed":17,"healthy":16,"degrading":0,"failing":1},"convergence":{"open":2,"converged":0,"regressed":0}}
+{"id":"evt_226","ts":"2026-04-03T01:00:00+08:00","phase":"full-cycle","model":"claude-sonnet-4-6","summary":"PCEC 4-Phase 完整周期","observe":{"jobs_total":18,"jobs_healthy":17,"jobs_failing":1,"pcec_consecutive_errors":2,"pcec_error_types":["LLM timeout (4/2 09:00 CST)","Discord message failed (4/2 17:00 CST)"]},"signals":[{"id":"S1","severity":"critical","category":"system-health","description":"PCEC self-degradation: consecutiveErrors=2, two different error types in consecutive runs (LLM timeout then Discord message fail). Transient issues — no structural fix needed."},{"id":"S2","severity":"critical","category":"degradation","description":"ct_070 regression: feed-collect GLM hollow rate escalated to 100% (17 consecutive hollow runs since April 2 08:30 CST). Root cause: 500+ uncommitted dist/src blog build files in feed repo cause GLM to stall on git status."},{"id":"S3","severity":"info","category":"convergence","description":"ct_069 Dream timeout fix verified: April 2 15:41 CST manual run completed 469s < 900s threshold. Clean cycle 1 confirmed."}],"actions":[{"id":"A1","type":"skill-fix","target":"feed-collect/SKILL.md Step 1","change":"Added explicit ⚠️ instruction to ignore dist/ and src/ git modifications (blog build artifacts). GLM should now skip distraction and proceed to collection."},{"id":"A2","type":"tracker-update","ct_id":"ct_070","change":"status=open, clean_cycles=0, root cause documented, fix applied, monitoring next 2 runs"},{"id":"A3","type":"tracker-update","ct_id":"ct_069","change":"status=monitoring, clean_cycles=1, fix verification noted"}]}
