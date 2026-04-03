@@ -1,6 +1,6 @@
 ---
 name: feed-collect
-version: 2.0.3
+version: 2.0.4
 description: "AI Feed 采集技能。从 Miniflux 聚合器 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
@@ -45,15 +45,15 @@ GitHub Trending ─────── 补充，开源项目趋势
 
 ### Step 1: 准备
 
+> **🚨 必读（执行前）：仓库含博客构建产物，必须忽略**
+> `git status` / `git pull` 会显示数百个 `dist/`、`src/data/blog/` 的 modified/deleted 文件——这些是**博客网站构建产物**，与本采集任务**完全无关**。
+> **无论看到多少 modified 文件，全部忽略，不要处理、提交、回滚任何这些文件。**
+> 本技能**只操作** `data/candidates.json` 和 `data/seen.json` 两个文件，其余一律不管。
+
 ```bash
 cd /data/code/github.com/astralor/feed
 git pull --rebase
 ```
-
-> **⚠️ 重要：忽略 dist/ 和 src/ 中的任何 git 修改**
-> `git status` 可能显示数百个 `dist/`、`src/data/blog/` 的 modified/deleted 文件——这些是**博客网站构建产物**，与本采集任务完全无关。
-> **直接忽略这些变更，继续执行 Step 2。不要尝试提交、回滚或处理这些文件。**
-> 本技能只关注 `data/candidates.json` 和 `data/seen.json` 两个文件。
 
 **seen.json 结构校验（必做）：**
 
