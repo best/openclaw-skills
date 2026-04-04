@@ -1,6 +1,6 @@
 ---
 name: evolution-engine
-version: 2.0.0
+version: 2.0.1
 description: "PCEC v4 — Data-driven skill evolution engine. Analyzes skill execution data to detect degradation, proactively optimize skills, predict issues, and verify improvements. Pairs with Dream for memory consolidation."
 ---
 
