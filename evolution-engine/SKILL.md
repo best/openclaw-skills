@@ -79,6 +79,7 @@ For each signal from Observe, take ONE concrete action. **Max 3 actions per cycl
 - Bump version (bugfix → patch, feature → minor)
 - Update repo README.md + README_CN.md version tables
 - git commit + push (format: `evolve: <skill> v<version> — <what>`)
+- ⚠️ Only commit skill file changes (SKILL.md, scripts/, references/). Never commit gep/ data files.
 
 **2. Fix a cron prompt**
 - cron tool `action=update` with corrected payload
@@ -152,6 +153,8 @@ Maintain `{baseDir}/gep/convergence-tracker.jsonl`:
 
 Prune to 30 entries; archive older to `events-archive.jsonl`.
 
+**Note:** All gep/ data files are local-only (gitignored). Do not attempt to git add/commit them.
+
 **4b. Deliver to Discord**
 
 Use message tool to send to the designated channel. Format:
@@ -196,6 +199,7 @@ Forbidden:
 - Creating GitHub issues autonomously
 - Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md) — human-owned
 - `git add -A` (must explicitly specify files)
+- Committing gep/ runtime data (events, trackers, work-items) — local-only, never push
 - Running git commands inside workspace directory
 
 ## Success Metrics
