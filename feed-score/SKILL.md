@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 2.1.0
+version: 2.1.1
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 ---
 
@@ -32,6 +32,8 @@ git pull --rebase
 ```
 
 读取 `data/candidates.json`。为空或 `[]` → 直接结束（无候选）。
+
+⚠️ **批量上限**：如果候选数 > 200，只取前 200 条评分，其余保留在 candidates.json 中等下次处理。将剩余候选写回 candidates.json 并 commit/push（message: `score: defer N candidates`）。这是防止大批次导致 timeout 的关键。
 
 ### Step 2: 评分
 
