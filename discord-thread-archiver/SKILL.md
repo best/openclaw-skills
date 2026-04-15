@@ -1,6 +1,6 @@
 ---
 name: discord-thread-archiver
-version: 1.1.0
+version: 1.1.1
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent lists active threads, reads messages, judges conversation status, archives resolved threads, and produces a structured report."
 ---
 
@@ -18,10 +18,10 @@ The caller provides:
 
 ### 1. List threads
 
-Call `thread-list` exactly **once** with the provided `guildId`. This returns ALL active threads across every channel. Do NOT loop over channels.
+Call `thread-list` exactly **once** with both `guildId` and `channelId`. This returns active threads **only under the specified parent channel**. Do NOT call without `channelId` — never scan the entire guild.
 
 ```
-message(action="thread-list", channel="discord", guildId="<guildId>")
+message(action="thread-list", channel="discord", guildId="<guildId>", channelId="<channelId>")
 ```
 
 If empty → send "⏸️ 无 Thread" report (see format below) and stop.
