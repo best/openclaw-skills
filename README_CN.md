@@ -13,7 +13,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [cc-iterator](./cc-iterator/) | 自主编码代理迭代循环 | v0.1.4 |
 | [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.3.1 |
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.2 |
-| [dream](./dream/) | 记忆方法论 + 每日整合——价值判断、矛盾检测、三模式执行 | v2.2.0-preview |
+| [dream](./dream/) | 记忆方法论+每日整合——四动作模型(T0审计/遗忘机制/三模式执行) | v2.2.0-preview.1 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v1.1.1 |
 | [evolution-engine](./evolution-engine/) | PCEC v4 — 数据驱动技能进化引擎 | v2.0.1 |
 | [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux API + HN + GitHub Trending） | v2.0.2 |
