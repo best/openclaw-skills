@@ -13,7 +13,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.3.1 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
-| [dream](./dream/) | Memory methodology + daily consolidation — 4-action model (consolidate/forget/correct/insight), T0 audit checklist, 3-mode execution | v2.2.0-preview.1 |
+| [dream](./dream/) | Memory methodology & consolidation — 4-action model (consolidate/forget/correct/insight), 3 independent flows (init/daily/deep), T0 audit without dynamic state | v2.2.0-preview.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.1.1 |
 | [evolution-engine](./evolution-engine/) | PCEC v4 — data-driven skill evolution engine | v2.0.1 |
 | [feed-collect](./feed-collect/) | AI news feed collection via Miniflux API + HN + GitHub Trending | v2.0.2 |
