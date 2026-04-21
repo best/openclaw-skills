@@ -15,7 +15,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.2 |
 | [dream](./dream/) | 记忆方法论+整合——四动作+三套独立流程+梦境日记(按日期独立存储)+T0基于注入机制 | v2.2.0 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v1.1.1 |
-| [evolution-engine | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.0.1 |
+| [evolution-engine | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.0 |
 | [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux API + HN + GitHub Trending） | v2.0.2 |
 | [feed-broadcast](./feed-broadcast/) | AI 信息流智能播报（自主判断推送/跳过） | v1.1.1 |
 | [feed-collector](./feed-collector/) | AI 信息流采集（已废弃 → feed-collect + feed-score） | v1.13.1 |
