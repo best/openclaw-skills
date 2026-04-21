@@ -1,6 +1,6 @@
 ---
 name: evolution-engine
-version: 2.0.0
+version: 2.0.1
 description: "PCEC — Wiki-Native 进化引擎。以 Wiki Vault 为核心知识库，通过 Gene（策略模板）和 Capsule（验证记录）实现经验积累与复用。信号检测→经验召回→诊断→固化到Wiki。"
 ---
 
@@ -224,6 +224,31 @@ PCEC 可自主执行的行动：
 **3a. 写 Capsule（每次实质诊断都写）**
 
 `wiki_apply op=create_synthesis`，标题：`Capsule: YYYY-MM-DD <目标> <摘要>`
+
+⚠️ **关键参数格式**：`create_synthesis` 必须在**顶层**传入 `sourceIds`（字符串数组），指向实际存在的文件路径或 session key。不放 claims 内部。
+
+```yaml
+# ✅ 正确调用格式（复制此模板）
+wiki_apply(
+  op: "create_synthesis",
+  title: "Capsule: 2026-04-21 Feed Pipeline 脚本脆弱性",
+  body: "<诊断正文 markdown>",
+  sourceIds:                          # ← 顶层必填数组
+    - "/root/.openclaw/workspace/memory/2026-04-21.md"
+    - "agent:main:cron:802b31b9-..."     # session key 也行
+  claims:
+    - id: "capsule-feed-fragility-0421"
+      text: "Feed 管道三层脆弱性诊断"
+      confidence: 0.85
+      evidence:
+        - sourceId: "<同上某个 sourceId>"  # evidence 引用 sourceId
+          lines: "seq14-35"
+          weight: 0.9
+          note: "transcript 摘要"
+)
+```
+
+❌ 常见错误：把 sourceId 只放在 `claims[].evidence[]` 里而漏掉顶层 `sourceIds` → 报错 `requires at least one sourceId`
 
 内容：触发信号 → Recall 结果 → 使用 Gene → 诊断 → 建议 → confidence → 验证计划
 

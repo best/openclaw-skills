@@ -47,9 +47,10 @@ git pull --rebase
 ### Step 3: 生成 .md
 
 ```bash
-cd /data/code/github.com/astralor/feed
-python3 /data/code/github.com/best/openclaw-skills/feed-score/scripts/generate-posts.py data/scored-results.json
+python3 /data/code/github.com/best/openclaw-skills/feed-score/scripts/generate-posts.py /data/code/github.com/astralor/feed/data/scored-results.json
 ```
+
+⚠️ **必须直接调用**：`python3 <绝对路径> <参数>`，不要用 `cd ... && python3` 复合格式（v2026.4.9+ exec preflight 会拒绝）。
 
 脚本输出 JSON 摘要。generated=0 → 跳到 Step 6。
 
