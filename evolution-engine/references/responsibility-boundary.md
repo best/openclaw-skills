@@ -1,18 +1,18 @@
-# PCEC v5 / Dream / Heartbeat 职责划分
+# PCEC / Dream / Heartbeat 职责划分
 
 ## 三组件定位
 
 | 组件 | 定位 | 核心职责 | 频率 |
 |------|------|---------|------|
-| **PCEC v5** | Wiki-Native 进化引擎 | 信号检测→经验召回→策略选择→执行→验证→**Wiki固化** | 每天 1 次 (05:00) |
+| **PCEC** | Wiki-Native 进化引擎 | 信号检测→经验召回→策略选择→执行→验证→**Wiki固化** | 每天 1 次 (05:00) |
 | **Dream 🌙** | 记忆整合引擎 | T1 日志扫描 → T0 四动作 → T2 Wiki 维护 | 每天 1 次 (03:00) |
 | **Heartbeat** | 系统健康巡检 | Cron 运维面（存活/错误/资源）— 轻量高频 | 每 30 分钟 |
 
-## PCEC v5 的独特价值
+## PCEC 的独特价值
 
 三个组件都写 Wiki，但写的内容和目的不同：
 
-| 维度 | Heartbeat | Dream | PCEC v5 |
+| 维度 | Heartbeat | Dream | PCEC |
 |------|-----------|-------|---------|
 | 写 Wiki 吗 | ❌ 不写 | ✅ 知识条目（T2 归档） | ✅ **Gene + Capsule**（进化资产） |
 | 读 Wiki 吗 | ❌ 不读 | ✅ 读 T0/T2 做整合决策 | ✅ **Recall：每次行动前必查** |
@@ -22,7 +22,7 @@
 
 ## PCEC vs Heartbeat：关键区分
 
-| 维度 | Heartbeat | PCEC v5 |
+| 维度 | Heartbeat | PCEC |
 |------|-----------|---------|
 | 关心的是 | 服务可用性 | 执行质量 + Skill 表现 + **经验积累** |
 | 数据源 | `cron action=list` 元数据 | Session Transcript + **Wiki Recall** |
