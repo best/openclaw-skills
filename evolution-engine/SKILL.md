@@ -1,209 +1,264 @@
 ---
 name: evolution-engine
-version: 2.0.1
-description: "PCEC v4 — Data-driven skill evolution engine. Analyzes skill execution data to detect degradation, proactively optimize skills, predict issues, and verify improvements. Pairs with Dream for memory consolidation."
+version: 3.0.0
+description: "PCEC v5 — Problem Observation Station. Detects issues from cron execution data AND session transcripts (not just metadata), produces fix drafts for human review. Read-only: never auto-modifies files. Use when: periodic system health check, cron job diagnosis, skill degradation detection."
 ---
 
-# Evolution Engine — PCEC v4
+# Evolution Engine — PCEC v5
 
-Periodic Cognitive Evolution Cycle. **Evolution = anti-entropy + anticipation.**
+**Problem Observation Station, not an autonomous evolution engine.**
 
-Core mission: make every skill and cron job measurably better over time. The same class of problem should never require human intervention twice, and degradation trends should be caught before they become failures.
+v4 tried to be a self-driving evolution loop — it failed because LLMs can't reliably diagnose from metadata alone, and autonomous file modifications introduce risk without proportional value.
 
-## Design Philosophy
+v5's job is simpler: **find real problems, prove them with evidence, propose fixes for review.**
 
-v1 accumulated genes. v2 waited for errors. v3 relied on human-intervention signals from daily logs. All three were reactive.
+## Division of Labor
 
-v4 is **data-driven**. The richest evolution signals are in execution metrics — duration trends, token efficiency, error patterns — not just in what humans complained about.
+| Component | Owns | Doesn't touch |
+|-----------|------|---------------|
+| PCEC v5 | Problem detection + fix proposals | Memory consolidation |
+| Dream 🌙 | T0/T1/T2 memory maintenance | Skill/cron health |
+| Heartbeat | System health snapshot | Long-term trends |
 
-**Division of labor**: PCEC owns skill/cron evolution. Dream 🌙 owns memory consolidation. They share daily logs as a signal source but never modify each other's targets.
+PCEC and Dream share daily logs as signal source but never modify each other's targets.
 
-## Four-Phase Cycle
+## Three Hard Rules
 
-### Phase 1: Observe
+### Rule 1: Evidence Chain (强制)
 
-Collect signals from three sources in priority order.
+**Every diagnosis must be backed by session transcript content.**
 
-**1a. Execution data analysis**
+Workflow:
+1. `cron action=runs jobId=<id>` → find anomalous runs (metadata)
+2. For each anomaly → `sessions_history(sessionKey=<run's sessionKey>, limit=1, includeTools=true)` → read what actually happened
+3. Only after reading session content → diagnose root cause
+
+**Forbidden:** Diagnosing from duration/token/status metadata alone. Metadata triggers investigation; transcripts confirm diagnosis.
+
+### Rule 2: Read-Only (强制)
+
+**PCEC never directly modifies any file.**
+
+- ❌ No editing SKILL.md
+- ❌ No updating cron prompts via `cron action=update`
+- ❌ No git add/commit/push
+- ✅ Write fix drafts to `{baseDir}/gep/drafts/`
+- ✅ Deliver reports with draft summaries via Discord
+
+Drafts are proposals. Execution requires approval (see Approval Flow).
+
+### Rule 3: No-Signal Silence (强制)
+
+When all jobs are healthy with zero anomalies:
+
+- **Do not** run full 4-phase cycle
+- **Do not** write events.jsonl entries
+- **Do not** send "系统健康" reports to Discord
+- **Do**: quick metadata scan (job list + lastStatus), then silently end
+
+This eliminates ~500K tokens/day of no-value output.
+
+## Execution Modes
+
+### Mode A: Full Cycle (有信号时)
+
+Triggered when: at least one job shows anomaly in metadata scan.
 
 ```
-cron action=list  →  all jobs: lastStatus, lastDurationMs, consecutiveErrors
-cron action=runs jobId=<id>  →  recent runs: duration, tokens, status
+Detect → Investigate → Draft → Report
 ```
 
-For each skill-type cron (exclude heartbeat, balance-check, and other pure-ops jobs), analyze:
-
-| Metric | How | Anomaly threshold |
-|--------|-----|-------------------|
-| Success rate | ok count in last 10 runs | <90% |
-| Duration trend | last 5 avg vs historical avg | >50% growth |
-| Token efficiency | total_tokens per run | >30% growth |
-| Consecutive errors | from job metadata | >0 |
-
-Anomalous jobs enter the evolve candidate list with specific metrics noted.
-
-**1b. Daily logs**
+#### Step 1: Detect — Metadata Scan
 
 ```bash
-cat ~/.openclaw/workspace/memory/$(date +%Y-%m-%d).md 2>/dev/null
-cat ~/.openclaw/workspace/memory/$(date -d yesterday +%Y-%m-%d).md 2>/dev/null
+# Get all jobs
+cron action=list
+
+# For each skill-type job (exclude heartbeat, balance-checks, pure-ops):
+cron action=runs jobId=<id>   # recent 10 runs
 ```
 
-Focus: human interventions, behavioral drift, repeated patterns. Secondary signal source.
+Anomaly thresholds:
 
-**1c. Open trackers**
+| Metric | Threshold |
+|--------|-----------|
+| Success rate (last 10) | <90% |
+| Duration trend (last 5 avg vs historical) | >50% growth |
+| Consecutive errors | ≥1 |
+| Timeout rate (last 10) | ≥20% |
+
+Jobs passing all thresholds → skip. Jobs failing any → enter Investigate.
+
+**Scope**: Only analyze skill/logic cron jobs. Exclude:
+- 心跳巡检 (heartbeat)
+- OpenRouter/DeepRouter/秘塔余额监控 (pure-ops)
+- 每日费用账单 / 每周费用周报 (reporting)
+- 早安天气播报 (notification)
+
+These are operational jobs where transient failures don't indicate skill problems.
+
+#### Step 2: Investigate — Session Transcript Analysis (核心)
+
+For each flagged job, gather evidence:
 
 ```bash
-cat {baseDir}/gep/convergence-tracker.jsonl 2>/dev/null
+# 1. Read the most recent anomalous session's full history
+sessions_history(sessionKey="<job's sessionKey>", limit=1, includeTools=true)
+
+# 2. If error/timeout, also read the previous successful run for comparison
+sessions_history(sessionKey="<job's previous success sessionKey>", limit=1, includeTools=false)
 ```
 
-Check open/regressed items.
+**What to look for in transcripts:**
 
-**Signal classification:**
+| Symptom | Evidence Pattern in Transcript |
+|---------|-------------------------------|
+| Model hallucination | Agent invented commands/files that don't exist |
+| Prompt misunderstanding | Agent skipped steps or did wrong workflow |
+| API/rate-limit issue | Clear error messages from provider, not agent logic failure |
+| Token overflow | Context too large for model, output truncated |
+| Logic loop | Agent repeating same tool calls in cycles |
+| Script failure | exec command returned non-zero with stderr |
+| Message delivery failure | message tool returned error but task completed |
 
-| Type | Description | Source | Priority |
-|------|-------------|--------|----------|
-| degradation | Execution metrics worsening (duration/token/success trend) | exec data | Highest |
-| human-intervention | Human had to fix something that should be self-managed | daily logs | Highest |
-| recurring-pattern | Same problem type appeared 2+ times | both | High |
-| behavioral-drift | Acting inconsistently with established rules | daily logs | High |
-| inefficiency | Wasting time, tokens, or human attention | exec data | Medium |
-| system-health | Errors, timeouts, cron failures | exec data | Medium |
-
-### Phase 2: Evolve
-
-For each signal from Observe, take ONE concrete action. **Max 3 actions per cycle.** Priority order:
-
-**1. Fix a skill**
-- Edit SKILL.md / scripts in `/data/code/github.com/best/openclaw-skills/`
-- Bump version (bugfix → patch, feature → minor)
-- Update repo README.md + README_CN.md version tables
-- git commit + push (format: `evolve: <skill> v<version> — <what>`)
-- ⚠️ Only commit skill file changes (SKILL.md, scripts/, references/). Never commit gep/ data files.
-
-**2. Fix a cron prompt**
-- cron tool `action=update` with corrected payload
-- Log what changed and why
-
-**3. Optimize for efficiency**
-- Token consumption growing → slim prompt or add lightContext
-- Duration trending up → analyze bottleneck (network? model? logic complexity?)
-- Reference file never read → clean up
-
-**4. Predict & prevent**
-- Duration trend approaching timeout → preemptively increase timeout or optimize
-- Success rate slowly declining → investigate root cause before outbreak
-- Any metric on a clear trajectory toward failure → intervene early
-
-**5. Ground knowledge**
-- Write to memory/reference/*.md
-- Format: Symptom → Root Cause → Fix → Prevention
-
-### No-signal behavior
-
-When execution data and daily logs show no anomalies:
-
-1. **Convergence check** — review open tracker items, advance clean-cycle counts
-2. **Brief report and end** — no forced audit or make-work
-
-This eliminates v3's mandatory-output-every-cycle problem.
-
-### Phase 3: Verify
-
-**3a. Quantitative health snapshot**
-
-For each skill modified in Evolve, record before/after metrics in events.jsonl:
+**Output per investigated job:**
 
 ```json
 {
-  "skill": "feed-collect",
-  "before": {"avg_duration_ms": 500000, "avg_tokens": 80000, "success_rate": 0.9},
-  "after": null,
-  "verified_at": null
+  "job_id": "...",
+  "job_name": "...",
+  "anomaly_type": "degradation|failure|timeout|drift",
+  "evidence": {
+    "metadata": {"lastStatus": "...", "lastDurationMs": N, "consecutiveErrors": N},
+    "transcript_summary": "What actually happened in the session (from sessions_history)",
+    "comparison": "How this differs from normal runs (if available)"
+  },
+  "diagnosis": "Root cause based on transcript content, NOT guessed from metadata",
+  "confidence": "high|medium|low"
 }
 ```
 
-Next cycle: fill `after` data and compare improvement.
+If confidence = "low" after reading transcripts → mark as "needs more data", do NOT draft a fix.
 
-**3b. Convergence tracking**
+#### Step 3: Draft — Fix Proposal (只写不改)
 
-Maintain `{baseDir}/gep/convergence-tracker.jsonl`:
-```json
-{"id":"ct_NNN","ts":"ISO-8601","category":"degradation|human-intervention|recurring|drift|inefficiency|system-health","signal":"...","action":"...","status":"open","verify_after":"evt_NNN+2"}
-```
+For each high/medium confidence diagnosis, write a draft:
 
-- 2 clean cycles → `"status": "converged"`
-- Recurred → `"status": "regressed"` — gets highest priority next cycle
-- Terminal entries older than 3 cycles → archive to `convergence-archive.jsonl`
-
-### Phase 4: Report
-
-**4a. Write events.jsonl**
+**File**: `{baseDir}/gep/drafts/YYYY-MM-DD_<short-name>.json`
 
 ```json
 {
-  "id": "evt_NNN",
-  "ts": "ISO-8601",
-  "signals": {"execution_data": 2, "daily_log": 1, "tracker": 0},
-  "actions": [{"type": "skill-fix|cron-fix|optimize|predict|knowledge", "target": "...", "summary": "..."}],
-  "health": {"jobs_analyzed": 15, "healthy": 13, "degrading": 1, "failing": 1},
-  "convergence": {"open": 1, "converged": 2, "regressed": 0}
+  "id": "draft_NNN",
+  "created_at": "ISO-8601",
+  "job_id": "...",
+  "job_name": "...",
+  "evidence": { /* from Investigate */ },
+  "diagnosis": "...",
+  "proposed_fix": {
+    "type": "skill-patch|cron-prompt-patch|config-change|new-constraint",
+    "target_file": "relative/path/to/file",  // which file would be modified
+    "description": "What to change and why, in plain Chinese",
+    "diff_idea": "Conceptual diff (not actual diff, since we're not editing)",
+    "risk_level": "safe|moderate|risky",
+    "side_effects": "What could go wrong"
+  },
+  "status": "pending-review"
 }
 ```
 
-Prune to 30 entries; archive older to `events-archive.jsonl`.
+**Draft quality standards:**
 
-**Note:** All gep/ data files are local-only (gitignored). Do not attempt to git add/commit them.
+1. `target_file` must be a specific existing file path
+2. `description` must reference specific lines or sections in the target file
+3. `risk_level` = "risky" if the change touches: T0 files (MEMORY/SOUL/USER/TOOLS), auth credentials, git operations, or other cron job configs
+4. `side_effects` must include at least one possible negative outcome
+5. One draft per problem — no batched "cleanup" drafts
 
-**4b. Deliver to Discord**
+#### Step 4: Report — Discord Delivery
 
-Use message tool to send to the designated channel. Format:
+Send structured report to PCEC channel via `message` tool.
 
-With signals:
+**With drafts:**
+
 ```
-🔄 PCEC evt_NNN
+🔄 PCEC 检测报告 YYYY-MM-DD HH:MM
 
-📊 观测：分析 N 个 job — N 健康 / N 退化 / N 失败
-  [退化详情]
+📊 扫描：N 个 job — N 健康 / N 异常
 
-🛠️ 进化（N actions）
-  [action 列表]
+🔍 调查（N 个异常 job）
 
-✅ 验证
-  [tracker 状态 + 前次修复效果]
+**1. [Job Name]**
+  症状：[anomaly from metadata]
+  证据：[key finding from session transcript, 1-2 sentences]
+  诊断：[root cause]
+  置信度：高/中/低
 
-💡 预测
-  [趋势预警，如有]
+📝 修复草案（N 个）
+  DRAFT draft_NNN: [one-line summary] — 风险: 低/中/高
+  → 等待审核后执行
+
+💡 观察（可选）
+  [trend warnings that don't need immediate action]
 ```
 
-No signals:
+**No anomalies detected (shouldn't reach here if silent-skip works, but just in case):**
+
 ```
-🔄 PCEC evt_NNN — 系统健康 ✅
-📊 分析 N 个 job，全部健康。收敛追踪 N open。
+🔄 PCEC 快速扫描 YYYY-MM-DD HH:MM — 全部正常，无异常信号
 ```
 
-## Work Items
+Note: This should rarely be sent. Most no-signal cycles should silently end in Mode B.
 
-For complex issues that need multiple cycles:
-- Max 10 open items
-- Must resolve within 3 cycles or close with reason
-- Format in `{baseDir}/gep/work-items.jsonl`
+### Mode B: Lightweight Scan (无信号时)
+
+Triggered when: all jobs pass anomaly thresholds in Step 1.
+
+```bash
+# Quick check only:
+cron action=list   # verify all enabled jobs show lastStatus=ok, consecutiveErrors=0
+```
+
+If all green → **silently end. No output, no events.jsonl, no Discord message.**
+
+If any red found during quick check → upgrade to Mode A for those jobs.
+
+## Draft Approval Flow
+
+Drafts written to `{baseDir}/gep/drafts/` require approval before execution:
+
+1. PCEC writes draft + sends report with summary
+2. **Approval options:**
+   - **Main session (霄晗)** reviews and executes: reads draft → validates → applies fix → updates draft status to `applied`
+   - **昊辰** can review draft from Discord report and instruct execution
+3. After execution: update draft `status` to `"applied"` with `applied_at` timestamp and `applied_by`
+4. Rejected drafts: update status to `"rejected"` with `reason`
+
+**PCEC never self-approves or auto-executes its own drafts.**
 
 ## Anti-Entropy Lock
 
-**Stability > Explainability > Reusability > Novelty**
+**Safety > Autonomy > Activity**
 
 Forbidden:
-- Changes without evidence from observed signals or execution data
-- Inventing problems to justify changes
-- Creating GitHub issues autonomously
-- Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md) — human-owned
-- `git add -A` (must explicitly specify files)
-- Committing gep/ runtime data (events, trackers, work-items) — local-only, never push
+- Any file modification (SKILL.md, scripts, cron prompts, config)
+- `git add/commit/push` under any circumstances
+- Diagnosing without session transcript evidence
+- Sending reports when there's nothing to report
+- Creating GitHub issues or PRs
+- Modifying workspace root files (AGENTS.md, TOOLS.md, SOUL.md, USER.md)
 - Running git commands inside workspace directory
+- Committing gep/ runtime data (drafts, events) — local-only, never push
 
-## Success Metrics
+Allowed:
+- Reading any file (skills, logs, session histories, configs)
+- Writing to `{baseDir}/gep/drafts/` only
+- Writing `{baseDir}/gep/events.jsonl` (only for anomaly cycles, pruned to 30)
+- Sending messages via `message` tool
+- `cron action=list` and `cron action=runs` (read-only)
 
-1. **Convergence rate** — fixed once and stays fixed vs. regresses
-2. **Prediction accuracy** — predicted degradations that actually occurred
-3. **Skill health trend** — overall healthy-job ratio over time
+## Schedule & Frequency
+
+Configured externally via cron job: `0 1,9,17 * * *` (every 8 hours).
+
+Each execution independently chooses Mode A or Mode B based on detected signals.
+Expected distribution: mostly Mode B (silent), occasional Mode A (full report).
