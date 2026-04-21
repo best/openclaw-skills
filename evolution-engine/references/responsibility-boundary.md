@@ -4,21 +4,22 @@
 
 | 组件 | 定位 | 核心职责 | 频率 |
 |------|------|---------|------|
-| **PCEC** | Wiki-Native 进化引擎 | 信号检测→经验召回→策略选择→执行→验证→**Wiki固化** | 每天 1 次 (05:00) |
+| **PCEC** | Wiki-Native 进化引擎 | 信号检测→经验召回→诊断→**Wiki固化**（只写知识，不改代码） | 每天 1 次 (05:00) |
 | **Dream 🌙** | 记忆整合引擎 | T1 日志扫描 → T0 四动作 → T2 Wiki 维护 | 每天 1 次 (03:00) |
 | **Heartbeat** | 系统健康巡检 | Cron 运维面（存活/错误/资源）— 轻量高频 | 每 30 分钟 |
 
 ## PCEC 的独特价值
 
-三个组件都写 Wiki，但写的内容和目的不同：
+三个组件中，只有 PCEC 同时读写 Wiki：
 
 | 维度 | Heartbeat | Dream | PCEC |
-|------|-----------|-------|---------|
+|------|-----------|-------|------|
 | 写 Wiki 吗 | ❌ 不写 | ✅ 知识条目（T2 归档） | ✅ **Gene + Capsule**（进化资产） |
-| 读 Wiki 吗 | ❌ 不读 | ✅ 读 T0/T2 做整合决策 | ✅ **Recall：每次行动前必查** |
-| 数据源 | cron 元数据 | memory/ 日志 | Session Transcript + Wiki 历史 |
+| 读 Wiki 吗 | ❌ 不读 | ✅ 读 T0/T2 做整合决策 | ✅ **Recall：每次诊断前必查** |
+| 数据源 | cron 元数据 | memory/ 日志 | Session Transcript + **Wiki 历史** |
 | 正常时输出 | "全绿"摘要 | 整合报告或静默 | Explore 或静默 |
 | 深度 | 浅（秒级） | 中（读日志） | 深（读 transcript + 搜索 Wiki） |
+| 会改代码吗 | ❌ | ❌ | **❌ 只写知识，不改代码** |
 
 ## PCEC vs Heartbeat：关键区分
 
@@ -38,14 +39,14 @@
 - Cron job 执行质量（成功率、耗时趋势、token 效率）
 - **Skill 调用质量评估**（遵循度、输出质量、效率、模式化问题）
 - **Gene 全生命周期管理**（创建、复用、升级、废弃）
-- **Capsule 审计记录**（每次行动的完整记录）
+- **Capsule 诊断记录**（每次诊断的完整记录，含建议）
 - **Memory Graph 维护**（通过 Wiki 搜索实现隐式图谱）
 - **Distillation**（从 Capsule 提炼/升级 Gene）
 - **Explore**（无信号时的主动发现：内部技术债、外部新模式）
-- 低风险自主行动（L1）：参数调优、Wiki 写入、数据维护
-- 高风险变更草案（L2）
+- 自主行动：参数调优（`cron update`）、Wiki 写入（`wiki_apply`）
 
 ### PCEC 不管什么
+- 修改 SKILL.md / cron prompt / 脚本 / 代码（不做）
 - 记忆文件维护（Dream 的地盘）
 - T0 注入层审计（Dream 的四动作之一）
 - 实时系统资源监控（Heartbeat 的地盘）
@@ -61,7 +62,7 @@
 ### Dream 不管什么
 - Skill/Cron 健康诊断（PCEC 的地盘）
 - 系统资源状态（Heartbeat 的地盘）
-- Gene/Capsule/L2 草案（PCEC 的地盘）
+- Gene/Capsule（PCEC 的地盘）
 - HEARTBEAT.md 维护
 
 ### Heartbeat 管什么
@@ -83,7 +84,7 @@
 | 写入者 | 内容类型 | Wiki 页面标题格式 | 示例 |
 |--------|---------|-------------------|------|
 | **PCEC** | Gene（策略模板） | `Gene: <信号> — <策略名>` | `Gene: GLM超时重试 — 指数退避策略` |
-| **PCEC** | Capsule（修复记录） | `Capsule: YYYY-MM-DD <目标> <摘要>` | `Capsule: 2026-04-21 feed-score timeout调优` |
+| **PCEC** | Capsule（诊断记录） | `Capsule: YYYY-MM-DD <目标> <摘要>` | `Capsule: 2026-04-21 feed-score timeout分析` |
 | **Dream** | 知识条目 | `<主题>` （synthesis） | `Cron Git 安全规范`、`Prompt 设计原则` |
 
 **互不侵犯原则扩展：**
