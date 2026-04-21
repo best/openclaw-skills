@@ -198,7 +198,7 @@ Explore 发现进入正常流程。
 
 | 级别 | 标准 | 示例 |
 |------|------|------|
-| **L1 自主** | 低风险：参数/Wiki/数据 | timeout 调优、Wiki 写入、events.jsonl 维护 |
+| **L1 自主** | 低风险：参数/Wiki/数据 | timeout 调优、Wiki 写入、drafts 清理 |
 | **L2 草案** | 中高风险：Skill/Prompt/代码/Git | 编辑 SKILL.md、改 cron prompt、改脚本 |
 
 **优先级排序（Max 3 个行动/cycle）：**
@@ -215,7 +215,7 @@ Explore 发现进入正常流程。
 |------|------|
 | 参数调优 | `cron action=update` |
 | 知识沉淀 | `wiki_apply op=create_synthesis` |
-| 数据维护 | gep/events.jsonl 清理/归档 |
+| 数据维护 | gep/drafts/ 清理（过期草案归档） |
 | Gene 统计更新 | 更新 Wiki Gene 页面 stats |
 
 **L2 草案审核：**
@@ -247,10 +247,10 @@ Explore 发现进入正常流程。
 
 **即时（L1）：** 操作后立即确认生效（配置已更新/页面可搜索/文件已归档）
 
-**延迟（L2 / 修复类）：** events.jsonl 记录待验证项，下个 cycle 检查：
+**延迟（L2 / 修复类）：** 下个 cycle 通过 `wiki_search` 查询上轮 Capsule 验证状态：
 - L2 草案是否已被审核执行
-- 上轮问题是否改善
-- before/after 对比
+- 上轮报告的问题是否改善（对比 Capsule outcome）
+- before/after 指标
 
 ### Phase 5: Solidify — 固化到 Wiki
 
@@ -278,43 +278,33 @@ Explore 发现进入正常流程。
 
 过程：收集 Capsule → 分析共性 → 升级 Gene → 记录 `distilled_from`
 
-## 输出
+## 投递
 
-### events.jsonl（每次执行都写）
+有实质内容时发送报告，全部正常则静默。
 
-```json
-{
-  "id": "evt_NNN",
-  "ts": "ISO-8601",
-  "type": "full | quiet | explore",
-  "detect": {"cron_scanned": N, "skills_evaluated": N, "anomalies": N},
-  "recall": {"queries": N, "hits": N, "misses": N},
-  "act": {"l1_actions": N, "l2_drafts": N},
-  "solidify": {"capsules_written": N, "genes_created": N, "genes_updated": N}
-}
+```
+🔄 PCEC YYYY-MM-DD 05:00
+
+📡 信号
+  Cron: N扫 — N✓ / N⚠
+  Skill: N评 — N✓ / N⚠ / N✗
+  Explore: <摘要 如有>
+
+🧠 召回
+  N查 → N命中 / N未中
+  复用: <Gene列表>
+  新模式: <列表>
+
+⚡ 行动
+  L1: <列表>
+  L2: draft_NNN → 待审核
+
+💎 固化
+  Capsule: N | Gene: 新N / 更新N
+  蒸馏: <如有>
 ```
 
-保留最近 30 条，超出归档至 events-archive.jsonl。
-
-### 投递边界
-
-SKILL.md 定义**投递数据契约**（Cron Prompt 决定是否发送及格式）：
-
-**可用字段（Phase 产出）：**
-
-| 字段 | 来源 | 内容 |
-|------|------|------|
-| `detect.cron` | Phase 1a | 扫描数 / 正常 / 异常 |
-| `detect.skills` | Phase 1b | 评估数 / healthy / degrading / attention / broken |
-| `detect.explore` | Phase 1d | 探索发现摘要（如有） |
-| `recall.summary` | Phase 1c | 查询次数 / 命中 / 未命中 / 复用的 Gene |
-| `act.l1` | Phase 3 | L1 自主操作列表 |
-| `act.l2` | Phase 3 | L2 草案 ID + 摘要 |
-| `solidify.capsules` | Phase 5a | 新增 Capsule 数量 |
-| `solidify.genes` | Phase 5b | 新建/升级 Gene 数量 |
-| `solidify.distillation` | Phase 5c | 蒸馏事件（如有）|
-
-**静默条件：** detect 零异常 + act 零行动 + solidify 零写入 → 不投递。
+**静默条件：** detect 零异常 + act 零行动 + solidify 零写入 → 不发送。
 
 ## 安全边界
 
