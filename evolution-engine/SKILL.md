@@ -1,12 +1,12 @@
 ---
 name: evolution-engine
 version: 3.0.0-preview
-description: "PCEC — 受控进化引擎。从 Cron 执行数据与 Session Transcript 双维度检测问题，强制证据链诊断，产出修复草案经审核后执行。自主进化，但有监管。适用于：定期系统健康检查、Cron 任务诊断、技能退化检测、系统级趋势预警。"
+description: "PCEC — 受控进化引擎。从 Cron 执行数据与 Session Transcript 双维度检测问题，强制证据链诊断，分级授权执行。适用于：定期系统健康检查、Cron 任务诊断、技能退化检测、系统级趋势预警、运行参数优化、知识沉淀。"
 ---
 
 # Evolution Engine — PCEC
 
-受控的自主进化引擎。周期性检测系统问题、诊断根因、提出进化方案——所有修改操作必须经过审核后才执行。
+受控的自主进化引擎。周期性检测问题、诊断根因、采取行动——按风险等级分级授权，低风险自主执行，高风险草案审核。
 
 > 职责边界见 `references/responsibility-boundary.md`（PCEC / Dream / Heartbeat 分工）。
 
@@ -18,17 +18,34 @@ description: "PCEC — 受控进化引擎。从 Cron 执行数据与 Session Tra
 
 1. `cron action=runs` → 发现异常 run（元数据触发）
 2. `sessions_history(sessionKey, includeTools=true)` → 读实际发生了什么
-3. 读完 transcript 后才下诊断结论
+3. 读完 transcript 后才下诊断结论或采取行动
 
-禁止仅凭 duration/token/status 元数据做诊断。
+禁止仅凭 duration/token/status 元数据做诊断或动手。
 
-### 铁律 2：只写草案（强制）
+### 铁律 2：分级授权（强制）
 
-不直接修改任何文件。所有变更以草案形式提交审核：
+按风险等级决定自主执行还是草案审核：
 
-- ❌ 编辑 SKILL.md / 修改 cron prompt / git 操作
-- ✅ 写修复草案到 `{baseDir}/gep/drafts/`
-- ✅ 通过 Discord 投递报告（含草案摘要）
+**Level 1 — 自主执行（低风险，直接做）：**
+
+| 操作类型 | 示例 | 理由 |
+|----------|------|------|
+| 运行参数调优 | cron job timeout 增减、加 lightContext | 可逆，不影响逻辑 |
+| 知识沉淀 | 写 memory/reference/*.md | 纯信息追加，不改行为 |
+| 自身数据维护 | gep/events.jsonl 清理/修复 | 只影响 PCEC 自己 |
+| 草案状态流转 | 已审核的草案标记 applied/rejected | 执行审批结果 |
+
+**Level 2 — 草案审核（中高风险，写草案等批准）：**
+
+| 操作类型 | 示例 | 理由 |
+|----------|------|------|
+| 技能内容修改 | 编辑 SKILL.md | 影响其他 Agent 行为 |
+| 执行逻辑修改 | 改 cron prompt payload | 改变 job 的执行方式 |
+| 代码修改 | 编辑 scripts/ | 可能引入 bug |
+| git 操作 | add/commit/push | 不可逆发布 |
+
+Level 1 操作可直接执行，但在报告中说明做了什么。
+Level 2 操作必须写入 `{baseDir}/gep/drafts/` 等待审核。
 
 ### 铁律 3：无信号静默（强制）
 
@@ -39,7 +56,7 @@ description: "PCEC — 受控进化引擎。从 Cron 执行数据与 Session Tra
 ### 有异常时：完整周期
 
 ```
-检测 → 调查(读Session) → 草案 → 报告
+检测 → 调查(读Session) → 行动(分级) → 报告
 ```
 
 #### Step 1：检测
@@ -86,9 +103,29 @@ sessions_history(sessionKey="<前次成功sessionKey>", limit=1)
 | 脚本失败 | exec 非零退出 + stderr |
 | 投递失败 | message 工具报错但任务完成 |
 
-输出置信度：high / medium / low。low → 不出草案，标记"需更多数据"。
+输出置信度：high / medium / low。low → 不采取行动，标记"需更多数据"。
 
-#### Step 3：草案
+#### Step 3：行动 — 分级决策
+
+根据诊断结果和铁律 2 的分级表，选择执行路径：
+
+**Path A：自主执行（Level 1）**
+
+直接操作，记录到 events.jsonl：
+
+```json
+{
+  "id": "evt_NNN",
+  "ts": "ISO-8601",
+  "action_type": "level-1-autonomous",
+  "target": "job_id or file",
+  "what": "具体做了什么",
+  "why": "基于什么证据",
+  "risk": "safe"
+}
+```
+
+**Path B：草案审核（Level 2）**
 
 写入 `{baseDir}/gep/drafts/YYYY-MM-DD_<名称>.json`：
 
@@ -111,7 +148,7 @@ sessions_history(sessionKey="<前次成功sessionKey>", limit=1)
 }
 ```
 
-质量标准：
+草案质量标准：
 1. `target_file` 是具体已有文件路径
 2. `description` 引用目标文件中的具体位置
 3. risky = 涉及 T0 文件 / 凭证 / git / 其他 cron 配置
@@ -133,6 +170,9 @@ Discord 投递格式：
   证据：[transcript 关键发现，1-2 句]
   诊断：[根因] · 置信度：高/中/低
 
+⚡ 自主执行（N 项）
+  [Level 1 操作摘要]
+
 📝 草案（N 个）
   DRAFT draft_NNN: [摘要] — 风险: 低/中/高 → 待审核
 ```
@@ -144,17 +184,16 @@ Discord 投递格式：
 ## 安全边界
 
 **禁止：**
-- 文件修改（SKILL.md / scripts / cron prompts / config）
-- git add/commit/push（任何场景）
-- 无 transcript 就做诊断
+- 无 transcript 证据就做诊断或动手
 - 无异常时发报告
 - GitHub Issue / PR
 - 修改 workspace 根文件（AGENTS.md / TOOLS.md / SOUL.md / USER.md）
-- workspace 内运行 git 命令
-- 提交 gep/ 数据到 git
+- workspace 内运行 git 命令（除 Level 1 知识沉淀外）
+- 提交 gep/ drafts 到 git（drafts 仅本地）
 
 **允许：**
 - 读任意文件
-- 写 `{baseDir}/gep/drafts/` 和 `{baseDir}/gep/events.jsonl`（仅异常时，≤30 条）
+- Level 1：写 memory/reference/*.md、调 cron 参数、维护 gep/events.jsonl
+- Level 2：写 `{baseDir}/gep/drafts/`
 - `message` 工具发送
 - `cron action=list` / `cron action=runs`（只读）
