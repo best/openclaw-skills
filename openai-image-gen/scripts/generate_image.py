@@ -141,30 +141,103 @@ def resolve_output_path(filename: str, output_format: str, index: int | None = N
     return raw.parent / final_name
 
 
-def maybe_fetch_image_bytes(entry) -> bytes | None:
-    if getattr(entry, "b64_json", None):
-        return base64.b64decode(entry.b64_json)
-    if getattr(entry, "url", None):
-        request = urllib.request.Request(
-            entry.url,
-            headers={
-                "User-Agent": "curl/8.0.0",
-                "Accept": "image/*,*/*;q=0.8",
-            },
-        )
+def _decode_b64_fallback(raw: str) -> bytes | None:
+    """Decode a base64 string with multiple format tolerances.
+
+    Handles:
+      - Standard bare base64 (OpenAI native)
+      - Data URI with prefix: data:image/png;base64,<b64>  (NewAPI / OneAPI)
+      - Whitespace-padded or newline-contaminated payloads
+    Returns None on any failure so the caller can try the next source.
+    """
+    if not raw or not isinstance(raw, str):
+        return None
+    # Strip data URI prefix if present
+    cleaned = raw.strip()
+    if cleaned.startswith("data:"):
+        cleaned = cleaned.split(",", 1)[-1].strip()
+    # Remove internal whitespace/newlines some providers inject
+    cleaned = re.sub(r"\s+", "", cleaned)
+    # Validate it looks like base64 before attempting decode
+    if not re.match(r"^[A-Za-z0-9+/=]+$", cleaned) or len(cleaned) < 100:
+        return None
+    try:
+        return base64.b64decode(cleaned, validate=True)
+    except Exception:
+        # Some providers use non-standard padding; try with padding fix
+        padded = cleaned + "=" * (-len(cleaned) % 4)
         try:
-            with urllib.request.urlopen(request) as resp:
-                return resp.read()
+            return base64.b64decode(padded, validate=True)
         except Exception:
-            try:
-                result = subprocess.run(
-                    ["curl", "-fsSL", entry.url],
-                    check=True,
-                    capture_output=True,
-                )
-                return result.stdout
-            except Exception:
-                raise
+            return None
+
+
+def _fetch_url_fallback(url: str) -> bytes | None:
+    """Fetch image bytes from a URL with multiple transport fallbacks.
+
+    Tries: urllib → curl subprocess.
+    Returns None on any failure.
+    """
+    if not url or not isinstance(url, str):
+        return None
+    headers = {"User-Agent": "curl/8.0.0", "Accept": "image/*,*/*;q=0.8"}
+    # Try urllib first
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read()
+            if data and len(data) > 100:
+                return data
+    except Exception:
+        pass
+    # Fallback to curl
+    try:
+        result = subprocess.run(
+            ["curl", "-fsSL", "--max-time", "30", url],
+            check=True,
+            capture_output=True,
+        )
+        if result.stdout and len(result.stdout) > 100:
+            return result.stdout
+    except Exception:
+        pass
+    return None
+
+
+def maybe_fetch_image_bytes(entry) -> bytes | None:
+    """Extract image bytes from an API response entry with multi-format auto-detection.
+
+    Strategy (ordered by reliability):
+      1. b64_json — inline base64 (handles data URI prefix, padding, whitespace)
+      2. url          — remote URL fetch (urllib → curl fallback)
+      3. Cross-fallback: if b64_json exists but fails to decode, try url anyway
+    """
+    sources_tried: list[str] = []
+
+    # Source 1: b64_json (inline base64)
+    b64_val = getattr(entry, "b64_json", None)
+    if b64_val:
+        sources_tried.append("b64_json")
+        result = _decode_b64_fallback(b64_val)
+        if result is not None:
+            return result
+        print(f"Warning: b64_json present but failed to decode ({len(str(b64_val))} chars), trying url fallback", file=sys.stderr)
+
+    # Source 2: url (remote fetch)
+    url_val = getattr(entry, "url", None)
+    if url_val:
+        sources_tried.append("url")
+        result = _fetch_url_fallback(url_val)
+        if result is not None:
+            return result
+
+    # Source 3: cross-fallback — we had b64_json but it failed, and we haven't tried url yet
+    if "b64_json" in sources_tried and "url" not in sources_tried:
+        # No url field available either
+        pass
+
+    if sources_tried:
+        print(f"Warning: All image extraction sources exhausted (tried: {', '.join(sources_tried)})", file=sys.stderr)
     return None
 
 
