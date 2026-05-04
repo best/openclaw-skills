@@ -35,35 +35,22 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
 
 
 def load_providers(config_path: str | None = None) -> list[dict]:
-    """Load provider chain from config file or fall back to env-var single-provider mode.
-
-    Resolution order:
-      1. --config CLI argument
-      2. GEMINI_IMAGE_CONFIG env var pointing to a JSON file
-      3. Env-var fallback: GEMINI_API_KEY + optional GEMINI_BASE_URL (single provider)
-    """
-    paths = [
-        config_path,
-        os.environ.get("GEMINI_IMAGE_CONFIG"),
-    ]
-    for p in filter(None, paths):
-        if os.path.isfile(p):
-            with open(p) as f:
-                data = json.load(f)
-            providers = data.get("providers", [])
-            if providers:
-                return providers
-
-    # Fallback: build single-provider config from env vars
-    api_key_env = "GEMINI_API_KEY"
-    if not os.environ.get(api_key_env):
+    """Load provider chain from GEMINI_IMAGE_CONFIG or an explicit config path."""
+    raw = config_path or os.environ.get("GEMINI_IMAGE_CONFIG")
+    if not raw:
+        print("Error: GEMINI_IMAGE_CONFIG is not set and --config was not provided.", file=sys.stderr)
         return []
-    return [{
-        "name": "default",
-        "base_url": os.environ.get("GEMINI_BASE_URL"),
-        "api_key_env": api_key_env,
-        "model": os.environ.get("GEMINI_IMAGE_MODEL", DEFAULT_MODEL),
-    }]
+    if not os.path.isfile(raw):
+        print(f"Error: provider config not found: {raw}", file=sys.stderr)
+        return []
+
+    with open(raw, encoding="utf-8") as f:
+        data = json.load(f)
+    providers = data.get("providers", [])
+    if not isinstance(providers, list) or not providers:
+        print(f"Error: provider config contains no providers: {raw}", file=sys.stderr)
+        return []
+    return providers
 
 
 def is_retryable_error(error: Exception) -> bool:
@@ -129,8 +116,6 @@ def generate_with_fallback(
     contents,
     image_config_kwargs: dict,
     model_override: str | None = None,
-    base_url_override: str | None = None,
-    api_key_override: str | None = None,
 ) -> tuple:
     """Try providers in order, falling back on retryable errors.
 
@@ -138,29 +123,19 @@ def generate_with_fallback(
     """
     from google import genai
 
-    # CLI overrides → single-provider mode, no fallback
-    if api_key_override or base_url_override:
-        api_key = api_key_override or os.environ.get("GEMINI_API_KEY", "")
-        base_url = base_url_override or os.environ.get("GEMINI_BASE_URL")
-        model = model_override or os.environ.get("GEMINI_IMAGE_MODEL", DEFAULT_MODEL)
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["http_options"] = {"base_url": base_url}
-        client = genai.Client(**client_kwargs)
-        print(f"Using provider: cli-override ({model})")
-        if base_url:
-            print(f"Using endpoint: {base_url}")
-        resp = generate_image(client, model, contents, image_config_kwargs)
-        return resp, "cli-override", model
-
     # Provider chain mode
     last_error = None
     for i, provider in enumerate(providers):
         name = provider.get("name", f"provider-{i}")
-        api_key = os.environ.get(provider.get("api_key_env", ""), "")
+        api_key = provider.get("api_key", "")
         if not api_key:
-            print(f"Skipping {name}: no API key (env {provider.get('api_key_env', '?')})")
-            continue
+            api_key_env = provider.get("api_key_env", "")
+            if api_key_env:
+                api_key = os.environ.get(api_key_env, "")
+            if not api_key:
+                source = f"env {api_key_env}" if api_key_env else "api_key/api_key_env"
+                print(f"Skipping {name}: no API key ({source})")
+                continue
 
         base_url = provider.get("base_url")
         model = model_override or provider.get("model", DEFAULT_MODEL)
@@ -187,7 +162,7 @@ def generate_with_fallback(
     if last_error:
         print(f"All providers failed. Last error: {last_error}", file=sys.stderr)
         raise last_error
-    print("Error: No providers available (check API keys).", file=sys.stderr)
+    print("Error: No providers available (check GEMINI_IMAGE_CONFIG provider api_key/api_key_env values).", file=sys.stderr)
     sys.exit(1)
 
 
@@ -205,8 +180,6 @@ def main():
                         help="Output resolution (default: 1K)")
     parser.add_argument("--aspect-ratio", "-a", choices=VALID_ASPECT_RATIOS, default=None,
                         dest="aspect_ratio", help="Aspect ratio (default: model decides)")
-    parser.add_argument("--api-key", "-k", help="Override API key (single-provider mode)")
-    parser.add_argument("--base-url", help="Override API endpoint URL (single-provider mode)")
     parser.add_argument("--model", "-m", help=f"Override model ID (default per provider)")
     parser.add_argument("--config", help="Path to providers.json config file")
 
@@ -214,9 +187,8 @@ def main():
 
     # Load provider chain
     providers = load_providers(args.config)
-    if not providers and not args.api_key:
-        print("Error: No providers configured and no --api-key provided.", file=sys.stderr)
-        print("Create a providers.json or set GEMINI_API_KEY.", file=sys.stderr)
+    if not providers:
+        print("Create a GEMINI_IMAGE_CONFIG file or pass --config with provider entries containing api_key or api_key_env.", file=sys.stderr)
         sys.exit(1)
 
     # Import heavy deps
@@ -275,8 +247,6 @@ def main():
             contents=contents,
             image_config_kwargs=image_config_kwargs,
             model_override=args.model,
-            base_url_override=args.base_url,
-            api_key_override=args.api_key,
         )
     except Exception as e:
         print(f"Error generating image: {e}", file=sys.stderr)

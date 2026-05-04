@@ -1,12 +1,12 @@
 ---
 name: gemini-image-gen
-version: 1.0.0
-description: "Generate and edit images using the Gemini Image Generation API with provider fallback. Supports text-to-image, image editing, multi-image composition (up to 14 input images), aspect ratio control, and 1K/2K/4K resolution. Automatically falls back to alternate providers on failure. Use when the user asks to create, generate, draw, or edit images."
+version: 1.1.0
+description: "Generate and edit images using the Gemini Image Generation API with provider fallback through GEMINI_IMAGE_CONFIG. Supports text-to-image, image editing, multi-image composition (up to 14 input images), aspect ratio control, and 1K/2K/4K resolution. Automatically falls back to alternate providers on failure. Use when the user asks to create, generate, draw, or edit images."
 ---
 
 # Gemini Image Generation
 
-Generate and edit images via the bundled Python script with automatic provider fallback.
+Generate and edit images via the bundled Python script with automatic provider fallback. The script only uses provider entries from `GEMINI_IMAGE_CONFIG` or `--config`; single-provider env/CLI overrides are intentionally unsupported.
 
 ## How to Generate
 
@@ -44,14 +44,12 @@ uv run <skill_dir>/scripts/generate_image.py \
 | -r, --resolution | No | `1K` (default), `2K`, or `4K`. Auto-detected from input images |
 | -a, --aspect-ratio | No | `1:1` `2:3` `3:2` `3:4` `4:3` `4:5` `5:4` `9:16` `16:9` `21:9` |
 | -i, --input-image | No | Input image path. Repeatable, up to 14 |
-| -m, --model | No | Override model ID (bypasses provider config) |
-| --base-url | No | Override API endpoint (single-provider mode) |
-| -k, --api-key | No | Override API key (single-provider mode) |
-| --config | No | Path to provider chain config file |
+| -m, --model | No | Override model ID across the provider chain |
+| --config | No | Path to provider chain config file; defaults to `GEMINI_IMAGE_CONFIG` |
 
 ## Provider Fallback
 
-By default the script runs in **single-provider mode** using `GEMINI_API_KEY` (+ optional `GEMINI_BASE_URL`). To enable automatic fallback across multiple providers, point the script at a config file via `--config` or the `GEMINI_IMAGE_CONFIG` env var.
+The script is **config-only**: it requires a provider chain from `GEMINI_IMAGE_CONFIG` or `--config`. Do not use `GEMINI_API_KEY`, `GEMINI_BASE_URL`, `--api-key`, or `--base-url` single-provider overrides.
 
 ### Config File Schema
 
@@ -61,36 +59,35 @@ By default the script runs in **single-provider mode** using `GEMINI_API_KEY` (+
     {
       "name": "provider-label",
       "base_url": "https://proxy.example.com/gemini",
-      "api_key_env": "ENV_VAR_NAME_FOR_API_KEY",
+      "api_key": "<provider API key>",
       "model": "gemini-3.1-flash-image"
     },
     {
       "name": "google-direct",
       "base_url": null,
-      "api_key_env": "GOOGLE_GEMINI_API_KEY",
+      "api_key": "<provider API key>",
       "model": "gemini-3.1-flash-image"
     }
   ]
 }
 ```
 
-- `api_key_env`: environment variable **name** (not the key itself) — file is safe to commit
+- `api_key` may be stored directly in the private config file
+- `api_key_env` is also supported if a deployment wants the config to reference an env var name instead
+- Keep the config file outside the skill repo; never commit real keys
 - `base_url: null`: use Google's official endpoint directly
 - Providers tried top-to-bottom; first success wins
-- CLI overrides (`-k`, `--base-url`) bypass the chain entirely
+- `-m, --model` may override the model across the provider chain
 
 ### First-Time Setup
 
 When using this skill and no `GEMINI_IMAGE_CONFIG` is configured yet:
 
-1. Ask the user which Gemini API providers they have access to (proxy services, Google direct, etc.)
-2. Generate a config JSON following the schema above, populated with their providers and env var names
-3. Ask the user where to save the file (a persistent path outside the skill directory)
-4. Configure the env var so the script finds it automatically:
-   - **OpenClaw**: add `GEMINI_IMAGE_CONFIG` to `env.vars` in `~/.openclaw/openclaw.json` — all agents pick it up via exec injection
-   - **Standalone**: `export GEMINI_IMAGE_CONFIG=/path/to/config.json` in shell profile
-
-Without a config file, the script falls back to single-provider mode using `GEMINI_API_KEY` (+ optional `GEMINI_BASE_URL`), which requires no setup beyond setting those env vars.
+1. Ask which Gemini API providers are available (proxy services, Google direct, etc.)
+2. Create a config JSON following the schema above
+3. Save it to a persistent path outside the skill directory
+4. Set `GEMINI_IMAGE_CONFIG` to the config file path
+5. Put actual keys in each provider's `api_key` field, or use `api_key_env` if env indirection is required
 
 ### Error Classification
 
@@ -113,13 +110,13 @@ Plain filename → `$GEMINI_IMAGE_OUTPUT_DIR/YYYY-MM/timestamp-name.png`
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes* | Primary provider API key |
-| `GOOGLE_GEMINI_API_KEY` | No | Fallback provider API key |
-| `GEMINI_BASE_URL` | No | Primary endpoint (fallback mode only) |
+| `GEMINI_IMAGE_CONFIG` | Yes* | Path to provider-chain config JSON |
+| provider `api_key` fields | Yes** | Actual provider API keys stored in the private config file |
+| env vars named by `api_key_env` | No | Optional indirection alternative to inline `api_key` |
 | `GEMINI_IMAGE_OUTPUT_DIR` | No | Output directory (default: `~/.openclaw/workspace/images`) |
-| `GEMINI_IMAGE_CONFIG` | No | Path to providers.json override |
 
-*Required unless `--api-key` is provided or providers.json has a valid provider.
+* Or pass `--config /path/to/providers.json` for an explicit config path.
+** Each provider needs either `api_key` or `api_key_env`.
 
 ## Prompt Writing
 
@@ -131,7 +128,7 @@ Key principle: **describe the scene as a narrative paragraph**, not a keyword li
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `No providers available` | No API keys set | Set env vars or use `-k` |
+| `No providers available` | Missing/empty config or provider key entries | Create `GEMINI_IMAGE_CONFIG` or pass `--config` |
 | `All providers failed` | Every provider returned errors | Check API keys and model names |
 | `No image was generated` | API returned text-only | Rephrase prompt; may trigger safety filters |
 | First run slow (~10s) | `uv` downloading dependencies | Subsequent runs use cache |
