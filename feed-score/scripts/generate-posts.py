@@ -118,13 +118,15 @@ def generate_post(article, seq, blog_dir, date_str):
     if not validate_breakdown(breakdown):
         return None, f"Invalid scoreBreakdown: {breakdown}"
 
+    collected_at = article.get("collectedAt") or article.get("pubDatetime", "")
+
     # Build frontmatter
     fm_lines = [
         '---',
         f'title: "{sanitize_yaml(article["title"])}"',
         f'description: "{sanitize_yaml(article.get("description", ""))}"',
         f'pubDatetime: {article.get("pubDatetime", "")}',
-        f'collectedAt: {article.get("collectedAt", "")}',
+        f'collectedAt: {collected_at}',
         f'category: "{normalize_category(article.get("category"))}"',
         f'tags: {json.dumps(article.get("tags", []), ensure_ascii=False)}',
         f'featured: {"true" if article.get("featured") else "false"}',
@@ -174,7 +176,18 @@ def main():
     with open(results_path) as f:
         data = json.load(f)
 
-    results = data.get('results', [])
+    if isinstance(data, list):
+        results = data
+    elif isinstance(data, dict):
+        results = data.get('results', [])
+    else:
+        print("scored-results.json must be an object with results[] or a list", file=sys.stderr)
+        sys.exit(1)
+
+    if not isinstance(results, list):
+        print("scored-results.json field 'results' must be a list", file=sys.stderr)
+        sys.exit(1)
+
     publish = [r for r in results if r.get('verdict') == 'publish']
     skip = [r for r in results if r.get('verdict') == 'skip']
 

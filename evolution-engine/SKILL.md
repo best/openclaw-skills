@@ -1,6 +1,6 @@
 ---
 name: evolution-engine
-version: 2.1.0
+version: 2.1.1
 description: "PCEC — Wiki-Native 进化引擎。以 Wiki Vault 为核心知识库，通过 Gene（策略模板）和 Capsule（验证记录）实现经验积累与复用。信号检测→经验召回→诊断→固化到Wiki。"
 ---
 
@@ -220,6 +220,17 @@ PCEC 可自主执行的行动：
 **Max 3 个自主行动 per cycle。** 其余作为建议写入 Capsule。
 
 ### Phase 3: Solidify — 固化到 Wiki
+
+### Phase 3 预算闸门：先报告，后扩展验证
+
+Solidify 的目标是“可靠写入 + 可见报告”，不是无限验证。时间预算紧张时按优先级执行：
+
+1. **必须完成**：`wiki_apply` 写 Capsule/Gene。
+2. **最小验证**：写入成功后最多做 1 个轻量检查（页面存在或返回标题）。
+3. **立即投递报告**：不要让额外验证挤掉报告。
+4. **延后事项**：`openclaw * --help`、大范围 `wiki get/search/compile`、长 JSON 输出、蒸馏探索，全部放到报告之后或下轮。
+
+如果无法确认剩余时间，跳过扩展验证，在报告中标记 `pending-validation`。报告成功投递比 T3 验证更重要。
 
 **3a. 写 Capsule（每次实质诊断都写）**
 

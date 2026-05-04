@@ -15,10 +15,10 @@ OpenClaw agent skills for autonomous development workflows.
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
 | [dream](./dream/) | Memory methodology & consolidation with OpenClaw T0 budget guard, 4-action model, 3 flows, dream diary, and fact-review audit | v2.5.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.1.1 |
-| [evolution-engine | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.0 |
+| [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native evolution engine with Gene/Capsule knowledge reuse | v2.1.1 |
 | [feed-collect](./feed-collect/) | AI news feed collection via Miniflux API + HN + GitHub Trending | v2.0.2 |
 | [feed-broadcast](./feed-broadcast/) | AI news feed smart broadcast with push/skip judgment | v1.1.1 |
-| [feed-score](./feed-score/) | AI news feed scoring, dedup, Markdown generation and publishing | v2.1.0 |
+| [feed-score](./feed-score/) | AI news feed scoring, dedup, Markdown generation and publishing | v2.1.2 |
 | [gemini-image-gen](./gemini-image-gen/) | Image generation and editing with Gemini API + provider fallback | v1.0.0 |
 | [openai-image-gen](./openai-image-gen/) | Image generation and editing with OpenAI Image API (default gpt-image-2) + provider fallback | v1.1.1 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.0 |

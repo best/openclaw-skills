@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 2.1.1
+version: 2.1.2
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 ---
 
@@ -43,6 +43,26 @@ git pull --rebase
 - 最近 7 天 `src/data/blog/*/` 文章标题 — 语义去重
 
 按 scoring-rules.md 的规则评估每篇候选，将完整结果写入 `data/scored-results.json`。
+
+`scored-results.json` 必须是顶层对象，不要写裸数组：
+
+```json
+{
+  "results": [
+    {
+      "title": "候选标题",
+      "verdict": "publish",
+      "score": 7.0,
+      "scoreReason": "简短评分依据",
+      "scoreBreakdown": "信息增量:7 内容质量:7 实用价值:7 减分:0",
+      "pubDatetime": "2026-05-04T00:00:00Z",
+      "collectedAt": "2026-05-04T08:00:00+08:00"
+    }
+  ]
+}
+```
+
+`verdict` 只能是 `publish` 或 `skip`；低于发布阈值的候选也要写入 `results` 并标记 `skip`。
 
 ### Step 3: 生成 .md
 
