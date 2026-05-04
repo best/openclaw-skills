@@ -20,7 +20,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [feed-broadcast](./feed-broadcast/) | AI 信息流智能播报（自主判断推送/跳过） | v1.1.1 |
 | [feed-collector](./feed-collector/) | AI 信息流采集（已废弃 → feed-collect + feed-score） | v1.13.1 |
 | [feed-score](./feed-score/) | AI 信息流评分、去重、Markdown 生成与发布 | v2.1.2 |
-| [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.0 |
+| [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.1 |
 | [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.0 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.0 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |

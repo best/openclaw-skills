@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 
-DEFAULT_MODEL = "gemini-3.1-flash-image"
+DEFAULT_MODEL = "gemini-3.1-flash-image-preview"
 DEFAULT_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), ".openclaw", "workspace", "images")
 VALID_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 

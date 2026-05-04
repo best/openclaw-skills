@@ -1,6 +1,6 @@
 ---
 name: gemini-image-gen
-version: 1.1.0
+version: 1.1.1
 description: "Generate and edit images using the Gemini Image Generation API with provider fallback through GEMINI_IMAGE_CONFIG. Supports text-to-image, image editing, multi-image composition (up to 14 input images), aspect ratio control, and 1K/2K/4K resolution. Automatically falls back to alternate providers on failure. Use when the user asks to create, generate, draw, or edit images."
 ---
 
@@ -60,13 +60,13 @@ The script is **config-only**: it requires a provider chain from `GEMINI_IMAGE_C
       "name": "provider-label",
       "base_url": "https://proxy.example.com/gemini",
       "api_key": "<provider API key>",
-      "model": "gemini-3.1-flash-image"
+      "model": "gemini-3.1-flash-image-preview"
     },
     {
       "name": "google-direct",
       "base_url": null,
       "api_key": "<provider API key>",
-      "model": "gemini-3.1-flash-image"
+      "model": "gemini-3.1-flash-image-preview"
     }
   ]
 }
