@@ -7,7 +7,7 @@
 # ///
 """Generate or edit images with the OpenAI Image API.
 
-Defaults to gpt-image-2 and supports provider fallback via a small JSON config.
+Defaults to gpt-image-2 and requires provider fallback via a small JSON config.
 Designed for cases where the host application's built-in image tool lags behind
 new OpenAI image model rollouts.
 """
@@ -25,6 +25,7 @@ import urllib.request
 import subprocess
 from contextlib import ExitStack
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from openai import OpenAI
 
@@ -59,26 +60,22 @@ MAX_INPUT_IMAGES = 16
 
 
 def load_providers(config_path: str | None = None) -> list[dict]:
-    """Load provider chain from JSON config or single-provider env vars."""
-    paths = [config_path, os.environ.get("OPENAI_IMAGE_CONFIG")]
-    for raw in filter(None, paths):
-        if os.path.isfile(raw):
-            with open(raw, encoding="utf-8") as f:
-                data = json.load(f)
-            providers = data.get("providers", [])
-            if providers:
-                return providers
-
-    api_key_env = "OPENAI_IMAGE_API_KEY"
-    if not os.environ.get(api_key_env):
+    """Load provider chain from OPENAI_IMAGE_CONFIG or an explicit config path."""
+    raw = config_path or os.environ.get("OPENAI_IMAGE_CONFIG")
+    if not raw:
+        print("Error: OPENAI_IMAGE_CONFIG is not set and --config was not provided.", file=sys.stderr)
+        return []
+    if not os.path.isfile(raw):
+        print(f"Error: provider config not found: {raw}", file=sys.stderr)
         return []
 
-    return [{
-        "name": "default",
-        "base_url": os.environ.get("OPENAI_IMAGE_BASE_URL"),
-        "api_key_env": api_key_env,
-        "model": os.environ.get("OPENAI_IMAGE_MODEL", DEFAULT_MODEL),
-    }]
+    with open(raw, encoding="utf-8") as f:
+        data = json.load(f)
+    providers = data.get("providers", [])
+    if not isinstance(providers, list) or not providers:
+        print(f"Error: provider config contains no providers: {raw}", file=sys.stderr)
+        return []
+    return providers
 
 
 def classify_error(exc: Exception) -> str:
@@ -255,8 +252,6 @@ def generate_with_fallback(
     images: list[str],
     mask: str | None,
     model_override: str | None,
-    api_key_override: str | None,
-    base_url_override: str | None,
     size: str | None,
     quality: str | None,
     background: str | None,
@@ -299,28 +294,18 @@ def generate_with_fallback(
             kwargs["moderation"] = moderation
         return client.images.generate(**kwargs)
 
-    # CLI override -> single-provider mode
-    if api_key_override or base_url_override:
-        api_key = api_key_override or os.environ.get("OPENAI_IMAGE_API_KEY")
-        if not api_key:
-            print("Error: --api-key not provided and OPENAI_IMAGE_API_KEY is unset.", file=sys.stderr)
-            sys.exit(1)
-        base_url = base_url_override or os.environ.get("OPENAI_IMAGE_BASE_URL")
-        model = model_override or os.environ.get("OPENAI_IMAGE_MODEL", DEFAULT_MODEL)
-        print(f"Using provider: cli-override ({model})")
-        if base_url:
-            print(f"Using endpoint: {base_url}")
-        client = build_client(api_key, base_url)
-        return call_single(client, model), "cli-override", model
-
     last_error: Exception | None = None
     for idx, provider in enumerate(providers):
         name = provider.get("name", f"provider-{idx}")
-        api_key_env = provider.get("api_key_env", "")
-        api_key = os.environ.get(api_key_env, "")
+        api_key = provider.get("api_key", "")
         if not api_key:
-            print(f"Skipping {name}: no API key (env {api_key_env or '?'})")
-            continue
+            api_key_env = provider.get("api_key_env", "")
+            if api_key_env:
+                api_key = os.environ.get(api_key_env, "")
+            if not api_key:
+                source = f"env {api_key_env}" if api_key_env else "api_key/api_key_env"
+                print(f"Skipping {name}: no API key ({source})")
+                continue
 
         base_url = provider.get("base_url")
         model = model_override or provider.get("model", DEFAULT_MODEL)
@@ -343,7 +328,7 @@ def generate_with_fallback(
     if last_error is not None:
         print(f"All providers failed. Last error: {last_error}", file=sys.stderr)
         raise last_error
-    print("Error: No providers available (check OPENAI_IMAGE_API_KEY or OPENAI_IMAGE_CONFIG).", file=sys.stderr)
+    print("Error: No providers available (check OPENAI_IMAGE_CONFIG provider api_key/api_key_env values).", file=sys.stderr)
     sys.exit(1)
 
 
@@ -356,8 +341,8 @@ def validate_file(path: str, label: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate or edit images with OpenAI Image API")
-    parser.add_argument("--prompt", "-p", required=True, help="Image description or edit instruction")
-    parser.add_argument("--filename", "-f", required=True, help="Output filename")
+    parser.add_argument("--prompt", "-p", required=True, action="append", dest="prompts", help="Image description or edit instruction. Repeat for parallel multi-prompt generation.")
+    parser.add_argument("--filename", "-f", required=True, help="Output filename (base name; auto-suffixed for parallel runs)")
     parser.add_argument("--input-image", "-i", action="append", dest="input_images", help="Input image path. Repeatable, up to 16")
     parser.add_argument("--mask", help="Optional PNG mask for edit mode")
     parser.add_argument("--size", choices=VALID_SIZES, default="auto", help="Output size (default: auto)")
@@ -367,13 +352,69 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-compression", type=int, help="Compression 0-100 for webp/jpeg")
     parser.add_argument("--moderation", choices=VALID_MODERATION, default="auto", help="Moderation level for generation mode (default: auto)")
     parser.add_argument("--input-fidelity", choices=VALID_INPUT_FIDELITY, default="low", help="Edit fidelity for input images (default: low)")
-    parser.add_argument("--count", "-n", type=int, default=1, help="Number of images to generate (1-10)")
-    parser.add_argument("--api-key", "-k", help="Override API key (single-provider mode)")
-    parser.add_argument("--base-url", help="Override API endpoint (single-provider mode)")
+    parser.add_argument("--count", "-n", type=int, default=1, help="Number of images to generate per prompt (1-10)")
+    parser.add_argument("--parallel", "-j", type=int, default=0, help="Max concurrent API calls for multi-prompt mode (default: auto = number of prompts)")
     parser.add_argument("--model", "-m", help=f"Override model ID (default per provider, usually {DEFAULT_MODEL})")
     parser.add_argument("--config", help="Path to providers.json config file")
     return parser.parse_args()
 
+
+
+def _run_single_generation(
+    prompt_idx: int,
+    prompt: str,
+    providers: list[dict],
+    args: argparse.Namespace,
+) -> tuple[int, list[Path], str, str]:
+    """Run a single generation call. Returns (idx, saved_paths, provider_name, model_used)."""
+    try:
+        response, provider_name, model_used = generate_with_fallback(
+            providers=providers,
+            prompt=prompt,
+            images=args.input_images or [],
+            mask=args.mask,
+            model_override=args.model,
+            size=args.size,
+            quality=args.quality,
+            background=args.background,
+            output_format=args.output_format,
+            output_compression=args.output_compression,
+            moderation=args.moderation if not (args.input_images or []) else None,
+            input_fidelity=args.input_fidelity if (args.input_images or []) else None,
+            count=args.count,
+        )
+        items = list(getattr(response, "data", []) or [])
+        if not items:
+            print(f"  [prompt {prompt_idx}] No image returned.", file=sys.stderr)
+            return (prompt_idx, [], provider_name, model_used)
+
+        saved_paths: list[Path] = []
+        for idx, item in enumerate(items, start=1):
+            image_bytes = maybe_fetch_image_bytes(item)
+            if image_bytes is None:
+                continue
+            # For multi-prompt: use prompt_idx as suffix; for single-prompt multi-count: use item idx
+            total_prompts = len(args.prompts)
+            if total_prompts > 1 and args.count == 1:
+                out_idx = prompt_idx + 1  # 1-based: v1, v2, v3...
+            elif total_prompts > 1:
+                out_idx = (prompt_idx * 100) + idx  # p1-1, p1-2, p2-1...
+            elif len(items) > 1:
+                out_idx = idx
+            else:
+                out_idx = None
+            output_path = resolve_output_path(args.filename, args.output_format, out_idx)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(image_bytes)
+            saved_paths.append(output_path)
+            revised_prompt = getattr(item, "revised_prompt", None)
+            if revised_prompt:
+                print(f"  Revised prompt [{prompt_idx}-{idx}]: {revised_prompt}")
+
+        return (prompt_idx, saved_paths, provider_name, model_used)
+    except Exception as exc:
+        print(f"  [prompt {prompt_idx}] Error: {exc}", file=sys.stderr)
+        return (prompt_idx, [], "", "")
 
 
 def main() -> None:
@@ -404,14 +445,52 @@ def main() -> None:
         print("Error: --mask requires at least one --input-image.", file=sys.stderr)
         sys.exit(1)
 
+    prompts = args.prompts
+
     providers = load_providers(args.config)
-    if not providers and not args.api_key:
-        print("Error: No providers configured and no --api-key provided.", file=sys.stderr)
-        print("Create an OPENAI_IMAGE_CONFIG file or set OPENAI_IMAGE_API_KEY.", file=sys.stderr)
+    if not providers:
+        print("Create an OPENAI_IMAGE_CONFIG file or pass --config with provider entries containing api_key or api_key_env.", file=sys.stderr)
         sys.exit(1)
 
     output_dir = os.environ.get("OPENAI_IMAGE_OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    if len(prompts) > 1:
+        # Multi-prompt parallel mode
+        max_workers = args.parallel if args.parallel > 0 else min(len(prompts), 5)
+        print(f"Mode: multi-prompt parallel ({len(prompts)} prompts, {max_workers} workers)")
+        print(f"Output: {args.output_format}, size {args.size}, quality {args.quality}, count per prompt: {args.count}")
+        print("")
+
+        all_saved: list[tuple[int, Path, str, str]] = []  # (prompt_idx, path, provider, model)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_run_single_generation, i, p, providers, args): i
+                for i, p in enumerate(prompts)
+            }
+            for future in as_completed(futures):
+                idx = futures[future]
+                result = future.result()
+                pidx, paths, prov, mdl = result
+                for path in paths:
+                    all_saved.append((pidx, path, prov, mdl))
+
+        if not all_saved:
+            print("Error: No images generated across all prompts.", file=sys.stderr)
+            sys.exit(1)
+
+        # Sort by prompt_idx for stable output order
+        all_saved.sort(key=lambda x: x[0])
+        print("")
+        for pidx, path, prov, mdl in all_saved:
+            display_path = workspace_display_path(path)
+            mime = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+            print(f"Saved: {display_path} ({mime}) via {prov}/{mdl}")
+            print(f"MEDIA: {display_path}")
+        return
+
+    # Single-prompt mode (original behavior)
+    prompt = prompts[0]
 
     mode = "editing" if input_images else "generation"
     print(f"Mode: {mode}")
@@ -420,12 +499,10 @@ def main() -> None:
     try:
         response, provider_name, model_used = generate_with_fallback(
             providers=providers,
-            prompt=args.prompt,
+            prompt=prompt,
             images=input_images,
             mask=args.mask,
             model_override=args.model,
-            api_key_override=args.api_key,
-            base_url_override=args.base_url,
             size=args.size,
             quality=args.quality,
             background=args.background,

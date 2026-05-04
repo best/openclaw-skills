@@ -1,12 +1,12 @@
 ---
 name: openai-image-gen
-version: 1.1.1
-description: "Generate and edit images with the OpenAI Image API, defaulting to gpt-image-2. Supports text-to-image, multi-image editing/composition (up to 16 input images), mask-based edits, size/quality/background/output-format control, and provider fallback through a config file. Use when the user asks to create, draw, generate, or edit images with OpenAI / GPT Image models, especially when the built-in image tool has not exposed the latest OpenAI image model yet."
+version: 1.2.0
+description: "Generate and edit images with the OpenAI Image API, defaulting to gpt-image-2. Requires provider fallback through OPENAI_IMAGE_CONFIG; supports text-to-image, repeated-prompt batch generation, multi-image editing/composition (up to 16 input images), mask edits, and size/quality/background/output-format control. Use when the user asks to create, draw, generate, or edit images with OpenAI / GPT Image models, especially when the built-in image tool has not exposed the latest OpenAI image model yet."
 ---
 
 # OpenAI Image Generation
 
-Generate and edit images via the bundled Python script with `gpt-image-2` as the default model.
+Generate and edit images via the bundled Python script with `gpt-image-2` as the default model. The script only uses provider entries from `OPENAI_IMAGE_CONFIG` or `--config`; single-provider env/CLI overrides are intentionally unsupported.
 
 Use this skill when OpenClaw's built-in `image_generate` tool does not yet expose the desired OpenAI image model, but a direct OpenAI-compatible Image API endpoint is available.
 
@@ -84,11 +84,12 @@ uv run <skill_dir>/scripts/generate_image.py \
 
 | Param | Required | Description |
 |-------|----------|-------------|
-| `-p, --prompt` | Yes | Image description or edit instruction |
-| `-f, --filename` | Yes | Output filename. Timestamp prefix auto-added |
+| `-p, --prompt` | Yes | Image description or edit instruction. Repeatable for parallel multi-prompt generation |
+| `-f, --filename` | Yes | Output filename. Timestamp prefix auto-added; repeated prompts are auto-suffixed |
 | `-i, --input-image` | No | Input image path. Repeatable, up to 16 |
 | `--mask` | No | Optional PNG mask for edit mode |
-| `-n, --count` | No | Number of images to generate, 1-10 |
+| `-n, --count` | No | Number of images to generate per prompt, 1-10 |
+| `-j, --parallel` | No | Max concurrent API calls for repeated prompts |
 | `--size` | No | `auto` `1024x1024` `1536x1024` `1024x1536` `2048x2048` `2048x1152` `3840x2160` (4K) `2160x3840` (4K) |
 | `--quality` | No | `auto` `low` `medium` `high` |
 | `--background` | No | `auto` `transparent` `opaque` |
@@ -96,16 +97,12 @@ uv run <skill_dir>/scripts/generate_image.py \
 | `--output-compression` | No | `0-100`, only for `webp` / `jpeg` |
 | `--moderation` | No | Generation-only moderation level: `auto` or `low` |
 | `--input-fidelity` | No | Edit-only fidelity: `low` or `high` |
-| `-m, --model` | No | Override model ID, e.g. `gpt-image-2` |
-| `--base-url` | No | Override API endpoint (single-provider mode) |
-| `-k, --api-key` | No | Override API key (single-provider mode) |
-| `--config` | No | Path to provider chain config JSON |
+| `-m, --model` | No | Override model ID across the provider chain, e.g. `gpt-image-2` |
+| `--config` | No | Path to provider chain config JSON; defaults to `OPENAI_IMAGE_CONFIG` |
 
 ## Provider Fallback
 
-By default the script runs in **single-provider mode** using `OPENAI_IMAGE_API_KEY` (+ optional `OPENAI_IMAGE_BASE_URL`).
-
-To enable automatic fallback across multiple OpenAI-compatible providers, point the script at a config file via `--config` or the `OPENAI_IMAGE_CONFIG` env var.
+The script is **config-only**: it requires a provider chain from `OPENAI_IMAGE_CONFIG` or `--config`. Do not use `OPENAI_IMAGE_API_KEY`, `OPENAI_IMAGE_BASE_URL`, `--api-key`, or `--base-url` single-provider overrides.
 
 ### Config File Schema
 
@@ -115,23 +112,25 @@ To enable automatic fallback across multiple OpenAI-compatible providers, point 
     {
       "name": "openai-direct",
       "base_url": null,
-      "api_key_env": "OPENAI_IMAGE_API_KEY",
+      "api_key": "<provider API key>",
       "model": "gpt-image-2"
     },
     {
       "name": "compatible-proxy",
       "base_url": "https://proxy.example.com/v1",
-      "api_key_env": "PROXY_API_KEY",
+      "api_key": "<provider API key>",
       "model": "gpt-image-2"
     }
   ]
 }
 ```
 
-- `api_key_env` stores the **env var name**, not the key itself
+- `api_key` may be stored directly in the private config file
+- `api_key_env` is also supported if a deployment wants the config to reference an env var name instead
+- Keep the config file outside the skill repo; never commit real keys
 - `base_url: null` means OpenAI direct
 - Providers are tried top-to-bottom; first success wins
-- CLI overrides (`-k`, `--base-url`) bypass the chain entirely
+- `-m, --model` may override the model across the provider chain
 
 ### First-Time Setup
 
@@ -140,7 +139,8 @@ When using this skill and no `OPENAI_IMAGE_CONFIG` is configured yet:
 1. Ask which OpenAI-compatible image endpoints are available
 2. Create a config JSON following the schema above
 3. Save it to a persistent path outside the skill directory
-4. Set `OPENAI_IMAGE_CONFIG` so the script can find it automatically
+4. Set `OPENAI_IMAGE_CONFIG` to the config file path
+5. Put actual keys in each provider's `api_key` field, or use `api_key_env` if env indirection is required
 
 Keep this skill's config separate from general-purpose `OPENAI_BASE_URL` / `OPENAI_API_KEY` setups when those are already used for other APIs or proxies.
 
@@ -161,13 +161,13 @@ Keep this skill's config separate from general-purpose `OPENAI_BASE_URL` / `OPEN
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENAI_IMAGE_API_KEY` | Yes* | Primary image-provider API key |
-| `OPENAI_IMAGE_BASE_URL` | No | Primary image endpoint override |
-| `OPENAI_IMAGE_MODEL` | No | Default model for single-provider mode (`gpt-image-2`) |
+| `OPENAI_IMAGE_CONFIG` | Yes* | Path to provider-chain config JSON |
+| provider `api_key` fields | Yes** | Actual provider API keys stored in the private config file |
+| env vars named by `api_key_env` | No | Optional indirection alternative to inline `api_key` |
 | `OPENAI_IMAGE_OUTPUT_DIR` | No | Output directory (default: `~/.openclaw/workspace/images`) |
-| `OPENAI_IMAGE_CONFIG` | No | Path to provider-chain config JSON |
 
-\* Required unless `--api-key` is provided or the config file references a valid provider key.
+\* Or pass `--config /path/to/providers.json` for an explicit config path.
+\** Each provider needs either `api_key` or `api_key_env`.
 
 ## Prompt Writing
 
@@ -179,7 +179,7 @@ Key principle: **write one clear scene paragraph**, and for edits explicitly say
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `No providers configured` | Missing env vars or config file | Set `OPENAI_IMAGE_API_KEY` or create `OPENAI_IMAGE_CONFIG` |
+| `No providers configured` | Missing or empty config file | Create `OPENAI_IMAGE_CONFIG` or pass `--config` |
 | `All providers failed` | Every provider returned errors | Check endpoint compatibility, keys, and model name |
 | `transparent background requires png or webp` | Invalid format/background combo | Switch output format to `png` or `webp` |
 | `API response contained no savable image data` | Proxy returned unexpected payload | Try OpenAI direct or a fully compatible endpoint |
