@@ -1,7 +1,7 @@
 ---
 name: wechat-mp-publisher
-version: 0.5.0
-description: "Publish Markdown articles to WeChat Official Account draft box. Use when user wants to push blog posts to 微信公众号, convert Markdown to WeChat format, or create 公众号草稿."
+version: 0.6.0
+description: "Publish Markdown articles to WeChat Official Account draft box using a local config file. Use when user wants to push blog posts to 微信公众号, convert Markdown to WeChat format, or create 公众号草稿."
 ---
 
 # WeChat MP Publisher
@@ -11,7 +11,7 @@ Publish Markdown articles to WeChat Official Account (微信公众号) draft box
 ## Usage
 
 ```bash
-uv run <skill_dir>/scripts/publish.py -f <markdown-file> [-u <source-url>] [-c <cover-image>] [-t <title-override>] [-a <author>]
+uv run <skill_dir>/scripts/publish.py -f <markdown-file> [-u <source-url>] [-c <cover-image>] [-t <title-override>] [-a <author>] [--config <config-file>]
 ```
 
 The script:
@@ -30,11 +30,22 @@ The script:
 - `-t, --title` — Override title (defaults to frontmatter title)
 - `-a, --author` — Author name (defaults to "张昊辰")
 
-## Environment Variables
+## Configuration
 
-Required (set in `env.vars`):
-- `WECHAT_APP_ID` — 公众号 AppID
-- `WECHAT_APP_SECRET` — 公众号 AppSecret
+The script reads a local JSON config file. Default path:
+
+```bash
+/root/.openclaw/config/wechat-mp-publisher.json
+```
+
+Optional overrides: `--config <path>` or `WECHAT_MP_CONFIG=<path>` for one command. Do **not** store WeChat credentials in OpenClaw `env.vars`.
+
+```json
+{
+  "app_id": "<wechat official account app id>",
+  "app_secret": "<wechat official account app secret>"
+}
+```
 
 ## Markdown Features Supported
 

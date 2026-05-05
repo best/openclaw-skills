@@ -1,7 +1,7 @@
 ---
 name: feed-collect
-version: 2.0.4
-description: "AI Feed 采集技能。从 Miniflux 聚合器 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
+version: 2.1.0
+description: "AI Feed 采集技能。从 Miniflux 本地配置 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 ---
 
 # Feed Collect Skill
@@ -97,14 +97,22 @@ PY
 
 ### Step 2: 从 Miniflux 拉取增量
 
-用一次 API 调用拉取所有未读文章：
+先读取本地配置，再用一次 API 调用拉取所有未读文章：
 
 ```bash
-curl -sf "https://rss.astralor.com/v1/entries?status=unread&order=published_at&direction=desc&limit=200" \
-  -u "admin:${MINIFLUX_API_KEY}"
+python3 - <<'PY'
+import json, subprocess
+from pathlib import Path
+cfg = json.loads(Path('/root/.openclaw/config/miniflux.json').read_text())
+base_url = cfg.get('base_url', 'https://rss.astralor.com').rstrip('/')
+username = cfg.get('username', 'admin')
+password = cfg['password']
+url = f"{base_url}/v1/entries?status=unread&order=published_at&direction=desc&limit=200"
+print(subprocess.check_output(['curl', '-sf', url, '-u', f'{username}:{password}'], text=True))
+PY
 ```
 
-> 环境变量 `MINIFLUX_API_KEY` 已配置在 OpenClaw env.vars 中，exec 自动注入。
+> Miniflux 凭据存放在 `/root/.openclaw/config/miniflux.json`，不要使用 OpenClaw `env.vars`。
 
 **响应结构：**
 ```json
@@ -221,10 +229,21 @@ web_fetch: https://github.com/trending
 处理完成后，批量标记已处理的 entry 为已读：
 
 ```bash
-curl -sf -X PUT "https://rss.astralor.com/v1/entries" \
-  -u "admin:${MINIFLUX_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{"entry_ids": [123, 456, 789], "status": "read"}'
+python3 - <<'PY'
+import json, subprocess
+from pathlib import Path
+cfg = json.loads(Path('/root/.openclaw/config/miniflux.json').read_text())
+base_url = cfg.get('base_url', 'https://rss.astralor.com').rstrip('/')
+username = cfg.get('username', 'admin')
+password = cfg['password']
+payload = {"entry_ids": [123, 456, 789], "status": "read"}
+subprocess.check_call([
+    'curl', '-sf', '-X', 'PUT', f'{base_url}/v1/entries',
+    '-u', f'{username}:{password}',
+    '-H', 'Content-Type: application/json',
+    '-d', json.dumps(payload),
+])
+PY
 ```
 
 ### Step 7: 更新 seen.json
@@ -289,5 +308,5 @@ git push
 - candidates.json 是追加模式，不要覆盖已有内容
 - **禁止**把 `data/seen.json` 写成数组或把 URL 写到 JSON 顶层
 - **禁止使用 `edit` 工具**修改 feed 仓库中的任何文件，用 `exec` + Python 脚本
-- Miniflux API 认证：HTTP Basic Auth `admin:${MINIFLUX_API_KEY}`（环境变量自动注入）
+- Miniflux API 认证：读取 `/root/.openclaw/config/miniflux.json` 后使用 HTTP Basic Auth；不要依赖旧环境变量
 - 标记已读很重要，否则下次会重复拉取

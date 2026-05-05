@@ -1,7 +1,7 @@
 ---
 name: chevereto-upload
-version: 0.3.1
-description: "Upload images to a Chevereto V4 image hosting service for permanent, shareable URLs. Use when images (AI-generated, screenshots, or any visual content) need to be hosted, archived, or shared via a link. Also supports listing and deleting uploaded images."
+version: 0.4.0
+description: "Upload images to a Chevereto V4 image hosting service using a local config file for permanent, shareable URLs. Use when images (AI-generated, screenshots, or any visual content) need to be hosted, archived, or shared via a link. Also supports listing and deleting uploaded images."
 ---
 
 # Chevereto Upload
@@ -83,10 +83,26 @@ Accepts an image ID (looks up delete_url from the upload log) or a full delete U
 
 ## Configuration
 
-Environment variables (auto-injected via OpenClaw `env.vars`):
+The upload script reads a local JSON config file. Default path:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `CHEVERETO_API_KEY` | Yes | User API key |
-| `CHEVERETO_URL` | No | Site URL (default: `https://imglab.cc`) |
-| `CHEVERETO_ALBUM_ID` | No | Default album ID for uploads |
+```bash
+/root/.openclaw/config/chevereto-upload.json
+```
+
+Optional override: set `CHEVERETO_CONFIG` to another config file path for one command. Do **not** store the API key in OpenClaw `env.vars`.
+
+```json
+{
+  "url": "https://imglab.cc",
+  "api_key": "<chevereto api key>",
+  "album_id": "VBQ",
+  "log_file": "/root/.openclaw/workspace/memory/chevereto-uploads.jsonl"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `api_key` | Yes | User API key |
+| `url` | No | Site URL (default: `https://imglab.cc`) |
+| `album_id` | No | Default album ID for uploads |
+| `log_file` | No | Upload log path |

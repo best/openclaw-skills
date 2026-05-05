@@ -10,13 +10,21 @@ import path from "path";
 import { parseArgs } from "util";
 
 const WECHAT_API = "https://api.weixin.qq.com/cgi-bin";
+const DEFAULT_CONFIG = "/root/.openclaw/config/wechat-mp-publisher.json";
 
 // === Config ===
-const APP_ID = process.env.WECHAT_APP_ID;
-const APP_SECRET = process.env.WECHAT_APP_SECRET;
-if (!APP_ID || !APP_SECRET) {
-  console.error("❌ WECHAT_APP_ID and WECHAT_APP_SECRET must be set");
-  process.exit(1);
+let APP_ID = null;
+let APP_SECRET = null;
+
+function loadConfig(configPath) {
+  const resolved = configPath || process.env.WECHAT_MP_CONFIG || DEFAULT_CONFIG;
+  if (!fs.existsSync(resolved)) throw new Error(`WeChat config not found: ${resolved}`);
+  const config = JSON.parse(fs.readFileSync(resolved, "utf-8"));
+  APP_ID = config.app_id;
+  APP_SECRET = config.app_secret;
+  if (!APP_ID || !APP_SECRET) {
+    throw new Error(`WeChat config missing app_id/app_secret: ${resolved}`);
+  }
 }
 
 // === WeChat API helpers ===
@@ -267,13 +275,16 @@ async function main() {
       title: { type: "string", short: "t", multiple: true },
       url: { type: "string", short: "u", multiple: true },
       author: { type: "string", short: "a", default: "张昊辰" },
+      config: { type: "string" },
       "dry-run": { type: "boolean", default: false },
     }
   });
 
+  loadConfig(values.config);
+
   const files = values.file || [];
   if (files.length === 0) {
-    console.error("Usage: node publish.mjs -f <file1.md> [-f <file2.md>] [-c cover.png] [-t title] [-u url]");
+    console.error("Usage: node publish.mjs -f <file1.md> [-f <file2.md>] [-c cover.png] [-t title] [-u url] [--config path]");
     console.error("  Multiple -f flags for multi-article draft (微信多图文)");
     process.exit(1);
   }

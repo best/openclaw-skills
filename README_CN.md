@@ -11,12 +11,12 @@ OpenClaw Agent 自主开发工作流技能集。
 | 技能 | 描述 | 版本 |
 |------|------|------|
 | [cc-iterator](./cc-iterator/) | 自主编码代理迭代循环 | v0.1.4 |
-| [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.3.1 |
+| [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.4.0 |
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.2 |
 | [dream](./dream/) | 记忆方法论+整合——OpenClaw T0 预算硬检查、四动作、三套流程、梦境日记和事实验证审计 | v2.5.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v1.1.1 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.1 |
-| [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux API + HN + GitHub Trending） | v2.0.2 |
+| [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux 本地配置 + HN + GitHub Trending） | v2.1.0 |
 | [feed-broadcast](./feed-broadcast/) | AI 信息流智能播报（自主判断推送/跳过） | v1.1.1 |
 | [feed-collector](./feed-collector/) | AI 信息流采集（已废弃 → feed-collect + feed-score） | v1.13.1 |
 | [feed-score](./feed-score/) | AI 信息流评分、去重、Markdown 生成与发布 | v2.1.2 |
@@ -26,7 +26,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
 | [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.0 |
 | [wechat-article-fetcher](./wechat-article-fetcher/) | 微信公众号文章内容抓取（全文+图片+元数据） | v1.0.2 |
-| [wechat-mp-publisher](./wechat-mp-publisher/) | 微信公众号 Markdown 文章发布（草稿箱） | v0.5.0 |
+| [wechat-mp-publisher](./wechat-mp-publisher/) | 微信公众号 Markdown 文章发布（草稿箱） | v0.6.0 |
 
 ## 安装
 

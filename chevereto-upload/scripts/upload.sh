@@ -4,10 +4,21 @@
 set -euo pipefail
 
 # --- Config ---
-CHEVERETO_URL="${CHEVERETO_URL:-https://imglab.cc}"
-CHEVERETO_API_KEY="${CHEVERETO_API_KEY:?CHEVERETO_API_KEY is required}"
-CHEVERETO_ALBUM_ID="${CHEVERETO_ALBUM_ID:-}"
-CHEVERETO_LOG="${CHEVERETO_LOG:-$HOME/.openclaw/workspace/memory/chevereto-uploads.jsonl}"
+CHEVERETO_CONFIG="${CHEVERETO_CONFIG:-/root/.openclaw/config/chevereto-upload.json}"
+if [[ ! -f "$CHEVERETO_CONFIG" ]]; then
+  echo "Error: Chevereto config not found: $CHEVERETO_CONFIG" >&2
+  exit 1
+fi
+
+SITE_URL="$(jq -r '.url // "https://imglab.cc"' "$CHEVERETO_CONFIG")"
+API_KEY="$(jq -r '.api_key // empty' "$CHEVERETO_CONFIG")"
+DEFAULT_ALBUM_ID="$(jq -r '.album_id // ""' "$CHEVERETO_CONFIG")"
+LOG_FILE="$(jq -r --arg default "$HOME/.openclaw/workspace/memory/chevereto-uploads.jsonl" '.log_file // .log // $default' "$CHEVERETO_CONFIG")"
+
+if [[ -z "$API_KEY" ]]; then
+  echo "Error: Chevereto config missing api_key: $CHEVERETO_CONFIG" >&2
+  exit 1
+fi
 
 # --- Args ---
 FILE_PATH="${1:?Usage: upload.sh <file_path> [title] [description] [tags] [album_id]}"
@@ -15,7 +26,7 @@ ORIGINAL_FILE_PATH="$FILE_PATH"  # preserve original path for logging
 TITLE="${2:-}"
 DESCRIPTION="${3:-}"
 TAGS="${4:-}"
-ALBUM_ID="${5:-$CHEVERETO_ALBUM_ID}"
+ALBUM_ID="${5:-$DEFAULT_ALBUM_ID}"
 
 # --- Validate ---
 if [[ ! -f "$FILE_PATH" ]]; then
@@ -42,7 +53,7 @@ fi
 CURL_ARGS=(
   -s --fail-with-body
   -X POST
-  -H "X-API-Key: $CHEVERETO_API_KEY"
+  -H "X-API-Key: $API_KEY"
   -F "source=@${FILE_PATH}"
   -F "format=json"
 )
@@ -53,7 +64,7 @@ CURL_ARGS=(
 [[ -n "$ALBUM_ID" ]] && CURL_ARGS+=(-F "album_id=${ALBUM_ID}")
 
 # --- Upload ---
-RESPONSE=$(curl "${CURL_ARGS[@]}" "${CHEVERETO_URL}/api/1/upload" 2>&1)
+RESPONSE=$(curl "${CURL_ARGS[@]}" "${SITE_URL}/api/1/upload" 2>&1)
 EXIT_CODE=$?
 
 if [[ $EXIT_CODE -ne 0 ]]; then
@@ -93,7 +104,7 @@ echo "$RESULT"
 [[ -n "$RENAMED_PATH" && -f "$RENAMED_PATH" ]] && rm -f "$RENAMED_PATH"
 
 # --- Log upload for management ---
-mkdir -p "$(dirname "$CHEVERETO_LOG")"
+mkdir -p "$(dirname "$LOG_FILE")"
 # --- Detect agent from workspace path ---
 AGENT_ID="${CHEVERETO_AGENT:-}"
 if [[ -z "$AGENT_ID" ]]; then
@@ -110,4 +121,4 @@ LOG_ENTRY=$(echo "$RESULT" | jq -c \
   --arg description "$DESCRIPTION" \
   --arg tags "$TAGS" \
   '. + {uploaded_at: $uploaded_at, agent: $agent, local_file: $local_file, description: $description, tags: $tags}')
-echo "$LOG_ENTRY" >> "$CHEVERETO_LOG"
+echo "$LOG_ENTRY" >> "$LOG_FILE"

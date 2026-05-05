@@ -21,14 +21,26 @@ TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token"
 UPLOAD_IMG_URL = "https://api.weixin.qq.com/cgi-bin/media/uploadimg"
 UPLOAD_MATERIAL_URL = "https://api.weixin.qq.com/cgi-bin/material/add_material"
 DRAFT_ADD_URL = "https://api.weixin.qq.com/cgi-bin/draft/add"
+DEFAULT_CONFIG = "/root/.openclaw/config/wechat-mp-publisher.json"
+
+
+def load_config(config_path: Optional[str] = None) -> Dict[str, str]:
+    path = Path(config_path or os.getenv("WECHAT_MP_CONFIG") or DEFAULT_CONFIG)
+    if not path.exists():
+        raise ValueError(f"WeChat config not found: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    app_id = data.get("app_id")
+    app_secret = data.get("app_secret")
+    if not app_id or not app_secret:
+        raise ValueError(f"WeChat config missing app_id/app_secret: {path}")
+    return {"app_id": app_id, "app_secret": app_secret}
 
 
 class WeChatMPPublisher:
-    def __init__(self):
-        self.app_id = os.getenv("WECHAT_APP_ID")
-        self.app_secret = os.getenv("WECHAT_APP_SECRET")
-        if not self.app_id or not self.app_secret:
-            raise ValueError("WECHAT_APP_ID and WECHAT_APP_SECRET must be set")
+    def __init__(self, config_path: Optional[str] = None):
+        config = load_config(config_path)
+        self.app_id = config["app_id"]
+        self.app_secret = config["app_secret"]
         self.access_token: Optional[str] = None
 
     def get_access_token(self) -> str:
@@ -382,10 +394,11 @@ def main():
     parser.add_argument("-t", "--title", help="Override title")
     parser.add_argument("-u", "--url", help="Original article URL", default="")
     parser.add_argument("-a", "--author", help="Author name", default="张昊辰")
+    parser.add_argument("--config", help=f"Config file path (default: {DEFAULT_CONFIG})")
     args = parser.parse_args()
 
     try:
-        publisher = WeChatMPPublisher()
+        publisher = WeChatMPPublisher(args.config)
         publisher.publish(args.file, args.cover, title_override=args.title, source_url=args.url, author=args.author)
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)
