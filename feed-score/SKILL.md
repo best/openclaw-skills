@@ -1,6 +1,6 @@
 ---
 name: feed-score
-version: 2.1.2
+version: 2.1.3
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 ---
 
@@ -44,25 +44,44 @@ git pull --rebase
 
 按 scoring-rules.md 的规则评估每篇候选，将完整结果写入 `data/scored-results.json`。
 
-`scored-results.json` 必须是顶层对象，不要写裸数组：
+`scored-results.json` 必须是顶层对象，不要写裸数组。`publish` 条目必须透传候选元数据；缺 URL、分类、来源、标签、slug、body 会导致生成脚本 fail-fast：
 
 ```json
 {
+  "evaluated": 14,
+  "scoredAt": "2026-05-04T08:45:00+08:00",
   "results": [
     {
-      "title": "候选标题",
       "verdict": "publish",
+      "url": "https://example.com/article",
+      "title": "候选标题",
+      "description": "50-80字摘要，不含双引号",
+      "pubDatetime": "2026-05-04T00:00:00Z",
+      "collectedAt": "2026-05-04T08:00:00+08:00",
+      "category": "工程实践",
+      "tags": ["AI Agent", "工程实践"],
+      "featured": false,
       "score": 7.0,
       "scoreReason": "简短评分依据",
       "scoreBreakdown": "信息增量:7 内容质量:7 实用价值:7 减分:0",
-      "pubDatetime": "2026-05-04T00:00:00Z",
-      "collectedAt": "2026-05-04T08:00:00+08:00"
+      "sourceType": "rss",
+      "sourceName": "来源名称",
+      "slug": "article-slug",
+      "body": "## 要点\n\n正文...\n\n## 🤖 AI 点评\n\n点评..."
+    },
+    {
+      "verdict": "skip",
+      "url": "https://example.com/duplicate",
+      "title": "跳过标题",
+      "reason": "duplicate|low_score",
+      "score": 5.8,
+      "duplicateOf": "原文标题（仅 duplicate 时）"
     }
   ]
 }
 ```
 
-`verdict` 只能是 `publish` 或 `skip`；低于发布阈值的候选也要写入 `results` 并标记 `skip`。
+`verdict` 只能是 `publish` 或 `skip`；低于发布阈值的候选也要写入 `results` 并标记 `skip`。`sourceName` 可由候选的 `source` 字段透传为人类可读名称；不要把来源字段留空。
 
 ### Step 3: 生成 .md
 
