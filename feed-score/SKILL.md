@@ -1,7 +1,8 @@
 ---
 name: feed-score
-version: 2.1.3
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
+metadata:
+  version: 2.1.3
 ---
 
 # Feed Score Skill

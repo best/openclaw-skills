@@ -1,7 +1,8 @@
 ---
 name: feed-collect
-version: 2.1.0
 description: "AI Feed 采集技能。从 Miniflux 本地配置 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
+metadata:
+  version: 2.1.0
 ---
 
 # Feed Collect Skill

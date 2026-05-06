@@ -1,7 +1,8 @@
 ---
 name: code-reviewer
-version: 0.1.2
 description: "Standardized code review checklist for AI-generated code. Supports both local diff and PR review workflows."
+metadata:
+  version: 0.1.2
 ---
 
 # Code Reviewer — Quality Gate

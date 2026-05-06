@@ -1,7 +1,8 @@
 ---
 name: dream
 description: "记忆方法论 & 整合执行——定义 T0/T1/T2/Dream 记忆职责、OpenClaw 注入预算硬约束、价值判断、遗忘机制，以及初始化/日常/深度三种执行流程。"
-version: 2.5.2
+metadata:
+  version: 2.5.2
 ---
 
 # Dream — 记忆方法论 & 整合执行

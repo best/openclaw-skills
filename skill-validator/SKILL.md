@@ -1,12 +1,13 @@
 ---
 name: skill-validator
-version: 0.2.0
 description: >
   技能实验室：OpenClaw 技能的全生命周期准入测试。包含三阶段：
   (1) 静态校验 — 结构、路径、跨平台兼容性（脚本 + AI 分析）
   (2) 智能分析 — 模型阅读技能全部内容，语义级审查
   (3) 动态测试 — 生成子 Agent 加载技能实际运行，验证能力声明
   Use when: 收到技能压缩包/目录需要评审，技能发布前准入测试，技能升级回归测试。
+metadata:
+  version: 0.2.1
 ---
 
 # Skill Validator — 技能实验室

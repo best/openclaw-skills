@@ -1,7 +1,8 @@
 ---
 name: feed-broadcast
-version: 1.1.1
 description: "AI Feed 智能播报技能。检查新入库文章，自主判断是否值得推送，格式化后推送到指定渠道。"
+metadata:
+  version: 1.1.1
 ---
 
 # Feed Broadcast Skill

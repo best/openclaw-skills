@@ -1,7 +1,8 @@
 ---
 name: openai-image-gen
-version: 1.2.0
 description: "Generate and edit images with the OpenAI Image API, defaulting to gpt-image-2. Requires provider fallback through OPENAI_IMAGE_CONFIG; supports text-to-image, repeated-prompt batch generation, multi-image editing/composition (up to 16 input images), mask edits, and size/quality/background/output-format control. Use when the user asks to create, draw, generate, or edit images with OpenAI / GPT Image models, especially when the built-in image tool has not exposed the latest OpenAI image model yet."
+metadata:
+  version: 1.2.0
 ---
 
 # OpenAI Image Generation

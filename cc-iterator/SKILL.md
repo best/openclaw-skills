@@ -1,7 +1,8 @@
 ---
 name: cc-iterator
-version: 0.1.4
 description: "Autonomous CC (Claude Code) iteration loop. Manages background coding agent tasks with pull-based issue tracking."
+metadata:
+  version: 0.1.4
 ---
 
 # CC Iterator — Autonomous Development Loop

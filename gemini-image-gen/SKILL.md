@@ -1,7 +1,8 @@
 ---
 name: gemini-image-gen
-version: 1.1.1
 description: "Generate and edit images using the Gemini Image Generation API with provider fallback through GEMINI_IMAGE_CONFIG. Supports text-to-image, image editing, multi-image composition (up to 14 input images), aspect ratio control, and 1K/2K/4K resolution. Automatically falls back to alternate providers on failure. Use when the user asks to create, generate, draw, or edit images."
+metadata:
+  version: 1.1.1
 ---
 
 # Gemini Image Generation

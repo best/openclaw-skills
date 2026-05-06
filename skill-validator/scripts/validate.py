@@ -77,6 +77,14 @@ def extract_frontmatter(text: str) -> Optional[dict]:
         return None
 
 
+def get_skill_version(frontmatter: dict) -> str:
+    """Return the canonical skill version from metadata.version."""
+    metadata = frontmatter.get("metadata")
+    if isinstance(metadata, dict) and metadata.get("version") is not None:
+        return str(metadata["version"])
+    return "?"
+
+
 def iter_scripts(skill_dir: Path):
     for f in skill_dir.rglob("*"):
         if f.is_file() and f.suffix in SCRIPT_EXTENSIONS:
@@ -119,8 +127,10 @@ def check_structure(skill_dir: Path) -> CategoryResult:
         cat.add("fail", "Frontmatter missing required field: name")
     if "description" not in fm:
         cat.add("fail", "Frontmatter missing required field: description")
-    if "version" not in fm:
-        cat.add("warn", "Frontmatter missing recommended field: version")
+    if "version" in fm:
+        cat.add("fail", "Deprecated top-level frontmatter field: version (use metadata.version)")
+    if get_skill_version(fm) == "?":
+        cat.add("warn", "Frontmatter missing recommended field: metadata.version")
 
     for entry in skill_dir.iterdir():
         name = entry.name
@@ -435,7 +445,7 @@ def validate(skill_dir: Path) -> Report:
         fm = extract_frontmatter(skill_md.read_text(encoding="utf-8", errors="replace"))
         if fm:
             report.skill_name = fm.get("name", skill_dir.name)
-            report.skill_version = str(fm.get("version", "?"))
+            report.skill_version = get_skill_version(fm)
 
     if not report.skill_name:
         report.skill_name = skill_dir.name

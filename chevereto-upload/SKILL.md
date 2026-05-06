@@ -1,7 +1,8 @@
 ---
 name: chevereto-upload
-version: 0.4.0
 description: "Upload images to a Chevereto V4 image hosting service using a local config file for permanent, shareable URLs. Use when images (AI-generated, screenshots, or any visual content) need to be hosted, archived, or shared via a link. Also supports listing and deleting uploaded images."
+metadata:
+  version: 0.4.0
 ---
 
 # Chevereto Upload

@@ -1,10 +1,11 @@
 ---
 name: openclaw-usage-tracker
-version: 1.2.0
 description: >
   Track and report OpenClaw model usage and costs. Generate daily/weekly cost reports
   with per-model token breakdowns, interactive vs cron classification, provider summary,
   and trend analysis.
+metadata:
+  version: 1.2.0
 ---
 
 # OpenClaw Usage Tracker

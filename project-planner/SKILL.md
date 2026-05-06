@@ -1,7 +1,8 @@
 ---
 name: project-planner
-version: 0.1.0
 description: "Evaluate and prioritize open issues for next development task. Score-based ranking with effort estimation."
+metadata:
+  version: 0.1.0
 ---
 
 # Project Planner — Task Prioritization

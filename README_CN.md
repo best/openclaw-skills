@@ -18,13 +18,12 @@ OpenClaw Agent 自主开发工作流技能集。
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.1 |
 | [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux 本地配置 + HN + GitHub Trending） | v2.1.0 |
 | [feed-broadcast](./feed-broadcast/) | AI 信息流智能播报（自主判断推送/跳过） | v1.1.1 |
-| [feed-collector](./feed-collector/) | AI 信息流采集（已废弃 → feed-collect + feed-score） | v1.13.1 |
 | [feed-score](./feed-score/) | AI 信息流评分、去重、Markdown 生成与发布 | v2.1.3 |
 | [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.1 |
 | [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.0 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.0 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
-| [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.0 |
+| [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.1 |
 | [wechat-article-fetcher](./wechat-article-fetcher/) | 微信公众号文章内容抓取（全文+图片+元数据） | v1.0.2 |
 | [wechat-mp-publisher](./wechat-mp-publisher/) | 微信公众号 Markdown 文章发布（草稿箱） | v0.6.0 |
 
@@ -46,6 +45,8 @@ OpenClaw Agent 自主开发工作流技能集。
 ## 贡献
 
 每个技能独立一个目录，包含 `SKILL.md` 文件。编写新技能请参考 [OpenClaw 技能格式](https://docs.openclaw.ai)。
+
+技能版本统一写在 `SKILL.md` frontmatter 的 `metadata.version`，不要使用顶层 `version`；上方版本表需同步更新。
 
 ## 许可证
 
