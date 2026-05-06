@@ -7,7 +7,7 @@ description: >
   (3) 动态测试 — 生成子 Agent 加载技能实际运行，验证能力声明
   Use when: 收到技能压缩包/目录需要评审，技能发布前准入测试，技能升级回归测试。
 metadata:
-  version: 0.2.1
+  version: 0.2.2
 ---
 
 # Skill Validator — 技能实验室
@@ -32,6 +32,7 @@ python3 scripts/validate.py <skill-path> [--json] [--strict]
 
 ### 检查项
 - **结构**：SKILL.md 存在、frontmatter 合法、目录规范
+- **生成产物**：禁止提交 `node_modules/`、`__pycache__/`、`*.pyc`、`dist/`、`build/`、`coverage/`、虚拟环境等依赖/缓存/构建产物
 - **路径安全**：无硬编码绝对路径
 - **脚本质量**：shebang、权限、语法
 - **跨平台**：行尾符 CRLF、BOM、bash 特性、路径拼接

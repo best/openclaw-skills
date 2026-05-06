@@ -4,7 +4,6 @@
 import argparse
 import json
 import os
-import py_compile
 import re
 import stat
 import sys
@@ -63,6 +62,23 @@ SCRIPT_EXTENSIONS = {".py", ".sh", ".bash", ".rb", ".pl", ".js", ".ts", ".ps1"}
 ALLOWED_TOPLEVEL = {"SKILL.md", "scripts", "references", "assets"}
 EXTRANEOUS_FILES = {"README.md", "README", "CHANGELOG.md", "INSTALLATION_GUIDE.md",
                     "QUICK_REFERENCE.md", "LICENSE", "LICENSE.md", ".gitignore"}
+FORBIDDEN_ARTIFACT_DIRS = {
+    "node_modules": "Dependency directory",
+    "__pycache__": "Python bytecode cache",
+    ".pytest_cache": "Pytest cache",
+    ".mypy_cache": "Mypy cache",
+    ".ruff_cache": "Ruff cache",
+    ".next": "Next.js build cache",
+    ".turbo": "Turborepo cache",
+    "dist": "Build output directory",
+    "build": "Build output directory",
+    "coverage": "Coverage output directory",
+    "site-packages": "Vendored Python dependency directory",
+    "venv": "Python virtualenv",
+    ".venv": "Python virtualenv",
+}
+FORBIDDEN_ARTIFACT_FILES = {".DS_Store", "Thumbs.db", "desktop.ini", ".coverage"}
+FORBIDDEN_ARTIFACT_SUFFIXES = {".pyc", ".pyo", ".class", ".o", ".so", ".dylib", ".dll", ".exe"}
 
 
 def extract_frontmatter(text: str) -> Optional[dict]:
@@ -151,6 +167,41 @@ def check_structure(skill_dir: Path) -> CategoryResult:
 
 
 # ---------------------------------------------------------------------------
+# Check: Generated Artifacts
+# ---------------------------------------------------------------------------
+
+def check_generated_artifacts(skill_dir: Path) -> CategoryResult:
+    """Reject dependency folders, caches, build outputs, and binary byproducts."""
+    cat = CategoryResult("Generated Artifacts")
+    reported_dirs = set()
+
+    for path in skill_dir.rglob("*"):
+        rel_path = path.relative_to(skill_dir)
+        parts = rel_path.parts
+
+        forbidden_part = next((part for part in parts if part in FORBIDDEN_ARTIFACT_DIRS), None)
+        if forbidden_part:
+            idx = parts.index(forbidden_part)
+            rel_dir = Path(*parts[:idx + 1])
+            if rel_dir not in reported_dirs:
+                reported_dirs.add(rel_dir)
+                cat.add(
+                    "fail",
+                    f"Generated/dependency artifact directory: {FORBIDDEN_ARTIFACT_DIRS[forbidden_part]}",
+                    file=str(rel_dir),
+                )
+            continue
+
+        if path.is_file():
+            if path.name in FORBIDDEN_ARTIFACT_FILES:
+                cat.add("fail", "Generated/platform artifact file", file=str(rel_path))
+            elif path.suffix in FORBIDDEN_ARTIFACT_SUFFIXES:
+                cat.add("fail", "Generated/binary artifact file", file=str(rel_path))
+
+    return cat
+
+
+# ---------------------------------------------------------------------------
 # Check: Path Safety
 # ---------------------------------------------------------------------------
 
@@ -212,8 +263,9 @@ def check_script_quality(skill_dir: Path) -> CategoryResult:
 
         if script.suffix == ".py":
             try:
-                py_compile.compile(str(script), doraise=True)
-            except py_compile.PyCompileError as e:
+                source = script.read_text(encoding="utf-8", errors="replace")
+                compile(source, str(script), "exec")
+            except SyntaxError as e:
                 cat.add("fail", f"Python syntax error: {e}", file=str(rel))
 
     return cat
@@ -344,6 +396,9 @@ def check_reference_integrity(skill_dir: Path) -> CategoryResult:
         ref = m.group(1).split("#")[0]
         if not ref:
             continue
+        # Ignore placeholder/example links such as [text](url) or [text]({url}).
+        if ref in {"url", "URL", "link"} or "{" in ref or "}" in ref:
+            continue
         if not (skill_dir / ref).exists():
             cat.add("fail", f'References "{ref}" but file not found')
 
@@ -450,7 +505,8 @@ def validate(skill_dir: Path) -> Report:
     if not report.skill_name:
         report.skill_name = skill_dir.name
 
-    for check_fn in [check_structure, check_path_safety, check_script_quality,
+    for check_fn in [check_structure, check_generated_artifacts,
+                     check_path_safety, check_script_quality,
                      check_cross_platform, check_platform_compat,
                      check_reference_integrity, check_size]:
         report.add_category(check_fn(skill_dir))

@@ -1,1 +1,27 @@
+# Dependency directories
+node_modules/
+.venv/
+venv/
+site-packages/
+
+# Python caches
 __pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build/test outputs
+dist/
+build/
+coverage/
+.coverage
+.next/
+.turbo/
+*.egg-info/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
