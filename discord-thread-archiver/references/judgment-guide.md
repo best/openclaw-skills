@@ -31,7 +31,7 @@ If an operational-prefix thread contains any human message, stop using this poli
 
 Compare last message timestamp against current time:
 
-- **Within 24h** → for normal threads, only archive with **explicit human closure signal** (thanks, confirmation, "done", "结束", "搞定了"). Do NOT archive based on inactivity alone.
+- **Within 24h** → for normal threads, only archive with **explicit human closure signal** (thanks, confirmation, "done", "结束", "搞定了", "完成吧", "不再需要讨论了", "可以归档"). Do NOT archive based on inactivity alone.
 - **Older than 24h** → classify normally.
 
 For normal threads, this is the only time-based rule. Operational threads have their own 2h status-only threshold above.
@@ -46,7 +46,7 @@ For normal threads, this is the only time-based rule. Operational threads have t
 | **keep** | `waiting_answer` | Open question unanswered, action items pending, waiting for response, active discussion |
 | **keep** | `waiting_result` | Last message implies next step: "wait for results", "看看效果", "等结果", "触发一下" |
 | **keep** | `bot_question_unanswered` | Bot sent proposal/question but human hasn't replied — busy ≠ disengaged |
-| **keep** | `collab_recent` | Human-bot collaboration identified by lookback (3a) AND last message is within 24h without human closure |
+| **keep** | `collab_recent` | Human-bot collaboration identified by lookback (3a) AND last message is within 24h without human closure. If a human explicitly says the thread is complete or no longer needs discussion, archive as `normal_closed` instead. |
 | **keep** | `recent_no_closure` | Within 24h recency protection (3b), no closure signal |
 | **keep** | `multi_topic_open` | Thread has multiple topics and any topic is unresolved |
 | **keep** | `uncertain` | Can't determine from messages read |
@@ -70,6 +70,8 @@ Each thread is judged independently. Uncovered case → **keep** with `uncertain
 ### Correct: archive
 
 > **"CI 构建失败排查"** — User: "好了，问题解决了，谢谢" → archive (`normal_closed`)
+
+> **"PPT 生成优化调研"** — User: "完成吧，不再需要讨论了" → archive (`normal_closed`)
 
 > **"版本发布通知"** — All bot messages, no human replied, older than 24h → archive (`bot_only_old`)
 
