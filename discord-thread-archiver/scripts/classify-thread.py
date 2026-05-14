@@ -40,10 +40,13 @@ WAITING = [
 ]
 CLOSURE = [
     "好了", "搞定", "done", "结束", "结束吧", "谢谢", "thanks", "确认", "没问题", "ok", "可以了",
-    "完成了", "已完成", "完成吧", "不再需要讨论", "不需要讨论了", "无需讨论", "不用讨论",
-    "可以归档", "归档吧", "可以关闭", "关闭吧",
+    "完成", "完成了", "已完成", "完成吧", "收尾", "收工", "不再需要讨论", "不需要讨论了",
+    "无需讨论", "不用讨论", "可以归档", "归档吧", "可以关闭", "关闭吧",
 ]
 QUESTION_RE = re.compile(r"(？|\?|吗\s*$)")
+FINAL_ANSWER_IDLE_MINUTES = 60
+NEGATED_CLOSURE_RE = re.compile(r"(没|未|还没|尚未|无法|不能|没法|不).{0,6}(完成|结束|搞定|归档|关闭|收尾|收工)")
+CLOSURE_QUESTION_RE = re.compile(r"(完成|结束|搞定|归档|关闭|收尾|收工).{0,4}(吗|么|\?|？)")
 
 
 def norm_bool(value: Any) -> bool:
@@ -76,6 +79,19 @@ def msg_is_bot(msg: dict[str, Any]) -> bool:
 def contains_any(text: str, needles: list[str]) -> bool:
     lower = text.lower()
     return any(n.lower() in lower for n in needles)
+
+
+def has_closure_signal(text: str) -> bool:
+    """Return true for explicit closure while avoiding negated/question forms.
+
+    Examples that should close: "好，那完成", "完成了", "可以归档".
+    Examples that should not close: "还没完成", "完成了吗？".
+    """
+    if not text:
+        return False
+    if NEGATED_CLOSURE_RE.search(text) or CLOSURE_QUESTION_RE.search(text):
+        return False
+    return contains_any(text, CLOSURE)
 
 
 def verdict(verdict: str, reason_code: str, reason: str, thread_type: str) -> dict[str, Any]:
@@ -126,11 +142,30 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
 
     # Normal conversation policy.
     human_text = "\n".join(msg_content(m) for m in human_messages)
-    if human_text and contains_any(human_text, CLOSURE):
+    if human_text and any(has_closure_signal(msg_content(m)) for m in human_messages):
         return verdict("archive", "normal_closed", "human closure signal found", "normal")
 
     if last_from_bot and QUESTION_RE.search(last_text.strip()):
         return verdict("keep", "bot_question_unanswered", "last bot message is an unanswered question", "normal")
+
+    pending_signal = (
+        contains_any(last_text or all_text, WAITING)
+        or contains_any(last_text or all_text, RUNNING)
+        or contains_any(all_text, ATTENTION)
+    )
+    if (
+        last_from_bot
+        and human_messages
+        and age is not None
+        and FINAL_ANSWER_IDLE_MINUTES <= age < 24 * 60
+        and not pending_signal
+    ):
+        return verdict(
+            "archive",
+            "collab_answered_idle",
+            "bot final answer appears delivered and idle without pending signal",
+            "normal",
+        )
 
     if age is not None and age < 24 * 60:
         if human_messages:

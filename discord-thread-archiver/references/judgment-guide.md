@@ -31,16 +31,28 @@ If an operational-prefix thread contains any human message, stop using this poli
 
 Compare last message timestamp against current time:
 
-- **Within 24h** → for normal threads, only archive with **explicit human closure signal** (thanks, confirmation, "done", "结束", "搞定了", "完成吧", "不再需要讨论了", "可以归档"). Do NOT archive based on inactivity alone.
+- **Within 24h** → for normal threads, archive only with **explicit human closure signal** (thanks, confirmation, "done", "结束", "搞定了", "完成", "完成吧", "收尾", "不再需要讨论了", "可以归档") or the **final-answer idle condition** below. Do NOT archive based on inactivity alone.
 - **Older than 24h** → classify normally.
 
 For normal threads, this is the only time-based rule. Operational threads have their own 2h status-only threshold above.
+
+### Final-answer idle condition
+
+For human-bot collaboration within 24h, archive as `collab_answered_idle` only when all are true:
+
+- Latest message is from the bot.
+- Latest message is at least 60 minutes old.
+- Latest bot message is not a question.
+- Latest bot message and the expanded window do not indicate waiting for results, running work, blocker/failure, approval, or user action.
+
+This covers threads where the human asked a bounded question/task, the bot delivered the final answer, and the thread has been idle long enough to consider the answer consumed. If unsure, keep.
 
 ## Classification Table
 
 | Verdict | Reason code | Criteria |
 |---------|-------------|----------|
 | **archive** | `normal_closed` | Clear resolution: human thanks/confirmation, question answered, explicit "done"/"结束", or notification consumed |
+| **archive** | `collab_answered_idle` | Human-bot collaboration within 24h where the bot delivered a final non-question answer and the thread has been idle at least 60 minutes with no pending signal |
 | **archive** | `bot_only_old` | All bot messages after lookback (3a), no human participation, AND older than 24h (3b) |
 | **archive** | `collab_completed_old` | Human-bot collaboration older than 24h, with no unanswered bot question, no pending user/operator action, no failure/blocker, and a clear completed or consumed notification state |
 | **keep** | `waiting_answer` | Open question unanswered, action items pending, waiting for response, active discussion |
@@ -79,6 +91,10 @@ Each thread is judged independently. Uncovered case → **keep** with `uncertain
 
 > **"旧日报整理"** — Human asked, bot produced final answer, no unanswered question/action item, older than 24h → archive (`collab_completed_old`)
 
+> **"搜索功能测试"** — User says "好，那完成" → archive (`normal_closed`)
+
+> **"下一步建议"** — User asks "下一步有什么要做的吗", bot gives a final ordered recommendation, no question/action/waiting signal, idle 60+ minutes → archive (`collab_answered_idle`)
+
 ### Correct: keep
 
 > **"服务器搭建讨论"** — Bot asked "方案 A 还是方案 B？" → keep (`bot_question_unanswered`)
@@ -88,6 +104,8 @@ Each thread is judged independently. Uncovered case → **keep** with `uncertain
 > **"API 供应商评估"** — Last 5 all bot exec logs, lookback found human, within 24h → keep (`collab_recent`)
 
 > **"余额检查脚本修复"** — Bug fixed and confirmed, but bot then proposed a new solution and asked "要做吗？" with no reply → keep (`bot_question_unanswered`)
+
+> **"方案还没完成"** — User says "还没完成" or asks "完成了吗？" → keep (not a closure signal)
 
 > **"🤖 migration-check"** — Bot-only thread but last message says "failed / needs approval" → keep (`op_needs_attention`)
 

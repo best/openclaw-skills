@@ -2,7 +2,7 @@
 name: discord-thread-archiver
 description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent lists active threads, reads messages, judges conversation status, archives resolved threads, and produces a structured report."
 metadata:
-  version: 1.2.1
+  version: 1.2.2
 ---
 
 # Discord Thread Archiver
@@ -78,10 +78,12 @@ Apply these mechanical checks first. If ANY gate triggers → verdict is **keep*
 | # | Condition | Verdict |
 |---|-----------|---------|
 | G1 | Last message from bot AND contains "？" or "吗" or ends with question | **keep** — 等待回复 |
-| G2 | Last message < 24h old AND no human closure signal found | **keep** — 近期无关闭 |
-| G3 | Human-bot collaboration (lookback found human messages) AND < 24h AND no human closure signal found | **keep** — 协作中 |
+| G2 | Last message < 24h old AND no human closure signal found AND no final-answer idle condition | **keep** — 近期无关闭 |
+| G3 | Human-bot collaboration (lookback found human messages) AND < 24h AND no human closure signal found AND no final-answer idle condition | **keep** — 协作中 |
 
-**Closure signals** (must come from a human, not bot): 好了, 搞定, done, 结束, 结束吧, 谢谢, thanks, 确认, 没问题, OK, 可以了, 完成了, 已完成, 完成吧, 不再需要讨论, 不需要讨论了, 无需讨论, 不用讨论, 可以归档, 归档吧, 可以关闭, 关闭吧
+**Closure signals** (must come from a human, not bot): 好了, 搞定, done, 结束, 结束吧, 谢谢, thanks, 确认, 没问题, OK, 可以了, 完成, 完成了, 已完成, 完成吧, 收尾, 收工, 不再需要讨论, 不需要讨论了, 无需讨论, 不用讨论, 可以归档, 归档吧, 可以关闭, 关闭吧. Negated/question forms such as “还没完成” or “完成了吗” are NOT closure.
+
+**Final-answer idle condition:** for human-bot collaboration within 24h, archive as `collab_answered_idle` when the latest message is a bot answer, it has been idle for at least 60 minutes, and the latest bot message has no question, wait/result, running, blocker, approval, or user-action signal.
 
 #### 3d. Classify
 
