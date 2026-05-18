@@ -2,7 +2,7 @@
 name: feed-broadcast
 description: "AI Feed 智能播报技能。检查新入库文章，自主判断是否值得推送，格式化后推送到指定渠道。"
 metadata:
-  version: 1.1.1
+  version: 1.1.2
 ---
 
 # Feed Broadcast Skill
@@ -88,6 +88,8 @@ git log --since="<lastBroadcastAt>" --name-only --pretty=format: -- 'src/data/bl
 
 用 message 工具发送播报内容。投递目标以 **Cron Prompt 中指定的频道 ID 为准**。
 
+**纯文本约束：**播报内容只能传 `channel`、`target`、`message` 等必要字段；禁止传 `presentation`、`components`、`effect`、`effectId` 或任何会改变 Discord 展示样式的字段。
+
 如果 Cron Prompt 未指定投递目标，**不要从 session 上下文推断**，直接报错终止。
 
 ### Step 6: 更新状态
@@ -102,6 +104,8 @@ echo '{"lastBroadcastAt": "<当前 ISO 时间>"}' > /root/.openclaw/workspace/st
 
 格式：`📡 播报 HH:MM — 推送 N 条 / 跳过 M 条`
 
+**纯文本约束：**日志发送同样只能传 `channel`、`target`、`message` 等必要字段；禁止传 `presentation`、`components`、`effect`、`effectId`。日志必须是普通 Discord 文本消息，不要使用卡片/组件样式。
+
 如果 Cron Prompt 未指定日志目标，跳过日志发送（不报错）。
 
 ## 注意事项
@@ -110,3 +114,4 @@ echo '{"lastBroadcastAt": "<当前 ISO 时间>"}' > /root/.openclaw/workspace/st
 - **不是所有文章都推** — 你是推荐官，不是复读机
 - 播报内容要精炼，每条 1-2 句话，不要长篇大论
 - 如果只有 1 条值得推，就只推 1 条，不用凑数
+- 发送播报和日志时保持纯文本；不要使用 Discord card、components、presentation 或消息特效
