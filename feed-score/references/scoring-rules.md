@@ -111,4 +111,4 @@ done
 - **scoreBreakdown**：格式必须为 `"信息增量:N 内容质量:N 实用价值:N 减分:N"`，减分为 0 时写 `减分:0`，不可省略任何维度
 - **title/description/scoreReason**：不含双引号 `"`（用 `「」` 代替），避免破坏 YAML
 - **sourceName**：从候选的 `source` 字段取人类可读名称
-- **tags**：2-5 个中文标签
+- **tags**：1-3 个稳定主题标签。优先复用既有主题词（如 `OpenAI`、`Anthropic`、`Claude Code`、`ChatGPT`、`Codex`、`AI Agent`、`RAG`、`LLM`、`开源`、`评测`、`推理效率`、`AI安全`），不要把分类名重复写成 tag，不要为一次性论文方法名或过细概念创建长尾 tag。

@@ -2,7 +2,7 @@
 name: feed-score
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 metadata:
-  version: 2.1.3
+  version: 2.1.4
 ---
 
 # Feed Score Skill
@@ -60,7 +60,7 @@ git pull --rebase
       "pubDatetime": "2026-05-04T00:00:00Z",
       "collectedAt": "2026-05-04T08:00:00+08:00",
       "category": "工程实践",
-      "tags": ["AI Agent", "工程实践"],
+      "tags": ["AI Agent", "RAG"],
       "featured": false,
       "score": 7.0,
       "scoreReason": "简短评分依据",
@@ -83,6 +83,12 @@ git pull --rebase
 ```
 
 `verdict` 只能是 `publish` 或 `skip`；低于发布阈值的候选也要写入 `results` 并标记 `skip`。`sourceName` 可由候选的 `source` 字段透传为人类可读名称；不要把来源字段留空。
+
+Tag 规则：
+- 每篇发布文章输出 1-3 个 tag，优先复用稳定主题词，不要发明一次性长尾词。
+- 不要把 category 重复写成 tag，例如 category 已是“行业动态”，tags 里不要再放“行业动态”。
+- 优先使用规范写法：`OpenAI`、`Anthropic`、`Claude Code`、`ChatGPT`、`Codex`、`AI Agent`、`RAG`、`LLM`、`开源`、`评测`、`推理效率`、`AI安全`。
+- 论文方法名、一次性项目名、过细术语只有明显会复用时才作为 tag。
 
 ### Step 3: 生成 .md
 

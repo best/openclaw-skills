@@ -42,6 +42,60 @@ CATEGORY_ALIASES = {
     "policy": "政策伦理", "ethics": "政策伦理", "policy & ethics": "政策伦理",
 }
 
+CATEGORY_TAGS = {category.lower(): category for category in VALID_CATEGORIES}
+
+TAG_ALIASES = {
+    "ai agent": "AI Agent",
+    "ai-agent": "AI Agent",
+    "aiagent": "AI Agent",
+    "agent": "AI Agent",
+    "agents": "AI Agent",
+    "llm": "LLM",
+    "large language model": "LLM",
+    "large language models": "LLM",
+    "openai": "OpenAI",
+    "chatgpt": "ChatGPT",
+    "codex": "Codex",
+    "anthropic": "Anthropic",
+    "claude": "Claude",
+    "claude code": "Claude Code",
+    "claude-code": "Claude Code",
+    "deepmind": "DeepMind",
+    "gemini": "Gemini",
+    "microsoft": "Microsoft",
+    "github": "GitHub",
+    "hugging face": "Hugging Face",
+    "huggingface": "Hugging Face",
+    "rag": "RAG",
+    "retrieval augmented generation": "RAG",
+    "benchmark": "评测",
+    "benchmarks": "评测",
+    "evaluation": "评测",
+    "eval": "评测",
+    "open source": "开源",
+    "open-source": "开源",
+    "opensource": "开源",
+    "security": "AI安全",
+    "safety": "AI安全",
+    "ai safety": "AI安全",
+    "ai-security": "AI安全",
+    "ai安全": "AI安全",
+    "推理效率": "推理效率",
+}
+
+GENERIC_TAGS = {
+    "ai",
+    "人工智能",
+    "ai资讯",
+    "学术研究",
+    "行业动态",
+    "工程实践",
+    "模型动态",
+    "深度观点",
+    "算力硬件",
+    "政策伦理",
+}
+
 
 def normalize_category(raw):
     """Normalize category to valid enum value. Returns None when missing/unknown."""
@@ -73,6 +127,46 @@ def normalize_source_type(raw):
         if valid in raw_stripped or raw_stripped in valid:
             return valid
     return None
+
+
+def normalize_tag(raw):
+    """Normalize one tag display value while preserving useful proper nouns."""
+    tag = non_empty_str(raw)
+    if not tag:
+        return ""
+    tag = re.sub(r'\s+', ' ', tag.strip().strip('"').strip("'"))
+    tag = tag.replace("＋", "+").rstrip("+").strip()
+    key = tag.lower()
+    key = key.replace("_", "-")
+    key = re.sub(r'\s*-\s*', '-', key)
+    return TAG_ALIASES.get(key, TAG_ALIASES.get(key.replace("-", " "), tag))
+
+
+def normalize_tags(raw_tags, category):
+    """Return 1-3 stable tags and avoid category/generic duplicates."""
+    normalized = []
+    seen = set()
+    category_key = category.lower() if isinstance(category, str) else ""
+
+    for raw in raw_tags:
+        tag = normalize_tag(raw)
+        if not tag:
+            continue
+        tag_key = tag.lower()
+        if tag_key == category_key or CATEGORY_TAGS.get(tag_key) == category:
+            continue
+        if tag_key in GENERIC_TAGS:
+            continue
+        if tag_key in seen:
+            continue
+        normalized.append(tag)
+        seen.add(tag_key)
+        if len(normalized) >= 3:
+            break
+
+    if not normalized and category:
+        normalized.append(category)
+    return normalized
 
 
 def non_empty_str(value):
@@ -149,6 +243,10 @@ def prepare_publish_article(article):
     tags = article.get('tags')
     if not isinstance(tags, list) or not any(non_empty_str(tag) for tag in tags):
         errors.append('missing/invalid tags')
+    else:
+        tags = normalize_tags(tags, category)
+        if not tags:
+            errors.append('missing/invalid tags after normalization')
 
     source_type = normalize_source_type(article.get('sourceType'))
     if not source_type:
@@ -185,7 +283,7 @@ def prepare_publish_article(article):
         'description': description,
         'pubDatetime': pub_datetime,
         'category': category,
-        'tags': [non_empty_str(tag) for tag in tags if non_empty_str(tag)],
+        'tags': tags,
         'sourceUrl': source_url,
         'sourceType': source_type,
         'sourceName': source_name,
