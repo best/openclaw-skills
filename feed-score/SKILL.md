@@ -2,7 +2,7 @@
 name: feed-score
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 metadata:
-  version: 2.1.5
+  version: 2.1.6
 ---
 
 # Feed Score Skill
@@ -42,7 +42,7 @@ cd /data/code/github.com/astralor/feed
 
 读取评分规则和去重上下文：
 - `references/scoring-rules.md` — 评分维度、阈值、JSON schema
-- `data/seen.json` — URL 去重
+- `data/seen.json` — 采集状态上下文
 - 最近 7 天 `src/data/blog/*/` 文章标题 — 语义去重
 
 `data/seen.json` 是对象结构，不是数组。检查或采样时只能读 `entries`：
@@ -50,6 +50,10 @@ cd /data/code/github.com/astralor/feed
 ```bash
 jq '.entries | {count: length, sample: (to_entries[0:3])}' data/seen.json
 ```
+
+⚠️ **不要仅因为候选 URL 存在于 `seen.json.entries` 就判重复**。采集阶段会在写入 `candidates.json` 的同时写入 `seen.json`，所以当前批次候选天然会出现在 `seen.json` 中。评分阶段的 URL 去重只比较：
+- 当前批次内部重复 URL
+- 已发布文章 `src/data/blog/**` frontmatter 里的 `sourceUrl`
 
 按 scoring-rules.md 的规则评估每篇候选，将完整结果写入 `data/scored-results.json`。
 

@@ -3,7 +3,13 @@
 ## 去重
 
 ### URL 去重
-读取 `/data/code/github.com/astralor/feed/data/seen.json` 的 `entries`，候选 URL 归一化后匹配 → 跳过。
+不要用 `/data/code/github.com/astralor/feed/data/seen.json` 直接判定当前候选 URL 重复。采集阶段会在写入 `candidates.json` 的同时写入 `seen.json`，所以当前批次候选天然会出现在 `seen.json.entries` 中。
+
+评分阶段的 URL 去重只比较：
+- 当前批次内部重复 URL
+- 已发布文章 `src/data/blog/**` frontmatter 里的 `sourceUrl`
+
+只有命中以上两类，才把候选判为 `duplicate`。`seen.json` 只能作为采集状态/历史标题上下文，不能作为当前候选的跳过依据。
 
 ### 语义去重
 获取最近 7 天已入库文章标题：
