@@ -16,9 +16,9 @@ OpenClaw agent skills for autonomous development workflows.
 | [dream](./dream/) | Memory methodology & consolidation with OpenClaw T0 budget guard, 4-action model, 3 flows, dream diary, and fact-review audit | v2.5.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.2.2 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native evolution engine with Gene/Capsule knowledge reuse | v2.1.1 |
-| [feed-collect](./feed-collect/) | AI news feed collection via Miniflux local config + HN + GitHub Trending | v2.1.0 |
+| [feed-collect](./feed-collect/) | AI news feed collection via Miniflux local config + HN + GitHub Trending | v2.1.1 |
 | [feed-broadcast](./feed-broadcast/) | AI news feed smart broadcast with push/skip judgment | v1.1.2 |
-| [feed-score](./feed-score/) | AI news feed scoring, dedup, Markdown generation and publishing | v2.1.4 |
+| [feed-score](./feed-score/) | AI news feed scoring, dedup, Markdown generation and publishing | v2.1.5 |
 | [gemini-image-gen](./gemini-image-gen/) | Image generation/editing with Gemini API using GEMINI_IMAGE_CONFIG provider chain | v1.1.1 |
 | [openai-image-gen](./openai-image-gen/) | Image generation/editing with OpenAI Image API using OPENAI_IMAGE_CONFIG provider chain | v1.2.0 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.0 |

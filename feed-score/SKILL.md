@@ -2,7 +2,7 @@
 name: feed-score
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 metadata:
-  version: 2.1.4
+  version: 2.1.5
 ---
 
 # Feed Score Skill
@@ -29,8 +29,10 @@ metadata:
 
 ```bash
 cd /data/code/github.com/astralor/feed
-git pull --rebase
+/bin/bash /data/code/github.com/best/openclaw-skills/feed-score/scripts/prepare-feed-repo.sh
 ```
+
+`prepare-feed-repo.sh` 会处理上次构建留下的 `.astro/`、`dist/`、`node_modules/.astro/`、`public/pagefind/` 本地构建产物：先保存 tarball 到 `.git/feed-cron-backups/`，再恢复这些无关文件，最后执行 `git pull --rebase`。如果存在 `data/`、`src/` 或其他非构建产物的未提交变更，脚本会直接失败，必须人工检查。
 
 读取 `data/candidates.json`。为空或 `[]` → 直接结束（无候选）。
 
@@ -42,6 +44,12 @@ git pull --rebase
 - `references/scoring-rules.md` — 评分维度、阈值、JSON schema
 - `data/seen.json` — URL 去重
 - 最近 7 天 `src/data/blog/*/` 文章标题 — 语义去重
+
+`data/seen.json` 是对象结构，不是数组。检查或采样时只能读 `entries`：
+
+```bash
+jq '.entries | {count: length, sample: (to_entries[0:3])}' data/seen.json
+```
 
 按 scoring-rules.md 的规则评估每篇候选，将完整结果写入 `data/scored-results.json`。
 

@@ -2,7 +2,7 @@
 name: feed-collect
 description: "AI Feed 采集技能。从 Miniflux 本地配置 + HN API + GitHub Trending 采集 AI 领域素材，输出 candidates.json 供评分技能处理。"
 metadata:
-  version: 2.1.0
+  version: 2.1.1
 ---
 
 # Feed Collect Skill
@@ -53,8 +53,10 @@ GitHub Trending ─────── 补充，开源项目趋势
 
 ```bash
 cd /data/code/github.com/astralor/feed
-git pull --rebase
+/bin/bash /data/code/github.com/best/openclaw-skills/feed-collect/scripts/prepare-feed-repo.sh
 ```
+
+`prepare-feed-repo.sh` 会处理评分构建留下的 `.astro/`、`dist/`、`node_modules/.astro/`、`public/pagefind/` 本地构建产物：先保存 tarball 到 `.git/feed-cron-backups/`，再恢复这些无关文件，最后执行 `git pull --rebase`。如果存在 `data/`、`src/` 或其他非构建产物的未提交变更，脚本会直接失败，必须人工检查。
 
 **seen.json 结构校验（必做）：**
 
