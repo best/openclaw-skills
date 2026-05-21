@@ -2,7 +2,7 @@
 name: feed-score
 description: "AI Feed 评分与发布技能。读取 candidates.json，执行三维度评分和语义去重，用脚本批量生成 Markdown 文件，校验构建后发布到仓库。"
 metadata:
-  version: 2.1.6
+  version: 2.1.7
 ---
 
 # Feed Score Skill
@@ -102,7 +102,13 @@ Tag 规则：
 - 优先使用规范写法：`OpenAI`、`Anthropic`、`Claude Code`、`ChatGPT`、`Codex`、`AI Agent`、`RAG`、`LLM`、`开源`、`评测`、`推理效率`、`AI安全`。
 - 论文方法名、一次性项目名、过细术语只有明显会复用时才作为 tag。
 
-### Step 3: 生成 .md
+### Step 3: 校验并生成 .md
+
+先校验评分结果是否覆盖当前候选，并防止把当前候选错误地按 `seen.json` 自身判重：
+
+```bash
+python3 /data/code/github.com/best/openclaw-skills/feed-score/scripts/validate-score-results.py /data/code/github.com/astralor/feed/data/scored-results.json --candidates /data/code/github.com/astralor/feed/data/candidates.json
+```
 
 ```bash
 python3 /data/code/github.com/best/openclaw-skills/feed-score/scripts/generate-posts.py /data/code/github.com/astralor/feed/data/scored-results.json
