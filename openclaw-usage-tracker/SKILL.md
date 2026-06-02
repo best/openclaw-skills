@@ -5,12 +5,14 @@ description: >
   with per-model token breakdowns, interactive vs cron classification, provider summary,
   and trend analysis.
 metadata:
-  version: 1.2.0
+  version: 1.2.1
 ---
 
 # OpenClaw Usage Tracker
 
 Scan OpenClaw session transcripts (`*.jsonl`) to report token usage and estimated costs.
+Report dates use the Asia/Shanghai local day by default; override with
+`OPENCLAW_USAGE_TIMEZONE=<IANA timezone>` when needed.
 
 ## How It Works
 

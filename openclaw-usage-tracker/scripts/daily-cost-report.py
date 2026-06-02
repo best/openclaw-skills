@@ -22,6 +22,19 @@ import datetime
 import json
 import os
 from collections import defaultdict
+from zoneinfo import ZoneInfo
+
+
+REPORT_TIMEZONE = os.environ.get("OPENCLAW_USAGE_TIMEZONE", "Asia/Shanghai")
+
+
+def report_tz():
+    """Timezone used for report day boundaries."""
+
+    try:
+        return ZoneInfo(REPORT_TIMEZONE)
+    except Exception:
+        return ZoneInfo("UTC")
 
 
 def parse_args():
@@ -273,12 +286,30 @@ def calc_cost(usage, mk, cost_map):
     return 0.0
 
 
-def date_matches(ts, date_from, date_to):
-    """Check if timestamp string falls within date range (inclusive)."""
+def timestamp_day(ts):
+    """Return report-local YYYY-MM-DD for an OpenClaw ISO timestamp."""
 
     if not isinstance(ts, str) or len(ts) < 10:
+        return None
+
+    try:
+        raw = ts.replace("Z", "+00:00") if ts.endswith("Z") else ts
+        dt = datetime.datetime.fromisoformat(raw)
+        if dt.tzinfo is None:
+            # OpenClaw transcripts are UTC ISO strings; treat legacy naive values as UTC.
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(report_tz()).strftime("%Y-%m-%d")
+    except Exception:
+        # Keep old behavior for unusual timestamp formats rather than dropping usage rows.
+        return ts[:10]
+
+
+def date_matches(ts, date_from, date_to):
+    """Check if timestamp falls within the report-local date range (inclusive)."""
+
+    day = timestamp_day(ts)
+    if not day:
         return False
-    day = ts[:10]
     return date_from <= day <= date_to
 
 
@@ -385,7 +416,7 @@ def main():
         date_from = date_to = args.dates[0]
     else:
         yesterday = (
-            datetime.datetime.now() - datetime.timedelta(days=1)
+            datetime.datetime.now(report_tz()) - datetime.timedelta(days=1)
         ).strftime("%Y-%m-%d")
         date_from = date_to = yesterday
 
@@ -451,7 +482,9 @@ def main():
 
                         inp, out, cr, cw = extract_usage(usage)
                         cost_val = calc_cost(usage, mk, cost_map)
-                        day = ts[:10]
+                        day = timestamp_day(ts)
+                        if not day:
+                            continue
 
                         add_to_bucket(total, inp, out, cr, cw, cost_val)
                         add_to_bucket(daily[day], inp, out, cr, cw, cost_val)
@@ -668,7 +701,9 @@ def _build_trend(args, target_day, cost_map, file_category, session_meta):
                         mk = f"{provider}/{model_id}" if provider else model_id
                         inp, out, cr, cw = extract_usage(usage)
                         cost_val = calc_cost(usage, mk, cost_map)
-                        day = ts[:10]
+                        day = timestamp_day(ts)
+                        if not day:
+                            continue
                         add_to_bucket(daily[day], inp, out, cr, cw, cost_val)
             except Exception:
                 pass
