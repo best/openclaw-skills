@@ -16,7 +16,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [dream](./dream/) | 记忆方法论+整合——OpenClaw T0 预算硬检查、四动作、三套流程、梦境日记和事实验证审计 | v2.5.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v1.2.2 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.1 |
-| [feed-collect](./feed-collect/) | AI 信息流采集（Miniflux 本地配置 + HN + GitHub Trending） | v2.1.1 |
+| [feed-collect](./feed-collect/) | AI 信息流采集（deterministic feedctl runner） | v2.2.0 |
 | [feed-broadcast](./feed-broadcast/) | AI 信息流智能播报（自主判断推送/跳过） | v1.1.3 |
 | [feed-score](./feed-score/) | AI 信息流评分、去重、Markdown 生成与发布 | v2.1.7 |
 | [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.1 |
