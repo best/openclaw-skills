@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="${1:-/data/code/github.com/astralor/feed}"
+repo="${FEED_REPO:-${1:?FEED_REPO or repo argument is required}}"
 cd "$repo"
 
 generated_paths=(.astro dist node_modules/.astro public/pagefind)

@@ -3,7 +3,7 @@
 ## 去重
 
 ### URL 去重
-不要用 `/data/code/github.com/astralor/feed/data/seen.json` 直接判定当前候选 URL 重复。采集阶段会在写入 `candidates.json` 的同时写入 `seen.json`，所以当前批次候选天然会出现在 `seen.json.entries` 中。
+不要用 ``data/seen.json`` 直接判定当前候选 URL 重复。采集阶段会在写入 `candidates.json` 的同时写入 `seen.json`，所以当前批次候选天然会出现在 `seen.json.entries` 中。
 
 评分阶段的 URL 去重只比较：
 - 当前批次内部重复 URL
@@ -14,7 +14,7 @@
 ### 语义去重
 获取最近 7 天已入库文章标题：
 ```bash
-cd /data/code/github.com/astralor/feed
+cd "$FEED_REPO"
 for i in $(seq 0 6); do
   DAY=$(TZ=Asia/Shanghai date -d "$i days ago" +%Y-%m-%d)
   for f in src/data/blog/$DAY/*.md; do
@@ -73,7 +73,7 @@ done
 
 ## 输出 JSON Schema
 
-将结果写入 `/data/code/github.com/astralor/feed/data/scored-results.json`：
+将结果写入 ``data/scored-results.json``：
 
 ```json
 {

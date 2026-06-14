@@ -11,6 +11,7 @@ Outputs summary of generated files.
 
 import json
 import sys
+import os
 import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -352,7 +353,7 @@ def main():
         sys.exit(1)
 
     results_path = sys.argv[1]
-    repo_dir = Path('/data/code/github.com/astralor/feed')
+    repo_dir = Path(os.environ.get('FEED_REPO', Path.cwd()))
 
     if '--repo-dir' in sys.argv:
         idx = sys.argv.index('--repo-dir')

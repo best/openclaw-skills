@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -129,11 +130,11 @@ def git_changed_posts(repo: Path, since: str) -> list[Path]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo", type=Path, default=Path("/data/code/github.com/astralor/feed"))
+    parser.add_argument("--repo", type=Path, default=Path(os.environ["FEED_REPO"]) if os.environ.get("FEED_REPO") else Path.cwd())
     parser.add_argument(
         "--state",
         type=Path,
-        default=Path("/root/.openclaw/workspace/state/feed-broadcast.json"),
+        default=Path(os.environ["FEED_BROADCAST_STATE"]) if os.environ.get("FEED_BROADCAST_STATE") else Path("feed-broadcast-state.json"),
     )
     args = parser.parse_args()
 
