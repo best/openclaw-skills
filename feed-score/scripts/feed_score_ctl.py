@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import tarfile
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,7 @@ from urllib.parse import urlparse
 GENERATED_PATHS = [".astro", "dist", "node_modules/.astro", "public/pagefind"]
 ALLOWED_DIRTY_PATHS = ["data/candidates.json", "data/scored-results.json", "src/data/blog"]
 DEFAULT_PUBLISH_THRESHOLD = 7.0
+DEFAULT_BATCH_GUARD_SECONDS = 900
 
 
 def now_cst() -> datetime:
@@ -36,6 +38,13 @@ def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subproce
     return subprocess.run(cmd, cwd=str(cwd) if cwd else None, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=check)
 
 
+def env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def load_json(path: Path, default: Any = None) -> Any:
     if not path.exists():
         return default
@@ -45,6 +54,57 @@ def load_json(path: Path, default: Any = None) -> Any:
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", "utf-8")
+
+
+def score_guard_path(repo: Path) -> Path:
+    return repo / ".git" / "feed-score-last-batch.json"
+
+
+def recent_batch_guard(repo: Path) -> dict[str, Any] | None:
+    seconds = int(os.environ.get("FEED_SCORE_BATCH_GUARD_SECONDS", str(DEFAULT_BATCH_GUARD_SECONDS)))
+    if seconds <= 0:
+        return None
+    data = load_json(score_guard_path(repo), {})
+    if not isinstance(data, dict):
+        return None
+    finished_at = data.get("finishedAt")
+    if not isinstance(finished_at, str):
+        return None
+    try:
+        finished = datetime.fromisoformat(finished_at)
+    except ValueError:
+        return None
+    if now_cst() - finished > timedelta(seconds=seconds):
+        return None
+    return data
+
+
+def write_batch_guard(repo: Path, batch_size: int, remaining_count: int, generated_count: int) -> None:
+    head = run(["git", "rev-parse", "--short", "HEAD"], cwd=repo, check=False).stdout.strip()
+    write_json(
+        score_guard_path(repo),
+        {
+            "finishedAt": now_cst().isoformat(),
+            "batchSize": batch_size,
+            "remainingCandidates": remaining_count,
+            "generated": generated_count,
+            "head": head,
+        },
+    )
+
+
+def temporary_candidates_file(candidates: list[dict[str, Any]]) -> Path:
+    handle = tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        suffix=".json",
+        prefix="feed-score-candidates-",
+        delete=False,
+    )
+    with handle:
+        json.dump(candidates, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    return Path(handle.name)
 
 
 def clean_generated(repo: Path, dry_run: bool = False) -> None:
@@ -86,6 +146,12 @@ def normalize_url(value: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return ""
     return value.rstrip("/")
+
+
+def item_url(item: Any) -> str:
+    if not isinstance(item, dict):
+        return ""
+    return normalize_url(item.get("sourceUrl") or "") or normalize_url(item.get("url") or "")
 
 
 def load_candidates(repo: Path) -> list[dict[str, Any]]:
@@ -149,6 +215,17 @@ def make_task(args: argparse.Namespace) -> dict[str, Any]:
         return {"status": "no_content", "candidates": 0, "message": message, "final": final_score_line(message, 0, False, False, False)}
     if scored_path.exists() or any("src/data/blog/" in line for line in artifact_status.splitlines()):
         return {"status": "needs_finalize", "candidates": len(candidates), "dirty": artifact_status.splitlines(), "scoredResultsPath": str(scored_path.resolve()), "message": "score artifacts exist; run finalize"}
+    guard = recent_batch_guard(repo)
+    if guard:
+        message = f"batch already processed recently; remaining {len(candidates)}"
+        return {
+            "status": "no_content",
+            "guarded": True,
+            "candidates": len(candidates),
+            "lastBatch": guard,
+            "message": message,
+            "final": final_score_line(message, 0, False, False, False),
+        }
     batch = candidates[: args.limit]
     remaining = candidates[args.limit :]
     task = {
@@ -198,16 +275,21 @@ def commit_if_needed(repo: Path, paths: list[str], message: str, push: bool, dry
     return True, commit, pushed
 
 
-def build_repo(repo: Path, dry_run: bool) -> None:
+def build_repo(repo: Path, dry_run: bool) -> bool:
     if dry_run:
-        return
-    run(["npm", "run", "build"], cwd=repo)
+        return False
+    if not env_flag("FEED_SCORE_RUN_BUILD", False):
+        return False
+    timeout_seconds = int(os.environ.get("FEED_SCORE_BUILD_TIMEOUT", "1200"))
+    run(["timeout", "--kill-after=30s", f"{timeout_seconds}s", "npm", "run", "build"], cwd=repo)
+    return True
 
 
 def finalize(args: argparse.Namespace) -> dict[str, Any]:
     repo = args.repo.resolve()
     prepare_repo(repo, allow_score_artifacts=True, dry_run=args.dry_run)
     candidates = load_candidates(repo)
+    task = load_json(args.task.resolve(), {}) if args.task.exists() else {}
     if not candidates:
         # Clean leftover scored-results deletion if present.
         if (repo / "data" / "scored-results.json").exists():
@@ -229,19 +311,27 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
     if not scored.exists():
         raise RuntimeError(f"missing scored results: {scored}")
     validate = Path(__file__).with_name("validate-score-results.py")
+    task_candidates = task.get("candidates") if isinstance(task, dict) else None
+    if isinstance(task_candidates, list):
+        expected_urls = [item_url(item) for item in task_candidates]
+        current_urls = [item_url(item) for item in candidates[: len(task_candidates)]]
+        if expected_urls != current_urls:
+            raise RuntimeError("task candidate batch does not match current candidates head; rerun prepare")
+    validation_candidates = task_candidates if isinstance(task_candidates, list) else candidates
+    validation_candidates_path = temporary_candidates_file(validation_candidates)
     validate_cmd = [
         sys.executable,
         str(validate),
         str(scored),
         "--candidates",
-        str(repo / "data" / "candidates.json"),
+        str(validation_candidates_path),
         "--publish-threshold",
         f"{args.publish_threshold:.1f}",
     ]
-    task = load_json(args.task.resolve(), {}) if args.task.exists() else {}
-    if isinstance(task, dict) and int(task.get("remainingCandidates") or 0) > 0:
-        validate_cmd.append("--allow-partial")
-    validation = run(validate_cmd)
+    try:
+        validation = run(validate_cmd)
+    finally:
+        validation_candidates_path.unlink(missing_ok=True)
     if args.dry_run:
         scored_data = load_json(scored, {})
         results = scored_data.get("results", []) if isinstance(scored_data, dict) else []
@@ -254,13 +344,18 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
     generated_summary = json.loads(generated.stdout)
     generated_count = int(generated_summary.get("generated") or 0)
     skipped_count = int(generated_summary.get("skipped") or 0)
+    build_ran = False
 
     if generated_count > 0:
-        build_repo(repo, args.dry_run)
-        today = now_cst().strftime("%Y-%m-%d")
-        yesterday = (now_cst() - timedelta(days=1)).strftime("%Y-%m-%d")
-        paths = [f"src/data/blog/{today}", f"src/data/blog/{yesterday}"]
-        committed, commit, pushed = commit_if_needed(repo, paths, f"feed: {today} - {generated_count} items", args.push, args.dry_run)
+        try:
+            build_ran = build_repo(repo, args.dry_run)
+            today = now_cst().strftime("%Y-%m-%d")
+            yesterday = (now_cst() - timedelta(days=1)).strftime("%Y-%m-%d")
+            paths = [f"src/data/blog/{today}", f"src/data/blog/{yesterday}"]
+            committed, commit, pushed = commit_if_needed(repo, paths, f"feed: {today} - {generated_count} items", args.push, args.dry_run)
+        finally:
+            if build_ran or args.dry_run:
+                clean_generated(repo, dry_run=args.dry_run)
     else:
         committed, commit, pushed = False, "", False
 
@@ -272,13 +367,19 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
         if (repo / "data" / "scored-results.json").exists():
             (repo / "data" / "scored-results.json").unlink()
     cleanup_committed, cleanup_commit, cleanup_pushed = commit_if_needed(repo, ["data/candidates.json", "data/scored-results.json"], "score: clear processed candidates", args.push, args.dry_run)
-    message = f"generated {generated_count} posts; skipped {skipped_count}"
+    if not args.dry_run:
+        write_batch_guard(repo, len(validation_candidates), len(remaining), generated_count)
+    build_state = "ran" if build_ran else ("skipped" if generated_count > 0 else "none")
+    message = f"batch complete; generated {generated_count} posts; skipped {skipped_count}; remaining {len(remaining)}; build={build_state}"
     return {
         "status": "ok",
         "dry_run": args.dry_run,
+        "nextAction": "stop",
         "validation": json.loads(validation.stdout),
         "generated": generated_count,
         "skipped": skipped_count,
+        "buildRan": build_ran,
+        "buildSkipped": generated_count > 0 and not build_ran,
         "publishCommitted": committed,
         "publishCommit": commit,
         "publishPushed": pushed,
@@ -298,7 +399,7 @@ def main() -> int:
     parser.add_argument("--scored", type=Path, default=Path(os.environ["FEED_SCORE_RESULTS"]) if os.environ.get("FEED_SCORE_RESULTS") else None)
     sub = parser.add_subparsers(dest="cmd", required=True)
     prep = sub.add_parser("prepare")
-    prep.add_argument("--limit", type=int, default=int(os.environ.get("FEED_SCORE_LIMIT", "200")))
+    prep.add_argument("--limit", type=int, default=int(os.environ.get("FEED_SCORE_LIMIT", "30")))
     prep.add_argument("--publish-threshold", type=float, default=float(os.environ.get("FEED_SCORE_PUBLISH_THRESHOLD", str(DEFAULT_PUBLISH_THRESHOLD))))
     prep.add_argument("--dry-run", action="store_true")
     prep.set_defaults(func=make_task)

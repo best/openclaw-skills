@@ -167,9 +167,24 @@ def main() -> int:
     if duplicates:
         errors.append(f"scored results contain repeated URLs: {duplicates[:5]}")
 
+    unknown = sorted(set(result_urls) - set(candidate_by_url))
+    if unknown:
+        errors.append(f"scored results contain non-candidate URLs: {unknown[:5]}")
+
     missing = sorted(set(candidate_by_url) - set(result_urls))
     if missing and not args.allow_partial:
         errors.append(f"scored results missing candidate URLs: {missing[:5]}")
+
+    if isinstance(scored, dict) and "evaluated" in scored:
+        try:
+            evaluated = int(scored.get("evaluated"))
+        except (TypeError, ValueError):
+            errors.append("scored-results.json evaluated must be an integer")
+        else:
+            if evaluated != len(results):
+                errors.append(
+                    f"scored-results.json evaluated={evaluated} does not match results count {len(results)}"
+                )
 
     if results and skip_count == len(results) and duplicate_count == len(results):
         errors.append(

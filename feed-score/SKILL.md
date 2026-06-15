@@ -2,12 +2,12 @@
 name: feed-score
 description: "Score and publish AI Feed candidates through a controlled runner. Agent only writes scored-results JSON."
 metadata:
-  version: 2.3.0
+  version: 2.4.0
 ---
 
 # Feed Score Skill
 
-Score AI Feed candidates and publish generated posts. This skill is a controlled human-in-the-loop runner: scripts own repository state, validation, generation, build, git commit, and push; the agent only performs scoring judgment and writes `scored-results.json`.
+Score AI Feed candidates and publish generated posts. This skill is a controlled human-in-the-loop runner: scripts own repository state, validation, generation, optional build, git commit, and push; the agent only performs scoring judgment and writes `scored-results.json`.
 
 ## Use When
 
@@ -44,6 +44,8 @@ Prepare outputs a JSON task path. Read that task before scoring.
 
 If prepare returns `status=no_content`, stop successfully.
 
+Prepare limits each task to a small batch by default (`FEED_SCORE_LIMIT=30`). Score only the task `candidates` array. Remaining candidates stay in `data/candidates.json` for later runs.
+
 ### Score Handoff
 
 Write a top-level JSON object to the task `scoredResultsPath`:
@@ -58,7 +60,7 @@ Write a top-level JSON object to the task `scoredResultsPath`:
 
 Rules:
 
-- Every task candidate must appear exactly once in `results`.
+- Every task candidate must appear exactly once in `results`; do not include URLs outside the task batch.
 - `verdict` is only `publish` or `skip`.
 - `score >= 7.0` should usually publish; lower scores must not publish.
 - `publish` entries must include all fields required by `references/scoring-rules.md`.
@@ -70,7 +72,9 @@ Rules:
 python3 scripts/feed_score_ctl.py finalize --push
 ```
 
-Finalize validates scored results, generates posts, runs build, commits/pushes generated posts, clears processed candidates, and prints JSON summary.
+Finalize validates scored results, generates posts, commits/pushes generated posts, clears processed candidates, and prints JSON summary.
+
+By default finalize skips the full Astro build so cron stays short and does not leave generated artifacts dirty. Use `FEED_SCORE_RUN_BUILD=1` only for manual strict verification; `FEED_SCORE_BUILD_TIMEOUT` caps that optional build.
 
 ## Output Contract
 
