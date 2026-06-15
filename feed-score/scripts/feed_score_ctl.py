@@ -17,10 +17,19 @@ from urllib.parse import urlparse
 
 GENERATED_PATHS = [".astro", "dist", "node_modules/.astro", "public/pagefind"]
 ALLOWED_DIRTY_PATHS = ["data/candidates.json", "data/scored-results.json", "src/data/blog"]
+DEFAULT_PUBLISH_THRESHOLD = 7.0
 
 
 def now_cst() -> datetime:
     return datetime.now(timezone(timedelta(hours=8)))
+
+
+def final_score_line(message: str, generated: int, cleanup_committed: bool, publish_pushed: bool, cleanup_pushed: bool) -> str:
+    pushed = publish_pushed or cleanup_pushed
+    return (
+        f"📋 评分完成 {now_cst().strftime('%H:%M')} — {message}; "
+        f"generated={generated}; cleanup={str(cleanup_committed).lower()}; pushed={str(pushed).lower()}"
+    )
 
 
 def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -136,7 +145,8 @@ def make_task(args: argparse.Namespace) -> dict[str, Any]:
     if not candidates:
         if artifact_status:
             return {"status": "needs_cleanup", "candidates": 0, "dirty": artifact_status.splitlines(), "message": "score cleanup pending; run finalize"}
-        return {"status": "no_content", "candidates": 0, "message": "no candidates"}
+        message = "no candidates"
+        return {"status": "no_content", "candidates": 0, "message": message, "final": final_score_line(message, 0, False, False, False)}
     if scored_path.exists() or any("src/data/blog/" in line for line in artifact_status.splitlines()):
         return {"status": "needs_finalize", "candidates": len(candidates), "dirty": artifact_status.splitlines(), "scoredResultsPath": str(scored_path.resolve()), "message": "score artifacts exist; run finalize"}
     batch = candidates[: args.limit]
@@ -156,7 +166,7 @@ def make_task(args: argparse.Namespace) -> dict[str, Any]:
             "write": "Write JSON object to scoredResultsPath. Do not modify repo files other than scored-results.json.",
             "schema": "Top-level object with evaluated, scoredAt, results[]. verdict is publish or skip.",
             "dedupe": "Do not compare current candidates against data/seen.json; compare only batch-internal URLs and publishedSourceUrls/recentTitles.",
-            "threshold": "score >= 6.5 publish; otherwise skip with reason low_score or duplicate.",
+            "threshold": f"score >= {args.publish_threshold:.1f} publish; lower scores must skip with reason low_score or duplicate.",
         },
     }
     write_json(args.task.resolve(), task)
@@ -204,13 +214,30 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
             if not args.dry_run:
                 (repo / "data" / "scored-results.json").unlink()
         committed, commit, pushed = commit_if_needed(repo, ["data/candidates.json", "data/scored-results.json"], "score: clear processed candidates", args.push, args.dry_run)
-        return {"status": "no_content", "generated": 0, "committed": committed, "commit": commit, "pushed": pushed, "message": "no candidates; cleaned score artifacts"}
+        message = "no candidates; cleaned score artifacts"
+        return {
+            "status": "no_content",
+            "generated": 0,
+            "committed": committed,
+            "commit": commit,
+            "pushed": pushed,
+            "message": message,
+            "final": final_score_line(message, 0, committed, False, pushed),
+        }
 
     scored = args.scored.resolve()
     if not scored.exists():
         raise RuntimeError(f"missing scored results: {scored}")
     validate = Path(__file__).with_name("validate-score-results.py")
-    validate_cmd = [sys.executable, str(validate), str(scored), "--candidates", str(repo / "data" / "candidates.json")]
+    validate_cmd = [
+        sys.executable,
+        str(validate),
+        str(scored),
+        "--candidates",
+        str(repo / "data" / "candidates.json"),
+        "--publish-threshold",
+        f"{args.publish_threshold:.1f}",
+    ]
     task = load_json(args.task.resolve(), {}) if args.task.exists() else {}
     if isinstance(task, dict) and int(task.get("remainingCandidates") or 0) > 0:
         validate_cmd.append("--allow-partial")
@@ -220,7 +247,8 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
         results = scored_data.get("results", []) if isinstance(scored_data, dict) else []
         publish_count = len([item for item in results if isinstance(item, dict) and item.get("verdict") == "publish"])
         skip_count = len([item for item in results if isinstance(item, dict) and item.get("verdict") == "skip"])
-        return {"status": "ok", "dry_run": True, "validation": json.loads(validation.stdout), "generated": publish_count, "skipped": skip_count, "message": f"validated {len(results)} scored results"}
+        message = f"validated {len(results)} scored results"
+        return {"status": "ok", "dry_run": True, "validation": json.loads(validation.stdout), "generated": publish_count, "skipped": skip_count, "message": message, "final": final_score_line(message, publish_count, False, False, False)}
     generator = Path(__file__).with_name("generate-posts.py")
     generated = run([sys.executable, str(generator), str(scored), "--repo-dir", str(repo)])
     generated_summary = json.loads(generated.stdout)
@@ -244,6 +272,7 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
         if (repo / "data" / "scored-results.json").exists():
             (repo / "data" / "scored-results.json").unlink()
     cleanup_committed, cleanup_commit, cleanup_pushed = commit_if_needed(repo, ["data/candidates.json", "data/scored-results.json"], "score: clear processed candidates", args.push, args.dry_run)
+    message = f"generated {generated_count} posts; skipped {skipped_count}"
     return {
         "status": "ok",
         "dry_run": args.dry_run,
@@ -257,7 +286,8 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
         "cleanupCommit": cleanup_commit,
         "cleanupPushed": cleanup_pushed,
         "remainingCandidates": len(remaining),
-        "message": f"generated {generated_count} posts; skipped {skipped_count}",
+        "message": message,
+        "final": final_score_line(message, generated_count, cleanup_committed, pushed, cleanup_pushed),
     }
 
 
@@ -269,10 +299,12 @@ def main() -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     prep = sub.add_parser("prepare")
     prep.add_argument("--limit", type=int, default=int(os.environ.get("FEED_SCORE_LIMIT", "200")))
+    prep.add_argument("--publish-threshold", type=float, default=float(os.environ.get("FEED_SCORE_PUBLISH_THRESHOLD", str(DEFAULT_PUBLISH_THRESHOLD))))
     prep.add_argument("--dry-run", action="store_true")
     prep.set_defaults(func=make_task)
     final = sub.add_parser("finalize")
     final.add_argument("--push", action="store_true")
+    final.add_argument("--publish-threshold", type=float, default=float(os.environ.get("FEED_SCORE_PUBLISH_THRESHOLD", str(DEFAULT_PUBLISH_THRESHOLD))))
     final.add_argument("--dry-run", action="store_true")
     final.set_defaults(func=finalize)
     args = parser.parse_args()

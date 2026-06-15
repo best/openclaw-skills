@@ -2,7 +2,7 @@
 name: feed-collect
 description: "AI Feed deterministic collection runner. Use to collect Miniflux/HN/GitHub candidates into data/candidates.json for feed-score."
 metadata:
-  version: 2.2.0
+  version: 2.3.0
 ---
 
 # Feed Collect Skill
@@ -78,11 +78,12 @@ The runner prints one JSON object to stdout:
   "committed": false,
   "commit": "",
   "pushed": false,
-  "message": "human-readable summary"
+  "message": "human-readable summary",
+  "final": "📡 采集完成 HH:MM — no new candidates; 新增 0 条; commit=none; pushed=false"
 }
 ```
 
-`ok` and `no_content` are successful cron outcomes. `failed` exits non-zero.
+`ok` and `no_content` are successful cron outcomes. `failed` exits non-zero. If `final` is present, copy it exactly for the cron reply.
 
 ## Failure Semantics
 

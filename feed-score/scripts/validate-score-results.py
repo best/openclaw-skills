@@ -62,6 +62,15 @@ def item_url(item) -> str:
     return normalize_url(item.get("sourceUrl")) or normalize_url(item.get("url"))
 
 
+def item_score(item) -> float | None:
+    if not isinstance(item, dict):
+        return None
+    try:
+        return float(item.get("score"))
+    except (TypeError, ValueError):
+        return None
+
+
 def fail(errors: list[str]) -> int:
     print(json.dumps({"ok": False, "errors": errors}, ensure_ascii=False, indent=2))
     return 2
@@ -75,6 +84,12 @@ def main() -> int:
         "--allow-partial",
         action="store_true",
         help="Allow scored results to cover only part of candidates.json.",
+    )
+    parser.add_argument(
+        "--publish-threshold",
+        type=float,
+        default=7.0,
+        help="Minimum score allowed for publish verdict.",
     )
     args = parser.parse_args()
 
@@ -111,6 +126,13 @@ def main() -> int:
             errors.append(f"result #{idx} has invalid verdict: {verdict!r}")
         if verdict == "publish":
             publish_count += 1
+            score = item_score(result)
+            if score is None:
+                errors.append(f"publish result #{idx} missing numeric score")
+            elif score < args.publish_threshold:
+                errors.append(
+                    f"publish result #{idx} score {score:g} is below threshold {args.publish_threshold:g}"
+                )
         if verdict == "skip":
             skip_count += 1
 
@@ -121,6 +143,14 @@ def main() -> int:
         result_urls.append(url)
 
         reason = clean_string(result.get("reason")).lower()
+        if verdict == "skip" and reason == "low_score":
+            score = item_score(result)
+            if score is None:
+                errors.append(f"low_score result #{idx} missing numeric score")
+            elif score >= args.publish_threshold:
+                errors.append(
+                    f"low_score result #{idx} score {score:g} is not below threshold {args.publish_threshold:g}"
+                )
         if verdict == "skip" and reason == "duplicate":
             duplicate_count += 1
             duplicate_of = clean_string(result.get("duplicateOf"))
@@ -159,6 +189,7 @@ def main() -> int:
                 "publish": publish_count,
                 "skip": skip_count,
                 "duplicateSkips": duplicate_count,
+                "publishThreshold": args.publish_threshold,
             },
             ensure_ascii=False,
             indent=2,

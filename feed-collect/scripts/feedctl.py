@@ -31,6 +31,11 @@ def now_cst() -> datetime:
     return datetime.now(timezone(timedelta(hours=8)))
 
 
+def collect_final(message: str, new_candidates: int, commit: str, pushed: bool) -> str:
+    commit_label = commit or "none"
+    return f"📡 采集完成 {now_cst().strftime('%H:%M')} — {message}; 新增 {new_candidates} 条; commit={commit_label}; pushed={str(pushed).lower()}"
+
+
 def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
@@ -430,6 +435,7 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
             write_json(seen_path, seen)
         committed, commit, pushed = commit_changes(repo, args.push if args.commit else False, args.dry_run or not args.commit)
         marked = mark_miniflux_read(config, sorted(set(miniflux_ids)), args.dry_run)
+        message = f"collected {len(new_items)} new candidates"
         return {
             "status": "ok",
             "dry_run": args.dry_run,
@@ -442,10 +448,12 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
             "commit": commit,
             "pushed": pushed,
             "warnings": warnings,
-            "message": f"collected {len(new_items)} new candidates",
+            "message": message,
+            "final": collect_final(message, len(new_items), commit, pushed),
         }
 
     marked = mark_miniflux_read(config, sorted(set(miniflux_ids)), args.dry_run)
+    message = "no new candidates"
     return {
         "status": "no_content",
         "dry_run": args.dry_run,
@@ -458,7 +466,8 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
         "commit": "",
         "pushed": False,
         "warnings": warnings,
-        "message": "no new candidates",
+        "message": message,
+        "final": collect_final(message, 0, "", False),
     }
 
 

@@ -2,7 +2,7 @@
 name: feed-broadcast
 description: "Broadcast newly published AI Feed posts through a controlled wrapper with state and delivery guards."
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Feed Broadcast Skill

@@ -16,9 +16,9 @@ OpenClaw Agent 自主开发工作流技能集。
 | [dream](./dream/) | 记忆方法论+整合——OpenClaw T0 预算硬检查、四动作、三套流程、梦境日记和事实验证审计 | v2.5.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v1.2.2 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.1 |
-| [feed-collect](./feed-collect/) | AI 信息流采集（deterministic feedctl runner） | v2.2.0 |
-| [feed-broadcast](./feed-broadcast/) | AI Feed 受控播报与投递防护 | v1.2.0 |
-| [feed-score](./feed-score/) | AI Feed 受控评分与校验发布 | v2.2.0 |
+| [feed-collect](./feed-collect/) | AI 信息流采集（deterministic feedctl runner） | v2.3.0 |
+| [feed-broadcast](./feed-broadcast/) | AI Feed 受控播报与投递防护 | v1.3.0 |
+| [feed-score](./feed-score/) | AI Feed 受控评分与校验发布 | v2.3.0 |
 | [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.1 |
 | [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.0 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.1 |

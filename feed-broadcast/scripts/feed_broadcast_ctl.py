@@ -19,6 +19,10 @@ def now_cst() -> datetime:
     return datetime.now(timezone(timedelta(hours=8)))
 
 
+def broadcast_final(pushed: int, skipped: int, sent: bool, log_sent: bool) -> str:
+    return f"📡 播报 {now_cst().strftime('%H:%M')} — 推送 {pushed} 条 / 跳过 {skipped} 条; sent={str(sent).lower()}; log={str(log_sent).lower()}"
+
+
 def run(cmd: list[str], cwd: Path | None = None, check: bool = True, input_text: str | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
@@ -76,7 +80,10 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         },
     )
     status = "no_content" if not posts else "needs_decision"
-    return {"status": status, "posts": len(posts), "task": str(task_path), "decision": str(args.decision.resolve()), "message": "no new posts" if not posts else f"review {len(posts)} new posts"}
+    result = {"status": status, "posts": len(posts), "task": str(task_path), "decision": str(args.decision.resolve()), "message": "no new posts" if not posts else f"review {len(posts)} new posts"}
+    if not posts:
+        result["final"] = "NO_REPLY"
+    return result
 
 
 def validate_decision(decision: dict[str, Any], task: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str]:
@@ -125,7 +132,7 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
         raise RuntimeError("task file missing or invalid")
     posts = task.get("posts") or []
     if not posts:
-        return {"status": "no_content", "pushed": 0, "skipped": 0, "sent": False, "logSent": False, "message": "no new posts"}
+        return {"status": "no_content", "pushed": 0, "skipped": 0, "sent": False, "logSent": False, "message": "no new posts", "final": "NO_REPLY"}
     decision = load_json(args.decision.resolve())
     if not isinstance(decision, dict):
         raise RuntimeError("decision file missing or invalid")
@@ -140,7 +147,17 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
     stamp = now_cst().replace(microsecond=0).isoformat()
     if not args.dry_run:
         write_json(args.state.resolve(), {"lastBroadcastAt": stamp})
-    return {"status": "ok", "dry_run": args.dry_run, "pushed": len(selected), "skipped": len(skipped), "sent": sent, "logSent": log_sent, "stateUpdated": not args.dry_run, "message": "broadcast finalized"}
+    return {
+        "status": "ok",
+        "dry_run": args.dry_run,
+        "pushed": len(selected),
+        "skipped": len(skipped),
+        "sent": sent,
+        "logSent": log_sent,
+        "stateUpdated": not args.dry_run,
+        "message": "broadcast finalized",
+        "final": broadcast_final(len(selected), len(skipped), sent, log_sent),
+    }
 
 
 def main() -> int:

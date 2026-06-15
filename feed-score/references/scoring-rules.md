@@ -54,7 +54,7 @@ done
 
 ### 阈值
 
-≥ 6.5 → `"publish"` | < 6.5 → `"skip"` (reason: `"low_score"`)
+≥ 7.0 → `"publish"` | < 7.0 → `"skip"` (reason: `"low_score"`)
 
 ## Featured 判断
 

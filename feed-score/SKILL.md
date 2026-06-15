@@ -2,7 +2,7 @@
 name: feed-score
 description: "Score and publish AI Feed candidates through a controlled runner. Agent only writes scored-results JSON."
 metadata:
-  version: 2.2.0
+  version: 2.3.0
 ---
 
 # Feed Score Skill
@@ -60,7 +60,7 @@ Rules:
 
 - Every task candidate must appear exactly once in `results`.
 - `verdict` is only `publish` or `skip`.
-- `score >= 6.5` should usually publish.
+- `score >= 7.0` should usually publish; lower scores must not publish.
 - `publish` entries must include all fields required by `references/scoring-rules.md`.
 - `skip` entries must include `reason`; duplicate skips must include `duplicateOf`.
 
@@ -74,7 +74,7 @@ Finalize validates scored results, generates posts, runs build, commits/pushes g
 
 ## Output Contract
 
-Final reply should be one line based on runner stdout:
+Final reply should copy `final` from runner stdout when present. Otherwise use:
 
 `📋 评分完成 HH:MM — <message>; generated=<generated>; cleanup=<cleanupCommitted>; pushed=<publishPushed|cleanupPushed>`
 
