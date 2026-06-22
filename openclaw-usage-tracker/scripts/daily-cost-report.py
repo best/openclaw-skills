@@ -266,12 +266,8 @@ def extract_usage(usage):
     return inp, out, cr, cw
 
 
-def calc_cost(usage, mk, cost_map):
-    """Calculate cost: prefer provider-returned, fallback to config estimate."""
-
-    usage_cost = usage.get("cost")
-    if isinstance(usage_cost, dict) and usage_cost.get("total") is not None:
-        return usage_cost["total"]
+def estimate_cost(usage, mk, cost_map):
+    """Estimate cost from local model pricing."""
 
     inp, out, cr, cw = extract_usage(usage)
     if mk in cost_map:
@@ -284,6 +280,20 @@ def calc_cost(usage, mk, cost_map):
         ) / 1_000_000
 
     return 0.0
+
+
+def calc_cost(usage, mk, cost_map):
+    """Calculate cost, falling back when providers report zero for priced usage."""
+
+    usage_cost = usage.get("cost")
+    if isinstance(usage_cost, dict) and usage_cost.get("total") is not None:
+        provider_total = usage_cost["total"] or 0
+        inp, out, cr, cw = extract_usage(usage)
+        if provider_total != 0 or inp + out + cr + cw == 0:
+            return provider_total
+        return estimate_cost(usage, mk, cost_map)
+
+    return estimate_cost(usage, mk, cost_map)
 
 
 def timestamp_day(ts):

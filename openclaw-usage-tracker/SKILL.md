@@ -5,7 +5,7 @@ description: >
   with per-model token breakdowns, interactive vs cron classification, provider summary,
   and trend analysis.
 metadata:
-  version: 1.2.1
+  version: 1.2.2
 ---
 
 # OpenClaw Usage Tracker
@@ -17,8 +17,9 @@ Report dates use the Asia/Shanghai local day by default; override with
 ## How It Works
 
 Each assistant message in `~/.openclaw/agents/<agent>/sessions/*.jsonl` carries a
-`usage` object (input, output, cache read, cache write). Cost comes from the provider
-API response (`usage.cost.total`) or is estimated via per-model pricing in `openclaw.json`.
+`usage` object (input, output, cache read, cache write). Cost comes from positive provider
+API response totals (`usage.cost.total`) or is estimated via per-model pricing in
+`openclaw.json`. Zero provider totals with non-zero tokens fall back to local pricing.
 
 ## Usage
 
@@ -107,8 +108,8 @@ Daily job should generate a report for **yesterday** plus a short 7-day trend su
 
 ## Cost Calculation
 
-1. Provider-returned `usage.cost.total` (priority)
-2. Estimated: `(input × cost.input + output × cost.output + cacheRead × cost.cacheRead + cacheWrite × cost.cacheWrite) / 1M`
+1. Positive provider-returned `usage.cost.total` (priority)
+2. Estimated when provider cost is absent, or provider cost is zero while tokens are non-zero: `(input × cost.input + output × cost.output + cacheRead × cost.cacheRead + cacheWrite × cost.cacheWrite) / 1M`
 
 Pricing: `models.providers.<provider>.models[].cost` in `openclaw.json` ($/M tokens).
 
