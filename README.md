@@ -10,6 +10,7 @@ OpenClaw agent skills for autonomous development workflows.
 
 | Skill | Description | Version |
 |-------|-------------|---------|
+| [atlas-image-gen](./atlas-image-gen/) | Text-to-image generation through Atlas Cloud with guarded submission and bounded polling | v0.1.0 |
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.4.0 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
