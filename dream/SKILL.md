@@ -1,8 +1,8 @@
 ---
 name: dream
-description: "记忆方法论 & 整合执行——定义 T0/T1/T2/Dream 记忆职责、OpenClaw 注入预算硬约束、价值判断、遗忘机制，以及初始化/日常/深度三种执行流程。"
+description: "Memory consolidation and Dream workflows: enforce T0 budgets, retention, forgetting, and source-backed fact review."
 metadata:
-  version: 2.5.2
+  version: 2.5.3
 ---
 
 # Dream — 记忆方法论 & 整合执行
