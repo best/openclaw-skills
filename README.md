@@ -20,7 +20,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [feed-broadcast](./feed-broadcast/) | AI Feed broadcast via controlled wrapper and delivery guards | v1.3.0 |
 | [feed-score](./feed-score/) | AI Feed scoring via controlled runner and validated publish flow | v2.4.0 |
 | [gemini-image-gen](./gemini-image-gen/) | Image generation/editing with Gemini API using GEMINI_IMAGE_CONFIG provider chain | v1.1.2 |
-| [openai-image-gen](./openai-image-gen/) | Image generation/editing with OpenAI Image API using OPENAI_IMAGE_CONFIG provider chain | v1.2.0 |
+| [openai-image-gen](./openai-image-gen/) | Image generation/editing with OpenAI Image API using OPENAI_IMAGE_CONFIG provider chain | v1.2.1 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.2 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
 | [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.2 |

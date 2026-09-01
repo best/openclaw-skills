@@ -20,7 +20,7 @@ OpenClaw Agent 自主开发工作流技能集。
 | [feed-broadcast](./feed-broadcast/) | AI Feed 受控播报与投递防护 | v1.3.0 |
 | [feed-score](./feed-score/) | AI Feed 受控评分与校验发布 | v2.4.0 |
 | [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.2 |
-| [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.0 |
+| [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.1 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.2 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
 | [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.2 |
