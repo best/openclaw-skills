@@ -11,7 +11,7 @@ OpenClaw agent skills for autonomous development workflows.
 | Skill | Description | Version |
 |-------|-------------|---------|
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
-| [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.4.0 |
+| [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.4.1 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
 | [dream](./dream/) | Memory methodology & consolidation with OpenClaw T0 budget guard, 4-action model, 3 flows, dream diary, and fact-review audit | v2.5.2 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.2.2 |
