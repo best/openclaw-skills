@@ -1,124 +1,99 @@
 # Thread Archiving Judgment Guide
 
-Detailed criteria for evaluating whether a Discord thread should be archived, kept, or skipped.
+Read this file before classifying threads.
 
-**This file is mandatory reading. Do not classify any thread without loading these rules first.**
+## Facts Contract
 
-## Bot-only Lookback (Rule 3a)
+Classifier input must satisfy:
 
-If the last 5 messages are **all from bots**, expand to 20 messages:
+- `messageOrder` equals `oldest_to_newest`.
+- Every message has a numeric Discord `messageId`.
+- Message IDs are unique and strictly increasing.
+- `historyScanComplete=true` means historical human participation was found or the thread start was reached.
+- `humanInitiated` includes a bot-authored type-21 starter whose referenced parent is human-authored.
+- `hadHistoricalHumanParticipation` is independent of the latest window.
 
-- Human messages found in expanded window → **human-bot collaboration thread**. Apply normal-thread rules below. Within 24h, keep unless explicit human closure. Older than 24h, classify by unresolved questions/action items/completion state.
-- Still no human messages after 20 → truly bot-only thread. Proceed to classification.
+Bad order, duplicate/missing IDs, or malformed messages return `keep/facts_invalid`. An unfinished participation scan returns `keep/facts_incomplete`.
 
-## Operational Thread Policy
+## Lookback
 
-Operational threads are bot-created task/status threads. The default signal is a title prefix `🤖 ` plus **no human messages** in the expanded message window.
+When the latest five messages are bots:
 
-These threads are not normal conversations and do not require human closure confirmation. Evaluate them before normal recency gates:
+1. Read the latest 20-message no-cursor window once.
+2. Inspect the thread starter and referenced parent.
+3. If participation is unknown, page with the oldest collected ID as `before`.
+4. Deduplicate and continue to a human or the thread start.
 
-| Verdict | Reason code | Criteria |
-|---------|-------------|----------|
-| **keep** | `op_needs_attention` | Any message indicates failure, blocked state, permission issue, approval required, waiting for user/operator, or manual action needed. Keywords include: `error`, `failed`, `blocked`, `approval`, `permission`, `403`, `异常`, `失败`, `阻塞`, `等待确认`, `需要用户`, `需要人工`, `权限不足` |
-| **keep** | `op_running` | Last messages indicate the task is still running or waiting for results: `running`, `in progress`, `started`, `working`, `执行中`, `进行中`, `等待结果`, `还在跑` |
-| **archive** | `op_done_no_human` | No human messages, no attention/running signal, and messages indicate completion/result delivery: `finished`, `completed`, `done`, `ok`, `任务完成`, `已完成`, `结果`, `summary` |
-| **archive** | `op_stale_status_no_human` | No human messages, no attention/running signal, and last message is an old status-only notification. Use only when older than 2h. |
-| **keep** | `op_recent_status` | No human messages, no attention/running signal, but last status-only message is newer than 2h. |
+Never infer bot-only history from a recent finite window.
 
-If an operational-prefix thread contains any human message, stop using this policy and evaluate as a normal human-bot collaboration thread.
+## Operational Threads
 
-## Recency Protection (Rule 3b)
+A thread is operational only when its name has an operational prefix and a complete scan proves no human participation.
 
-Compare last message timestamp against current time:
+| Verdict | Reason | Criteria |
+|---|---|---|
+| keep | `op_needs_attention` | Failure, blocker, permission/approval issue, or manual action. |
+| keep | `op_running` | Latest status is running or waiting for results. |
+| archive | `op_done_no_human` | Completion/result with no attention or running signal. |
+| archive | `op_stale_status_no_human` | Status-only thread older than two hours. |
+| keep | `op_recent_status` | Status-only thread newer than two hours. |
 
-- **Within 24h** → for normal threads, archive only with **explicit human closure signal** (thanks, confirmation, "done", "结束", "搞定了", "完成", "完成吧", "收尾", "不再需要讨论了", "可以归档") or the **final-answer idle condition** below. Do NOT archive based on inactivity alone.
-- **Older than 24h** → classify normally.
+Any historical human participation forces normal-thread rules, even with an operational prefix.
 
-For normal threads, this is the only time-based rule. Operational threads have their own 2h status-only threshold above.
+## Normal Threads
 
-### Final-answer idle condition
+### Hard question gate
 
-For human-bot collaboration within 24h, archive as `collab_answered_idle` only when all are true:
+A latest bot question is `keep/bot_question_unanswered`. An older closure phrase cannot override a newer question.
 
-- Latest message is from the bot.
-- Latest message is at least 60 minutes old.
-- Latest bot message is not a question.
-- Latest bot message and the expanded window do not indicate waiting for results, running work, blocker/failure, approval, or user action.
+### Human closure
 
-This covers threads where the human asked a bounded question/task, the bot delivered the final answer, and the thread has been idle long enough to consider the answer consumed. If unsure, keep.
+Closure must be human-authored and later than unresolved question/wait/running/blocker/approval/user-action signals. Negated or question forms such as “还没完成” and “完成了吗？” do not close.
 
-## Classification Table
+Closure phrases: 好了, 搞定, done, 结束, 结束吧, 谢谢, thanks, 确认, 没问题, OK, 可以了, 完成, 完成了, 已完成, 完成吧, 收尾, 收工, 不再需要讨论, 不需要讨论了, 无需讨论, 不用讨论, 可以归档, 归档吧, 可以关闭, 关闭吧.
 
-| Verdict | Reason code | Criteria |
-|---------|-------------|----------|
-| **archive** | `normal_closed` | Clear resolution: human thanks/confirmation, question answered, explicit "done"/"结束", or notification consumed |
-| **archive** | `collab_answered_idle` | Human-bot collaboration within 24h where the bot delivered a final non-question answer and the thread has been idle at least 60 minutes with no pending signal |
-| **archive** | `bot_only_old` | All bot messages after lookback (3a), no human participation, AND older than 24h (3b) |
-| **archive** | `collab_completed_old` | Human-bot collaboration older than 24h, with no unanswered bot question, no pending user/operator action, no failure/blocker, and a clear completed or consumed notification state |
-| **keep** | `waiting_answer` | Open question unanswered, action items pending, waiting for response, active discussion |
-| **keep** | `waiting_result` | Last message implies next step: "wait for results", "看看效果", "等结果", "触发一下" |
-| **keep** | `bot_question_unanswered` | Bot sent proposal/question but human hasn't replied — busy ≠ disengaged |
-| **keep** | `collab_recent` | Human-bot collaboration identified by lookback (3a) AND last message is within 24h without human closure. If a human explicitly says the thread is complete or no longer needs discussion, archive as `normal_closed` instead. |
-| **keep** | `recent_no_closure` | Within 24h recency protection (3b), no closure signal |
-| **keep** | `multi_topic_open` | Thread has multiple topics and any topic is unresolved |
-| **keep** | `uncertain` | Can't determine from messages read |
+### Final-answer idle
 
-**When in doubt, keep.** Archiving a live conversation is worse than keeping a finished one.
+Within 24 hours, archive `collab_answered_idle` only when:
 
-**Critical:** "task completed" = entire discussion resolved with human confirmation, not a single sub-step done. User not responding ≠ conversation over.
+- historical human participation is known;
+- latest message is a bot answer idle for at least 60 minutes;
+- latest answer is not a question;
+- facts contain no unresolved wait/result, running, blocker/failure, approval, or user-action signal.
 
-## Anti-hallucination Guard
+### Classification
 
-Use ONLY the criteria above plus rules 3a/3b. Do NOT invent:
-- Additional time thresholds ("48h inactive", "1 week old") for normal threads
-- Activity metrics
-- Cross-thread relationships ("absorbed by another thread")
-- Any rules not in this document
+| Verdict | Reason | Criteria |
+|---|---|---|
+| archive | `normal_closed` | Valid human closure after pending signals. |
+| archive | `collab_answered_idle` | Known human participation and idle final bot answer. |
+| archive | `bot_only_old` | Complete scan proves bot-only and older than 24 hours. |
+| archive | `collab_completed_old` | Old collaboration is clearly complete. |
+| keep | `bot_question_unanswered` | Latest bot message is a question. |
+| keep | `waiting_answer` | Blocker, approval, permission, or manual action remains. |
+| keep | `waiting_result` | Work/result remains pending. |
+| keep | `collab_recent` | Recent collaboration lacks closure/final-idle completion. |
+| keep | `recent_no_closure` | Recent normal thread lacks closure. |
+| keep | `multi_topic_open` | Any topic remains unresolved. |
+| keep | `facts_invalid` | Facts are duplicated, unordered, or malformed. |
+| keep | `facts_incomplete` | Participation scan did not reach a trusted stop. |
+| keep | `uncertain` | Completion cannot be determined safely. |
 
-Each thread is judged independently. Uncovered case → **keep** with `uncertain`.
+When in doubt, keep.
 
-## Examples
+## Regression Scenarios
 
-### Correct: archive
+Must archive:
 
-> **"CI 构建失败排查"** — User: "好了，问题解决了，谢谢" → archive (`normal_closed`)
+- Human starter outside the latest 20 messages, 20+ bot/tool updates, final non-question answer, idle 60+ minutes, no pending signal → `collab_answered_idle`.
+- Referenced human starter on a bot-authored type-21 message under the same conditions → `collab_answered_idle`.
+- Completed bot-only operational thread with a complete history scan → `op_done_no_human`.
 
-> **"PPT 生成优化调研"** — User: "完成吧，不再需要讨论了" → archive (`normal_closed`)
+Must keep:
 
-> **"版本发布通知"** — All bot messages, no human replied, older than 24h → archive (`bot_only_old`)
+- Historical closure followed by a newer bot question.
+- Waiting for login, approval, user action, result, or running work.
+- Duplicate/unordered message IDs → `facts_invalid`.
+- Pagination stopped before human participation or thread start → `facts_incomplete`.
 
-> **"🤖 ppt-skills-research"** — Bot-only subagent thread, task completed, no failure/approval/user-waiting signal → archive (`op_done_no_human`)
-
-> **"旧日报整理"** — Human asked, bot produced final answer, no unanswered question/action item, older than 24h → archive (`collab_completed_old`)
-
-> **"搜索功能测试"** — User says "好，那完成" → archive (`normal_closed`)
-
-> **"下一步建议"** — User asks "下一步有什么要做的吗", bot gives a final ordered recommendation, no question/action/waiting signal, idle 60+ minutes → archive (`collab_answered_idle`)
-
-### Correct: keep
-
-> **"服务器搭建讨论"** — Bot asked "方案 A 还是方案 B？" → keep (`bot_question_unanswered`)
-
-> **"密钥配置"** — Bot said "你把这个加到目标机器上" → keep (`waiting_answer`)
-
-> **"API 供应商评估"** — Last 5 all bot exec logs, lookback found human, within 24h → keep (`collab_recent`)
-
-> **"余额检查脚本修复"** — Bug fixed and confirmed, but bot then proposed a new solution and asked "要做吗？" with no reply → keep (`bot_question_unanswered`)
-
-> **"方案还没完成"** — User says "还没完成" or asks "完成了吗？" → keep (not a closure signal)
-
-> **"🤖 migration-check"** — Bot-only thread but last message says "failed / needs approval" → keep (`op_needs_attention`)
-
-> **"🤖 long-research"** — Bot-only thread but last message says "still running / waiting for results" → keep (`op_running`)
-
-### Common mistakes
-
-> ❌ archive "基础设施讨论" — "absorbed by another thread" → Wrong: cross-thread reasoning forbidden
-
-> ❌ archive "部署方案讨论" — "bot completed the task" → Wrong: sub-task ≠ entire discussion resolved
-
-> ❌ archive "供应商续费讨论" — "all 5 bot messages" → Wrong: didn't do lookback; human was involved earlier
-
-> ❌ keep every historical human-bot thread forever → Wrong: after 24h, completed collaborations can archive if no open question/action/blocker remains
-
-> ❌ archive "Cron检查问题" with reason "方案已确定" — Bot proposed a solution and asked for confirmation, human never replied → Wrong: proposal ≠ decision; unanswered question = keep
+Do not invent thresholds, activity metrics, or cross-thread relationships. Judge each thread independently.

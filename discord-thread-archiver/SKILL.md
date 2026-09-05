@@ -1,120 +1,128 @@
 ---
-name: discord-thread-archiver
-description: "Smart Discord thread archiving. Use when: (1) running periodic thread cleanup, (2) evaluating whether Discord threads should be archived. Agent lists active threads, reads messages, judges conversation status, archives resolved threads, and produces a structured report."
+name: "discord-thread-archiver"
+description: "Archive resolved Discord threads with deterministic history collection, classification, and reporting."
 metadata:
-  version: 1.2.2
+  version: 1.3.1
 ---
 
 # Discord Thread Archiver
 
-Scan active Discord threads, judge whether conversations have concluded, archive resolved ones, and produce a structured report.
+Scan active Discord threads, collect trustworthy participation facts, classify each thread, archive resolved threads, and report every decision.
 
 ## Parameters
 
-The caller provides:
-- `guildId` — Discord guild to scan
-- `channelId` — Parent channel whose active threads should be scanned
-- `logChannel` — Channel ID for the report
-- `operationalThreadPrefixes` — Optional comma-separated prefixes for bot-created operational threads. Default: `🤖 `
-- `mode` — Optional: `apply` (default) or `dry-run`. In dry-run mode, report decisions but do not archive.
+- `guildId` — Guild to scan
+- `channelId` — Parent channel to scan
+- `logChannel` — Report channel
+- `operationalThreadPrefixes` — Optional comma-separated prefixes; default `🤖 `
+- `mode` — `apply` (default) or `dry-run`
 
 ## Workflow
 
-### 1. List threads
+### 1. List once
 
-Call `thread-list` exactly **once** with both `guildId` and `channelId`. This returns active threads **only under the specified parent channel**. Do NOT call without `channelId` — never scan the entire guild.
+Call `thread-list` exactly once with both `guildId` and `channelId`:
 
 ```
 message(action="thread-list", channel="discord", guildId="<guildId>", channelId="<channelId>")
 ```
 
-If empty → send "⏸️ 无 Thread" report (see format below) and stop.
+Never scan the whole guild. If empty, deliver the no-thread report and stop.
 
-### 2. Load judgment rules
+### 2. Load rules
 
-Read the full judgment guide before evaluating any thread:
-```
-read("references/judgment-guide.md")
-```
+Read `references/judgment-guide.md` in full before evaluating threads.
 
-### 3. Evaluate each thread
+### 3. Evaluate
 
-Skip threads with `last_pin_timestamp` present → mark `skipped (pinned)`.
+Skip pinned threads and report `skip/pinned`.
 
-For all others, read the last 5 messages:
+#### 3a. Latest window and hard gate
+
+Read the latest five messages exactly once:
+
 ```
 message(action="read", channel="discord", target="channel:<thread_id>", limit=5)
 ```
 
-#### 3a. Bot-only lookback
+Determine the latest message by timestamp or numeric Discord ID; provider array order is not a facts contract.
 
-All 5 messages from bots → expand to limit=20 to find earlier human participation.
+If the latest message is a bot question, return `keep/bot_question_unanswered` immediately. Do not paginate or call the classifier.
 
-#### 3b. Thread type split
+#### 3b. Deterministic historical lookback
 
-Before applying normal human-conversation gates, identify whether the thread is **operational**:
+If the five-message window contains a human, participation collection is complete.
 
-- Thread name starts with any `operationalThreadPrefixes` value, default `🤖 `
-- AND the expanded message window contains **no human messages**
+If all five are bots, read the latest 20 messages exactly once with no cursor. Never repeat this no-cursor window.
 
-Operational threads are bot-created task/status threads. They do **not** require human closure confirmation. Evaluate them with the Operational Thread Policy in `judgment-guide.md`.
+Inspect the thread starter and its `referenced_message`. A bot-authored type-21 starter with `referenced_message.author.bot=false` is human-initiated. Record `humanInitiated=true` and `hadHistoricalHumanParticipation=true`; include the referenced human message in normalized facts when its ID and content are available.
 
-After reading messages, normalize each thread into this JSON shape and run the classifier script. Use the script verdict unless it returns `uncertain` and the judgment guide clearly resolves the case:
+If no human is known yet, paginate:
+
+1. Initialize `seenIds` from collected message IDs.
+2. Set `oldestId` to the numerically smallest collected ID.
+3. Read `limit=20` with `before=<oldestId>`.
+4. Discard IDs already in `seenIds` and add new IDs.
+5. Require the next oldest ID to be numerically smaller than the previous cursor.
+6. Continue until a human is found or the thread start is reached.
+
+An empty raw page or raw page shorter than 20 reaches the start. A repeated/unchanged cursor, a page with no new IDs before reaching the start, a missing ID, or an API failure makes collection incomplete. Stop and set `historyScanComplete=false`.
+
+Never stop at an arbitrary page count and never issue the same cursor twice.
+
+#### 3c. Normalize facts
+
+Deduplicate by ID and sort oldest to newest by numeric Discord ID. Serialize JSON with a structured writer, not hand-escaped shell text.
 
 ```json
-{"name":"thread name","pinned":false,"lastMessageAgeMinutes":123,"messages":[{"content":"...","isBot":true}],"operationalThreadPrefixes":["🤖 "]}
+{
+  "name": "thread name",
+  "pinned": false,
+  "lastMessageAgeMinutes": 123,
+  "messageOrder": "oldest_to_newest",
+  "historyScanComplete": true,
+  "humanInitiated": true,
+  "hadHistoricalHumanParticipation": true,
+  "messages": [
+    {"messageId": "123", "content": "...", "isBot": false},
+    {"messageId": "124", "content": "...", "isBot": true}
+  ],
+  "operationalThreadPrefixes": ["🤖 "]
+}
 ```
+
+Set `historyScanComplete=true` only after finding historical human participation or reaching the thread start. Recent-window absence of human never proves bot-only history.
+
+#### 3d. Classify once
 
 ```bash
-python3 <skill_dir>/scripts/classify-thread.py < /tmp/thread-facts.json
+python3 <skill_dir>/scripts/classify-thread.py < /tmp/thread-facts-<thread_id>.json
 ```
 
-If a prefixed thread has any human message in the expanded window, the classifier will treat it as a normal human-bot collaboration thread.
-
-#### 3c. Hard gate checks for normal threads
-
-Apply these mechanical checks first. If ANY gate triggers → verdict is **keep**, skip classification.
-
-| # | Condition | Verdict |
-|---|-----------|---------|
-| G1 | Last message from bot AND contains "？" or "吗" or ends with question | **keep** — 等待回复 |
-| G2 | Last message < 24h old AND no human closure signal found AND no final-answer idle condition | **keep** — 近期无关闭 |
-| G3 | Human-bot collaboration (lookback found human messages) AND < 24h AND no human closure signal found AND no final-answer idle condition | **keep** — 协作中 |
-
-**Closure signals** (must come from a human, not bot): 好了, 搞定, done, 结束, 结束吧, 谢谢, thanks, 确认, 没问题, OK, 可以了, 完成, 完成了, 已完成, 完成吧, 收尾, 收工, 不再需要讨论, 不需要讨论了, 无需讨论, 不用讨论, 可以归档, 归档吧, 可以关闭, 关闭吧. Negated/question forms such as “还没完成” or “完成了吗” are NOT closure.
-
-**Final-answer idle condition:** for human-bot collaboration within 24h, archive as `collab_answered_idle` when the latest message is a bot answer, it has been idle for at least 60 minutes, and the latest bot message has no question, wait/result, running, blocker, approval, or user-action signal.
-
-#### 3d. Classify
-
-Only threads that pass ALL hard gates reach this step. Apply the classification table from the judgment guide.
-
-**Key rule:** "task completed" = entire discussion resolved with human acknowledgment, not a single sub-step done. If the thread has multiple topics and any is unresolved → **keep**.
+Call the classifier at most once per thread. Never override a non-`uncertain` result. Treat `facts_invalid` and `facts_incomplete` as keep decisions. A prefixed thread is operational only when complete facts prove no historical human participation.
 
 ### 4. Archive
 
-For each thread judged **archive**, run the archive script:
 ```bash
 bash <skill_dir>/scripts/archive-thread.sh <thread_id>
 ```
 
-In dry-run mode, run:
+Dry-run:
+
 ```bash
 bash <skill_dir>/scripts/archive-thread.sh --dry-run <thread_id>
 ```
 
-Non-2xx response → note in report (e.g. `archive_failed_403`).
+Report non-2xx responses as `archive_failed_<status>`.
 
 ### 5. Report
 
-**Icon-verdict mapping (STRICT — never mix these up):**
-| Icon | Verdict | Meaning |
-|------|---------|---------|
-| ✅ | archive | Thread was archived |
-| ⏸️ | keep | Thread is kept (NOT ✅) |
-| ⏭️ | skip | Thread is pinned, skipped |
+Strict icons:
+- `✅` archived
+- `⏸️` kept
+- `⏭️` pinned/skipped
+- `🧪` would archive in dry-run
 
-**When threads exist** (regardless of whether any were archived):
 ```
 🗂️ Thread 归档 · HH:MM
 ✅ thread名 — 归档：reason_code，一句话原因
@@ -123,19 +131,17 @@ Non-2xx response → note in report (e.g. `archive_failed_403`).
 归档 X / 保留 Y / 跳过 Z
 ```
 
-In dry-run mode, replace the title with `🗂️ Thread 归档 dry-run · HH:MM` and use `🧪` for would-archive decisions.
+Dry-run title: `🗂️ Thread 归档 dry-run · HH:MM`. If empty:
 
-**When thread-list returned empty**:
 ```
 🗂️ Thread 归档 · HH:MM
 ⏸️ 无 Thread
 ```
 
-Every evaluated thread MUST appear in the report with its verdict icon and reason code. Use only the icons that apply to each thread.
+Every listed thread appears exactly once.
 
 ### 6. Deliver
 
-Send the report:
 ```
 message(action="send", channel="discord", target="channel:<logChannel>")
 ```
