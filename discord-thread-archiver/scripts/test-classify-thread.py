@@ -19,7 +19,7 @@ def message(message_id: int, content: str, is_bot: bool) -> dict[str, object]:
 
 def facts(messages: list[dict[str, object]], **overrides: object) -> dict[str, object]:
     result: dict[str, object] = {
-        "name": "升级 sub2api 版本",
+        "name": "Example service maintenance",
         "pinned": False,
         "lastMessageAgeMinutes": 226,
         "messageOrder": "oldest_to_newest",
@@ -36,7 +36,7 @@ def facts(messages: list[dict[str, object]], **overrides: object) -> dict[str, o
 class ClassifierTests(unittest.TestCase):
     def test_historical_human_outside_window_archives_idle_final(self) -> None:
         messages = [message(index, "tool progress", True) for index in range(101, 126)]
-        messages.append(message(126, "升级完成；US/CN healthy，xhigh smoke 与 Vault 同步完成。", True))
+        messages.append(message(126, "Maintenance completed; example service checks passed.", True))
         result = CLASSIFIER.classify(facts(messages))
         self.assertEqual((result["verdict"], result["reasonCode"]), ("archive", "collab_answered_idle"))
 

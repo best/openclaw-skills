@@ -2,7 +2,7 @@
 name: "discord-thread-archiver"
 description: "Archive resolved Discord threads with deterministic history collection, classification, and reporting."
 metadata:
-  version: 1.3.1
+  version: 1.3.2
 ---
 
 # Discord Thread Archiver

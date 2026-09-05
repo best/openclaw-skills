@@ -14,7 +14,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.4.1 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
 | [dream](./dream/) | Memory methodology & consolidation with OpenClaw T0 budget guard, 4-action model, 3 flows, dream diary, and fact-review audit | v2.5.3 |
-| [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.3.1 |
+| [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.3.2 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native evolution engine with Gene/Capsule knowledge reuse | v2.1.2 |
 | [feed-collect](./feed-collect/) | AI news feed collection via deterministic feedctl runner | v2.3.1 |
 | [feed-broadcast](./feed-broadcast/) | AI Feed broadcast via controlled wrapper and delivery guards | v1.3.0 |
