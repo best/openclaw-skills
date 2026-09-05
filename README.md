@@ -11,21 +11,21 @@ OpenClaw agent skills for autonomous development workflows.
 | Skill | Description | Version |
 |-------|-------------|---------|
 | [cc-iterator](./cc-iterator/) | Autonomous coding agent iteration loop | v0.1.4 |
-| [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.4.0 |
+| [chevereto-upload](./chevereto-upload/) | Image upload and management for Chevereto V4 instances | v0.4.1 |
 | [code-reviewer](./code-reviewer/) | Standardized code review quality gate | v0.1.2 |
-| [dream](./dream/) | Memory methodology & consolidation with OpenClaw T0 budget guard, 4-action model, 3 flows, dream diary, and fact-review audit | v2.5.2 |
+| [dream](./dream/) | Memory methodology & consolidation with OpenClaw T0 budget guard, 4-action model, 3 flows, dream diary, and fact-review audit | v2.5.3 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Smart Discord thread archiving with AI judgment | v1.2.2 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native evolution engine with Gene/Capsule knowledge reuse | v2.1.1 |
-| [feed-collect](./feed-collect/) | AI news feed collection via deterministic feedctl runner | v2.3.0 |
+| [feed-collect](./feed-collect/) | AI news feed collection via deterministic feedctl runner | v2.3.1 |
 | [feed-broadcast](./feed-broadcast/) | AI Feed broadcast via controlled wrapper and delivery guards | v1.3.0 |
 | [feed-score](./feed-score/) | AI Feed scoring via controlled runner and validated publish flow | v2.4.0 |
-| [gemini-image-gen](./gemini-image-gen/) | Image generation/editing with Gemini API using GEMINI_IMAGE_CONFIG provider chain | v1.1.1 |
-| [openai-image-gen](./openai-image-gen/) | Image generation/editing with OpenAI Image API using OPENAI_IMAGE_CONFIG provider chain | v1.2.0 |
-| [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.2 |
+| [gemini-image-gen](./gemini-image-gen/) | Image generation/editing with Gemini API using GEMINI_IMAGE_CONFIG provider chain | v1.1.2 |
+| [openai-image-gen](./openai-image-gen/) | Image generation/editing with OpenAI Image API using OPENAI_IMAGE_CONFIG provider chain | v1.2.1 |
+| [openclaw-usage-tracker](./openclaw-usage-tracker/) | Model usage and cost tracking with daily/range/full-history reports | v1.2.3 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
-| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.2 |
-| [wechat-article-fetcher](./wechat-article-fetcher/) | Fetch and extract content from WeChat Official Account articles | v1.0.2 |
-| [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.6.0 |
+| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.3 |
+| [wechat-article-fetcher](./wechat-article-fetcher/) | Fetch and extract content from WeChat Official Account articles | v1.0.3 |
+| [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.6.1 |
 
 ## Install
 

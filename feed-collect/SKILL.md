@@ -2,7 +2,7 @@
 name: feed-collect
 description: "AI Feed deterministic collection runner. Use to collect Miniflux/HN/GitHub candidates into data/candidates.json for feed-score."
 metadata:
-  version: 2.3.0
+  version: 2.3.1
 ---
 
 # Feed Collect Skill
@@ -20,7 +20,7 @@ Deterministically collect AI Feed candidates and write them to the feed reposito
 Do not reimplement collection logic in the agent. Run the controlled entrypoint and report its stdout.
 
 ```bash
-scripts/run-collect.sh
+bash scripts/run-collect.sh
 ```
 
 Allowed runtime behavior:
@@ -36,7 +36,7 @@ Allowed runtime behavior:
 ### Collect
 
 ```bash
-scripts/run-collect.sh
+bash scripts/run-collect.sh
 ```
 
 Equivalent explicit form:

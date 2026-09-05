@@ -11,21 +11,21 @@ OpenClaw Agent 自主开发工作流技能集。
 | 技能 | 描述 | 版本 |
 |------|------|------|
 | [cc-iterator](./cc-iterator/) | 自主编码代理迭代循环 | v0.1.4 |
-| [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.4.0 |
+| [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.4.1 |
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.2 |
-| [dream](./dream/) | 记忆方法论+整合——OpenClaw T0 预算硬检查、四动作、三套流程、梦境日记和事实验证审计 | v2.5.2 |
+| [dream](./dream/) | 记忆方法论+整合——OpenClaw T0 预算硬检查、四动作、三套流程、梦境日记和事实验证审计 | v2.5.3 |
 | [discord-thread-archiver](./discord-thread-archiver/) | Discord Thread 智能归档（AI 判定对话状态） | v1.2.2 |
 | [evolution-engine](./evolution-engine/) | PCEC — Wiki-Native 进化引擎，Gene/Capsule 经验积累与复用 | v2.1.1 |
-| [feed-collect](./feed-collect/) | AI 信息流采集（deterministic feedctl runner） | v2.3.0 |
+| [feed-collect](./feed-collect/) | AI 信息流采集（deterministic feedctl runner） | v2.3.1 |
 | [feed-broadcast](./feed-broadcast/) | AI Feed 受控播报与投递防护 | v1.3.0 |
 | [feed-score](./feed-score/) | AI Feed 受控评分与校验发布 | v2.4.0 |
-| [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.1 |
-| [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.0 |
-| [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.2 |
+| [gemini-image-gen](./gemini-image-gen/) | Gemini 图片生成与编辑（仅 GEMINI_IMAGE_CONFIG 多供应商配置链） | v1.1.2 |
+| [openai-image-gen](./openai-image-gen/) | OpenAI Image API 图片生成与编辑（仅 OPENAI_IMAGE_CONFIG 多供应商配置链） | v1.2.1 |
+| [openclaw-usage-tracker](./openclaw-usage-tracker/) | 模型用量与费用统计（日报/范围/全量/Top Session） | v1.2.3 |
 | [project-planner](./project-planner/) | Issue 优先级评估与任务规划 | v0.1.0 |
-| [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.2 |
-| [wechat-article-fetcher](./wechat-article-fetcher/) | 微信公众号文章内容抓取（全文+图片+元数据） | v1.0.2 |
-| [wechat-mp-publisher](./wechat-mp-publisher/) | 微信公众号 Markdown 文章发布（草稿箱） | v0.6.0 |
+| [skill-validator](./skill-validator/) | 技能准入测试与跨平台兼容性校验 | v0.2.3 |
+| [wechat-article-fetcher](./wechat-article-fetcher/) | 微信公众号文章内容抓取（全文+图片+元数据） | v1.0.3 |
+| [wechat-mp-publisher](./wechat-mp-publisher/) | 微信公众号 Markdown 文章发布（草稿箱） | v0.6.1 |
 
 ## 安装
 
