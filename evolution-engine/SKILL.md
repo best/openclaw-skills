@@ -1,8 +1,8 @@
 ---
-name: evolution-engine
-description: "PCEC — Wiki-Native 进化引擎。以 Wiki Vault 为核心知识库，通过 Gene（策略模板）和 Capsule（验证记录）实现经验积累与复用。信号检测→经验召回→诊断→固化到Wiki。"
+name: "evolution-engine"
+description: "Diagnose recurring Cron and skill-quality failures from transcripts and preserve evidence-backed strategies in the Wiki."
 metadata:
-  version: 2.1.1
+  version: 2.1.2
 ---
 
 # Evolution Engine — PCEC
