@@ -2,7 +2,7 @@
 name: "evolution-engine"
 description: "Diagnose recurring Cron and skill-quality failures from transcripts and preserve evidence-backed strategies in the Wiki."
 metadata:
-  version: 2.1.2
+  version: 2.1.3
 ---
 
 # Evolution Engine — PCEC
@@ -243,14 +243,14 @@ Solidify 的目标是“可靠写入 + 可见报告”，不是无限验证。�
 # ✅ 正确调用格式（复制此模板）
 wiki_apply(
   op: "create_synthesis",
-  title: "Capsule: 2026-04-21 Feed Pipeline 脚本脆弱性",
+  title: "Capsule: YYYY-MM-DD Example Pipeline 诊断",
   body: "<诊断正文 markdown>",
   sourceIds:                          # ← 顶层必填数组
-    - "/root/.openclaw/workspace/memory/2026-04-21.md"
-    - "agent:main:cron:802b31b9-..."     # session key 也行
+    - "<workspace>/memory/<YYYY-MM-DD>.md"
+    - "agent:<agent-id>:cron:<job-id>"     # session key 也行
   claims:
-    - id: "capsule-feed-fragility-0421"
-      text: "Feed 管道三层脆弱性诊断"
+    - id: "capsule-example-pipeline"
+      text: "Example 管道问题诊断"
       confidence: 0.85
       evidence:
         - sourceId: "<同上某个 sourceId>"  # evidence 引用 sourceId
