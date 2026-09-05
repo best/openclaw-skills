@@ -17,6 +17,10 @@ class UsageError(Exception):
     pass
 
 
+class AcquisitionError(UsageError):
+    pass
+
+
 def number(value):
     if value is None:
         return Decimal(0)
@@ -75,14 +79,14 @@ class Gateway:
     def command(self, args):
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
-            raise UsageError("native usage acquisition budget exhausted")
+            raise AcquisitionError("native usage acquisition budget exhausted")
         try:
             proc = subprocess.run(["openclaw", *args], capture_output=True,
                                   text=True, timeout=min(35, remaining), check=False)
         except (OSError, subprocess.TimeoutExpired):
-            raise UsageError("native usage CLI unavailable or timed out") from None
+            raise AcquisitionError("native usage CLI unavailable or timed out") from None
         if proc.returncode:
-            raise UsageError("native usage CLI failed")
+            raise AcquisitionError("native usage CLI failed")
         try:
             result = json.loads(proc.stdout, parse_float=Decimal)
         except (ValueError, TypeError):
@@ -119,27 +123,33 @@ def acquire(start, end, zone, gateway=None, all_history=False):
     else:
         date_bounds(start, end, zone)
         params.update(startDate=start, endDate=end)
-    result = gateway.usage(params)
-    while len(result["sessions"]) >= params["limit"]:
-        if params["limit"] >= 32000:
-            raise UsageError("native usage detail limit reached; refusing truncated report")
-        params["limit"] *= 2
-        result = gateway.usage(params)
+    def load_listing():
+        snapshot = gateway.usage(params)
+        while len(snapshot["sessions"]) >= params["limit"]:
+            if params["limit"] >= 32000:
+                raise UsageError("native usage detail limit reached; refusing truncated report")
+            params["limit"] *= 2
+            snapshot = gateway.usage(params)
+        identities = set()
+        total = empty()
+        for row in snapshot["sessions"]:
+            ident = identity(row)
+            if ident in identities:
+                raise UsageError("duplicate native session instance")
+            identities.add(ident)
+            if row.get("usage") is not None:
+                add(total, row["usage"])
+        if not close(total, snapshot["totals"]):
+            raise UsageError("native session details do not reconcile with totals")
+        return snapshot
+
+    result = load_listing()
     if all_history:
         start, end = result["startDate"], result["endDate"]
     begin_ms, finish_ms = date_bounds(start, end, zone)
     rows = result["sessions"]
-    seen = set()
-    initial = empty()
-    for row in rows:
-        ident = identity(row)
-        if ident in seen:
-            raise UsageError("duplicate native session instance")
-        seen.add(ident)
-        if row.get("usage"):
-            add(initial, row["usage"])
-    if not close(initial, result["totals"]):
-        raise UsageError("native session details do not reconcile with totals")
+    seen = {identity(row) for row in rows}
+    listed_identities = seen.copy()
 
     # Cross-check the public session inventory, not filenames or private tables.
     inventory = gateway.command(["sessions", "--all-agents", "--limit", "all", "--json"])
@@ -154,28 +164,73 @@ def acquire(start, end, zone, gateway=None, all_history=False):
             seen.add(ident)
             rows.append({**item, "usage": None})
 
+    # The list request starts a native cache refresh for all retained instances.
+    # Re-read that batch before chasing archive keys that may not resolve singly.
+    batch_resolved = set()
+    for _ in range(3):
+        pending = {identity(row) for row in rows if row.get("usage") is None}
+        if not pending.intersection(listed_identities):
+            break
+        try:
+            fresh = load_listing()
+        except AcquisitionError:
+            break
+        by_identity = {identity(row): row for row in rows}
+        for row in fresh["sessions"]:
+            ident = identity(row)
+            listed_identities.add(ident)
+            if ident not in by_identity:
+                rows.append(row)
+                seen.add(ident)
+            elif row.get("usage") is not None:
+                by_identity[ident]["usage"] = row["usage"]
+                if ident in pending:
+                    batch_resolved.add(ident)
+        if sum(row.get("usage") is None and identity(row) in listed_identities
+               for row in rows) <= 4:
+            break
+
     def recover(row):
         lookup = {k: v for k, v in params.items() if k != "agentScope"}
         lookup.update(agentId=row["agentId"], key=row["key"], limit=1)
-        for _ in range(3):
-            try:
-                fresh = gateway.usage(lookup)
-            except UsageError:
-                break
-            match = next((s for s in fresh["sessions"]
-                          if identity(s) == identity(row)), None)
-            if match and match.get("usage") is not None:
-                row["usage"] = match["usage"]
-                return True
-        return False
+        try:
+            fresh = gateway.usage(lookup)
+        except UsageError as exc:
+            return str(exc)
+        match = next((s for s in fresh["sessions"]
+                      if identity(s) == identity(row)), None)
+        if match and match.get("usage") is not None:
+            row["usage"] = match["usage"]
+            return None
+        if not fresh["sessions"]:
+            return "native session not returned"
+        if match is None:
+            return "native session identity changed"
+        return "native usage not ready"
 
     missing = [row for row in rows if row.get("usage") is None]
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        results = list(pool.map(recover, missing))
-    resolved = sum(results)
-    unresolved = [{"agentId": row["agentId"], "sessionId": row["sessionId"]}
-                  for row, success in zip(missing, results) if not success]
-    return summarize(rows, start, end, zone, unresolved, resolved)
+    reasons = {}
+    pending = missing
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        # Finish each pass before retrying, allowing native background refresh to
+        # serve all cold sessions instead of immediately re-reading one cold key.
+        for _ in range(3):
+            results = list(pool.map(recover, pending))
+            retry = []
+            for row, reason in zip(pending, results):
+                reasons[identity(row)] = reason
+                if reason == "native usage not ready":
+                    retry.append(row)
+            if not retry:
+                break
+            pending = retry
+    resolved = sum(reason is None for reason in reasons.values())
+    unresolved = [{"agentId": row["agentId"], "sessionId": row["sessionId"],
+                   "reason": reasons[identity(row)]}
+                  for row in missing if reasons[identity(row)] is not None]
+    report = summarize(rows, start, end, zone, unresolved, resolved)
+    report["quality"]["resolvedBatchSessions"] = len(batch_resolved)
+    return report
 
 
 def summarize(rows, start, end, zone, unresolved=(), resolved=0):

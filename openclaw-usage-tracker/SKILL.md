@@ -2,7 +2,7 @@
 name: "openclaw-usage-tracker"
 description: "Native OpenClaw daily and weekly usage reports with explicit completeness and missing-price checks."
 metadata:
-  version: 1.4.1
+  version: 1.4.2
 ---
 
 # OpenClaw Usage Tracker
@@ -13,7 +13,7 @@ Report dates use the Asia/Shanghai local day by default; override with
 
 ## How It Works
 
-Use the public Gateway API plus the public session inventory, including SQLite-backed and retained archived sessions. Missing list entries receive bounded same-identity queries; unresolved entries are reported as partial, never as zero spending. Token/model/day aggregates must reconcile before a report is accepted. No direct database reads or filesystem transcript scans are used.
+Use the public Gateway API plus the public session inventory, including SQLite-backed and retained archived sessions. Refresh cold native lists in bounded batches before querying remaining same-identity gaps. Unresolved entries retain their failure reason and are reported as partial, never as zero spending. Token/model/day aggregates must reconcile before a report is accepted. No direct database reads or filesystem transcript scans are used.
 
 ## Usage
 
@@ -109,4 +109,4 @@ Use the native API's cost and missing-price markers. Keep estimates separate fro
 
 Run `python3 -m unittest discover -s scripts -p 'test_native_usage.py'`. Compare a fixed completed local day, a seven-day range and upgrade-spanning dates. Preserve native instance identities; do not sum family and instance results. Report partial coverage or unknown classification visibly.
 
-The acquisition budget is 120 seconds for the report and optional trend combined. Invoke with Python 3.9+ and the authenticated local OpenClaw CLI; do not pass credentials in arguments or print CLI diagnostic output.
+The acquisition budget is 120 seconds for the report and optional trend combined. Batch refresh runs at most three times; remaining same-identity queries use up to 12 workers and three full passes, retrying only not-ready results. Preserve known usage and explicit unresolved reasons when the budget expires. Invoke with Python 3.9+ and the authenticated local OpenClaw CLI; do not pass credentials in arguments or print CLI diagnostic output.

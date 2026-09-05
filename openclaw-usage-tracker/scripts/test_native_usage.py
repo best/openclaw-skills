@@ -2,7 +2,7 @@ import copy
 import unittest
 from decimal import Decimal
 
-from native_usage import UsageError, acquire, category, date_bounds, summarize
+from native_usage import AcquisitionError, UsageError, acquire, category, date_bounds, summarize
 
 
 def session(sid="a", cost="0.15", key="agent:main:cron:test"):
@@ -30,7 +30,113 @@ class FakeGateway:
         return copy.deepcopy(result)
 
 
+class RefreshGateway(FakeGateway):
+    def __init__(self, listings, inventory=(), scoped=None):
+        super().__init__(listings[0], list(inventory), scoped)
+        self.listings = iter(listings)
+
+    def usage(self, params):
+        if "key" not in params:
+            self.listing = next(self.listings, self.listing)
+        return super().usage(params)
+
+
 class UsageTests(unittest.TestCase):
+    def test_scoped_retries_follow_full_refresh_pass(self):
+        rows = [session(str(i), key=f'agent:main:test-{i}') for i in range(20)]
+
+        class ColdGateway(FakeGateway):
+            def usage(self, params):
+                if 'key' not in params:
+                    return super().usage(params)
+                self.calls.append(params.copy())
+                row = next(r for r in rows if r['key'] == params['key'])
+                keys = {c['key'] for c in self.calls if 'key' in c}
+                return {'sessions': [copy.deepcopy(row) if len(keys) == len(rows)
+                                     else {**row, 'usage': None}], 'totals': {}}
+
+        gateway = ColdGateway({'sessions': [{**r, 'usage': None} for r in rows],
+                               'totals': {}}, [])
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(result['quality']['completeness'], 'complete')
+        calls = [c['key'] for c in gateway.calls if 'key' in c]
+        self.assertEqual(len(set(calls[:20])), 20)
+        self.assertLessEqual(len(calls), 40)
+
+    def test_inventory_only_gaps_do_not_repeat_fresh_listing(self):
+        begin, _ = date_bounds('2026-09-04', '2026-09-04', 'UTC')
+        row = session()
+        gateway = FakeGateway({'sessions': [], 'totals': {}},
+            [{**row, 'updatedAt': begin + 1000, 'sessionStartedAt': begin}],
+            {'sessions': [row], 'totals': row['usage']})
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(result['quality']['completeness'], 'complete')
+        self.assertEqual(len(gateway.calls), 2)
+
+    def test_batch_refresh_recovers_archives_without_scoped_queries(self):
+        rows = [session(str(i)) for i in range(12)]
+        totals = summarize(rows, '2026-09-04', '2026-09-04', 'UTC')['total']
+        gateway = RefreshGateway([
+            {'sessions': [{**r, 'usage': None} for r in rows], 'totals': {}},
+            {'sessions': rows, 'totals': totals},
+        ])
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(result['quality']['resolvedBatchSessions'], 12)
+        self.assertEqual(result['quality']['completeness'], 'complete')
+        self.assertEqual(result['total']['totalTokens'], 12 * 310)
+        self.assertEqual(len(gateway.calls), 2)
+
+    def test_refresh_does_not_double_count_known_usage(self):
+        row, other = session(), session('b')
+        gateway = RefreshGateway([
+            {'sessions': [row, {**other, 'usage': None}], 'totals': row['usage']},
+            {'sessions': [row, other], 'totals': summarize([row, other],
+                '2026-09-04', '2026-09-04', 'UTC')['total']},
+        ])
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(result['total']['totalTokens'], 620)
+        self.assertEqual(result['quality']['resolvedBatchSessions'], 1)
+
+    def test_missing_identity_cannot_disappear_during_refresh(self):
+        row = session()
+        gateway = RefreshGateway([
+            {'sessions': [{**row, 'usage': None}], 'totals': {}},
+            {'sessions': [], 'totals': {}},
+        ], scoped={'sessions': [], 'totals': {}})
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(result['quality']['completeness'], 'partial')
+        self.assertEqual(result['quality']['unresolvedSessions'][0]['reason'],
+                         'native session not returned')
+        self.assertEqual(len([c for c in gateway.calls if 'key' in c]), 1)
+
+    def test_malformed_refresh_fails_reconciliation(self):
+        row = session()
+        gateway = RefreshGateway([
+            {'sessions': [{**row, 'usage': None}], 'totals': {}},
+            {'sessions': [row], 'totals': {}},
+        ])
+        with self.assertRaises(UsageError):
+            acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+
+    def test_budget_exhaustion_retains_known_usage_and_reason(self):
+        row, other = session(), session('b')
+        gateway = RefreshGateway([
+            {'sessions': [row, {**other, 'usage': None}], 'totals': row['usage']},
+            AcquisitionError('native usage acquisition budget exhausted'),
+        ], scoped=AcquisitionError('native usage acquisition budget exhausted'))
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(result['total']['totalTokens'], 310)
+        self.assertEqual(result['quality']['completeness'], 'partial')
+        self.assertIn('budget exhausted', result['quality']['unresolvedSessions'][0]['reason'])
+
+    def test_batch_refresh_retries_are_bounded(self):
+        rows = [{**session(str(i)), 'usage': None} for i in range(6)]
+        gateway = RefreshGateway([{'sessions': rows, 'totals': {}}],
+                                 scoped={'sessions': [], 'totals': {}})
+        result = acquire('2026-09-04', '2026-09-04', 'UTC', gateway)
+        self.assertEqual(len([c for c in gateway.calls if 'key' not in c]), 4)
+        self.assertEqual(len(result['quality']['unresolvedSessions']), 6)
+
     def test_aggregate_exact_decimals_and_unknown_category(self):
         a, b = session(), session("b", "0.2", "agent:main:opaque")
         result = summarize([a, b], "2026-09-04", "2026-09-04", "Asia/Shanghai")
