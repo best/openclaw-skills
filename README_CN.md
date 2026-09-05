@@ -10,6 +10,7 @@ OpenClaw Agent 自主开发工作流技能集。
 
 | 技能 | 描述 | 版本 |
 |------|------|------|
+| [atlas-image-gen](./atlas-image-gen/) | 通过 Atlas Cloud 文生图，采用单次受控提交和有界轮询 | v0.1.0 |
 | [cc-iterator](./cc-iterator/) | 自主编码代理迭代循环 | v0.1.4 |
 | [chevereto-upload](./chevereto-upload/) | Chevereto V4 通用图片上传与管理 | v0.4.1 |
 | [code-reviewer](./code-reviewer/) | 标准化代码审查质量门 | v0.1.2 |
