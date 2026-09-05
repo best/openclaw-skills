@@ -1,8 +1,8 @@
 ---
 name: "openclaw-usage-tracker"
-description: "Native OpenClaw usage reports with scoped completeness checks and explicit missing-data status."
+description: "Native OpenClaw daily and weekly usage reports with explicit completeness and missing-price checks."
 metadata:
-  version: 1.3.0
+  version: 1.4.0
 ---
 
 # OpenClaw Usage Tracker
@@ -26,6 +26,9 @@ python3 scripts/daily-cost-report.py 2026-03-14
 
 # Date range (逐日明细 + 汇总)
 python3 scripts/daily-cost-report.py 2026-03-10 2026-03-15
+
+# Completed previous Monday-Sunday (local report timezone)
+python3 scripts/daily-cost-report.py --previous-week --top-sessions 5 --format discord
 
 # All history
 python3 scripts/daily-cost-report.py --all

@@ -23,6 +23,11 @@ def money(value):
     return float(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
+def previous_week(today):
+    end = today - dt.timedelta(days=today.weekday() + 1)
+    return (end - dt.timedelta(days=6)).isoformat(), end.isoformat()
+
+
 def bucket(value, total=None):
     result = {k: int(value.get(k, 0)) for k in ("input", "output", "cacheRead", "cacheWrite")}
     for key in list(result):
@@ -104,17 +109,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dates", nargs="*")
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--previous-week", action="store_true")
     parser.add_argument("--format", choices=("json", "discord"), default="json")
     parser.add_argument("--top-sessions", type=int, default=0)
     parser.add_argument("--trend-days", type=int, default=0)
     args = parser.parse_args()
-    if len(args.dates) > 2 or (args.all and args.dates) or args.top_sessions < 0 or not 0 <= args.trend_days <= 366:
+    if (len(args.dates) > 2 or (args.all and args.dates) or
+            (args.previous_week and (args.all or args.dates)) or
+            args.top_sessions < 0 or not 0 <= args.trend_days <= 366):
         parser.error("invalid report date/count options")
     zone = os.environ.get("OPENCLAW_USAGE_TIMEZONE", "Asia/Shanghai")
     try:
         today = dt.datetime.now(ZoneInfo(zone)).date()
         start = args.dates[0] if args.dates else (today - dt.timedelta(days=1)).isoformat()
         end = args.dates[-1] if args.dates else start
+        if args.previous_week:
+            start, end = previous_week(today)
         gateway = Gateway(budget=120)
         report = project(acquire(start, end, zone, gateway, args.all), args.top_sessions)
         if args.trend_days and "date" in report:
