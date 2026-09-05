@@ -2,7 +2,7 @@
 name: "skill-validator"
 description: "Review OpenClaw skills with static checks, semantic analysis, and isolated dynamic tests; produce an admission verdict."
 metadata:
-  version: 0.2.4
+  version: 0.2.5
 ---
 
 # Skill Validator — 技能实验室
@@ -54,6 +54,7 @@ python3 scripts/validate.py <skill-path> [--json] [--strict]
 6. **跨平台语义** — 静态规则抓不到的平台问题（如 Python 用了 os-specific API）
 7. **边界情况** — 输入为空、文件不存在、网络超时等异常处理
 8. **渐进式加载** — 是否遵循了 SKILL.md 精简 + references 分离的原则
+9. **公开发布边界** — 检查待推送的每个 commit、新增/替换文件全文及 PR 描述；生产配置、日志、会话、账单、备份、真实收件人标识、个人路由及内部拓扑留在私有运行区。示例使用中性合成数据。扫描命中只报告位置和类型，不回显敏感值；Workshop 扫描通过不等于公开发布审查通过。
 
 ### 输出格式
 每个维度给出 ✅ PASS / ⚠️ WARN / ❌ FAIL + 说明。
@@ -114,7 +115,7 @@ Phase 2 全 PASS/WARN → 进入 Phase 3。
    渐进式加载    ✅ PASS
 
 🧪 Phase 3 — 动态测试
-   模型：gptclub-claude/claude-sonnet-4-6
+   模型：<provider>/<model>
    用例 1：[描述] → ✅ 通过 (3.2s)
    用例 2：[描述] → ✅ 通过 (5.1s)
    用例 3：[边界] → ⚠️ 部分通过 — ...
