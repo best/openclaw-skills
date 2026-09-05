@@ -23,7 +23,7 @@ OpenClaw agent skills for autonomous development workflows.
 | [openai-image-gen](./openai-image-gen/) | Image generation/editing with OpenAI Image API using OPENAI_IMAGE_CONFIG provider chain | v1.2.1 |
 | [openclaw-usage-tracker](./openclaw-usage-tracker/) | Native model usage and cost reports with completeness checks | v1.3.0 |
 | [project-planner](./project-planner/) | Issue prioritization and task planning | v0.1.0 |
-| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.3 |
+| [skill-validator](./skill-validator/) | Skill acceptance testing and cross-platform validation | v0.2.4 |
 | [wechat-article-fetcher](./wechat-article-fetcher/) | Fetch and extract content from WeChat Official Account articles | v1.0.3 |
 | [wechat-mp-publisher](./wechat-mp-publisher/) | Publish Markdown articles to WeChat Official Account draft box | v0.6.1 |
 
