@@ -2,7 +2,7 @@
 name: "openclaw-usage-tracker"
 description: "Native OpenClaw daily and weekly usage reports with explicit completeness and missing-price checks."
 metadata:
-  version: 1.4.0
+  version: 1.4.1
 ---
 
 # OpenClaw Usage Tracker
@@ -52,7 +52,7 @@ JSON output. Structure adapts to mode:
 Range `daily` entries include date, cost, tokens and entries; token-type breakdowns are not invented when the native daily API does not provide them. `quality` records the source, time zone, collection time, data completeness, pricing completeness, unresolved sessions and scoped repairs. Exit 0 means complete data and pricing, 2 means partial data or pricing, and 1 means unavailable/invalid. Preserve the stdout status report even on nonzero exit.
 
 `models[]` uses a display-safe `name` that includes provider + model:
-- Example: `astralor/Opus-4.6`, `gptclub/GPT-5.4`, `minimax/M2.5`
+- Example: `provider-a/model-a`, `provider-b/model-b`
 
 ## Daily Report Template (Discord)
 
