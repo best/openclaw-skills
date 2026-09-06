@@ -1,56 +1,48 @@
 ---
-name: dream
-description: "Memory consolidation and Dream workflows: enforce T0 budgets, retention, forgetting, and source-backed fact review."
+name: "dream"
+description: "Memory consolidation: runtime-aware budgets, retention, fact review, and source-backed Dream workflows."
 metadata:
-  version: 2.5.3
+  version: 2.6.0
 ---
 
 # Dream — 记忆方法论 & 整合执行
 
-## 0. OpenClaw 注入预算硬约束
+## 0. Context and budget contract
 
-OpenClaw 会把 workspace 根目录 `.md` 文件注入每个新会话。单文件存在硬限制：**12000 chars**。超过后会在 injected context 中被自动截断，表现类似：
+First identify the active runtime and use its current context report or installed documentation. The workspace is not a recursively injected Markdown collection.
 
-`workspace bootstrap file MEMORY.md is 15164 chars (limit 12000); truncating in injected context`
+- Native Codex loads project AGENTS natively; SOUL/IDENTITY/USER use turn-scoped context. Root MEMORY is normally retrieved on demand when memory tools are available, with bounded fallback otherwise. Group, Cron and child sessions have separate privacy and bootstrap gates.
+- Embedded OpenClaw assembles its selected bootstrap files under per-file and total limits. Current documented defaults are 20000 characters per file and 60000 total, with USER capped at 4000 characters; verify effective configuration and version before treating these as runtime limits.
+- Daily files are episodic sources, not ordinary full-file bootstrap. Read the relevant maintenance window during Dream, not every daily file at every conversational startup.
+- Current local tool conventions live in AGENTS's Tools section. Do not recreate TOOLS or HEARTBEAT solely from an obsolete layout.
+- Count JS string length separately from UTF-8 bytes and model tokens. A file inventory is not a final model request or a token-cost measurement.
 
-这意味着：
-- T0 不是“越全越好”；超过限制后会被动截断，反而丢失关键记忆。
-- `MEMORY.md` 必须主动维护在硬限制以内。
-- 预算按 **JS string length / chars** 理解，不按 UTF-8 bytes；检查用本 skill 的脚本。
+### Local MEMORY policy
 
-### MEMORY.md 预算区间
+The existing 9000-10500 character target is a curation preference, not a minimum to fill or a native injection limit. Above 10500 observe, above 11000 review low-risk detail, above 11800 prioritize review, and above 12000 exceed the local policy ceiling. A stricter effective runtime cap also needs attention. Never delete valuable facts simply to meet a size target.
 
-| 区间 | 状态 | 动作 |
-|---|---|---|
-| 9000–10500 chars | 理想 | 保持，不为省 token 继续压缩 |
-| 10501–11000 | 观察 | 只处理明显重复/过时/违规内容 |
-| 11001–11800 | 整理 | 主动压缩低价值细节，目标回到 ≤10500 |
-| 11801–12000 | 临界 | 优先整理，目标回到 ≤10500 |
-| >12000 | 已影响注入 | 紧急恢复到 ≤11000，避免继续被动截断 |
-
-### 必跑硬检查
-
-Daily / Deep Dream 在编辑 `MEMORY.md` 前后都必须运行 bundled script：
+Before and after an authorized MEMORY edit run:
 
 ```bash
 node <skillDir>/scripts/t0-budget-check.mjs <workspaceDir> --json
 ```
 
-脚本输出 `MEMORY.md` chars/bytes/lines/status，以及禁止写入内容命中行。`<skillDir>` 是本技能目录；`<workspaceDir>` 由 Cron Prompt 或用户指定。
+The script preserves MEMORY status/exit-code fields, labels them as local policy, reports metadata-only forbidden hits and inventories the standard bootstrap files. Its runtime references are documented defaults, not discovered configuration. When verified limits differ, supply --bootstrap-max-chars N and --bootstrap-total-max-chars N. Treat totals as inventory, not measured injection; obtain a runtime-specific report to diagnose actual truncation.
 
+Pass when protected content is preserved, sources are current, USER stays within its applicable budget and reported policy findings are resolved or explicitly justified.
 ---
 
 ## 1. 记忆架构
 
-### T0：注入层（workspace 根目录 .md）
+### T0：指令与核心资料
 
-每次对话都可见，容量极小，必须高信噪比。
+按运行时和会话类型选择加载，不等于根目录所有 Markdown。保持高信噪比，遵守第 0 节的注入与隐私边界。
 
-- `MEMORY.md` — 稳定事实、决策、规则、活跃项目索引、高信号教训。
-- `SOUL.md` — 助手是谁、性格、长期反思。
-- `USER.md` — 用户是谁、稳定偏好、背景、沟通模式。
-- `TOOLS.md` — 工具选择、关键用法、环境特有注意事项。
-- `AGENTS.md` — 行为规范和工作准则。
+- `MEMORY.md` — 稳定非人物事实、决策、项目入口和高信号教训；不是唯一的强制指令载体。
+- `SOUL.md` / `IDENTITY.md` — 身份、性格和简短成长摘要；完整反思进入私有记忆。
+- `USER.md` — 有助协作的背景和当前有效偏好；一条一个行为指令，已知观察日期才记录，纠错在原处 supersede。
+- `AGENTS.md` 的 Tools 部分 — 高频工具约束及按需知识入口。
+- `AGENTS.md` — 行为规范和授权边界；自动整合只提出证据充分的修改建议，不自行扩写。
 
 T0 只放“每次醒来都应该看到”的东西。
 
@@ -63,9 +55,11 @@ T0 只放“每次醒来都应该看到”的东西。
 
 ### T2：知识库 / Vault / 历史记录
 
-- Wiki Vault：结构化知识、操作手册、事件复盘、可复用模式。
-- 外部 Vault：设备、服务、说明书、个人知识库。
-- 项目仓库文档：项目自己的长期规范和状态。
+- Shared Vault：共享项目、服务、工作记录和决策的 owner page；先读其技能和 MOC，再更新既有归属页。
+- Wiki：可检索的历史操作证据、模式和导航；不复制共享 owner 的完整叙述，不把历史状态当当前指令。
+- 项目仓库：项目自己的 AGENTS、current-context 和长期规范。
+- 各 Agent 的私有记忆：个人习惯和反思，不写入共享 Wiki。
+- 备份：放在工作区和索引根以外；archive/bak 目录名本身不会退出递归检索。
 
 T2 容量大，适合存放“知道存在即可，需要时检索”的内容。
 
@@ -81,8 +75,7 @@ T2 容量大，适合存放“知道存在即可，需要时检索”的内容�
 
 ### 2.1 应保留在 MEMORY.md
 
-- 长期行为约束和安全边界。
-- 用户稳定偏好和会直接影响互动方式的规则。
+- 稳定的非人物事实与决策；强制安全约束由 AGENTS 承载，偏好由 USER 承载，已有重复仅在确认归属后收敛。
 - 活跃项目的关键入口：仓库路径、主要工作流、必须先查哪里。
 - 高复现、高代价的教训：会反复影响后续决策的坑。
 - 记忆系统自身的稳定架构和维护原则。
@@ -156,7 +149,7 @@ Dream 每轮都围绕四个动作：
 2. 记录 `MEMORY.md` chars/lines/status。
 3. 如果脚本报告 `forbiddenHits`，优先处理。
 4. 如果 `MEMORY.md` >11000 chars，提出或执行整理。
-5. 如果 `MEMORY.md` >12000 chars，优先恢复到 ≤11000，避免 OpenClaw 被动截断。
+5. 如果超过 12000 chars 本地治理线，优先审阅低风险内容；不要把此状态报告成已发生原生截断。检查其他文件的参考预算，实际注入以对应运行时为准。
 
 ### 5.2 事实审计
 
@@ -174,12 +167,18 @@ Dream 每轮都围绕四个动作：
 
 ## 6. 编辑权限与安全阈值
 
+### 写入前
+
+- 遵守当前任务与会话的权限；私密根记忆不能在群聊读取，获准的独立维护任务按其明确 scope 工作。
+- 先把拟修改文件备份到操作方指定的非原地目录，默认 /data/backup/；记录路径与哈希，不在 memory/ 内放副本。
+- 核对写入前内容未被其他 writer 改动。保持唯一自动生产整合者；回滚逐项比较并保留观察期新增记忆。
+
 ### 可自动执行
 
 - 修正明确错误的小范围条目。
 - 删除 `MEMORY.md` 中的维护痕迹、具体动态 ID、重复句、已证伪过程态。
 - 将长细节压缩为“查哪里 + 做什么”的短规则。
-- 在 `MEMORY.md` >12000 chars 时，对低风险内容做紧急整理。
+- 在 `MEMORY.md` 超出本地治理线时，对低风险内容优先整理；保留有价值内容并说明无法达到目标的原因。
 
 ### 大幅调整必须通知
 
@@ -187,7 +186,7 @@ Cron 场景无法交互确认，因此不设置交互阻塞项；但以下情况
 
 - 单次净删除 >20 行。
 - 单次改动超过 `MEMORY.md` 15%。
-- `MEMORY.md` 从 >12000 chars 恢复到限制内。
+- `MEMORY.md` 从超过 12000 chars 本地治理线恢复到线内。
 - 移出大段内容到 T2/wiki/project docs/dream diary。
 
 通知必须说明：触发原因、改动章节、删除/移出内容类型、保留了哪些安全边界和高价值规则、before/after chars/lines、检查脚本结果。
@@ -229,12 +228,12 @@ Cron 场景无法交互确认，因此不设置交互阻塞项；但以下情况
 
 1. **定向**
    - 运行 T0 budget check。
-   - 读 `MEMORY.md`、`SOUL.md`、`USER.md`、`TOOLS.md`、`AGENTS.md` 摘要或相关段落。
+   - 在获准维护 scope 中读 MEMORY 及必要的身份、偏好、AGENTS 段落；已完整提供的内容不重复读取，缺失的可选文件不当故障。
    - 读 dream/ 最近 1–2 天日记，避免重复处理。
 
 2. **扫描近 3 天**
    - 读取最近 3 天 `memory/YYYY-MM-DD*.md`。
-   - 建立事件时间线。
+   - 建立事件时间线并核对现状 owner；不把旧 pending、被撤回计划或测试样本晋升为当前事实。
    - 不编辑 T1 原始日志。
 
 3. **审计**
@@ -312,7 +311,8 @@ scan_window: 3d|7d|full
 ```text
 🌙 Dream (YYYY-MM-DD) [daily|deep]
 
-🧠 MEMORY.md：before_chars → after_chars / limit 12000（status）
+MEMORY.md：before_chars → after_chars / local policy 12000（status）
+Context：runtime / budget reference source / USER status；inventory 不等于实测注入
 🔍 审计：forbiddenHits N / 动态状态 N / 事实修正 N
 🔄 巩固：T0 +N / T2 +N
 ✏️ 修正：N 条
