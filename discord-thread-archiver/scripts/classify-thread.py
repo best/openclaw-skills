@@ -157,6 +157,11 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
     last_text = msg_content(last_msg)
     last_from_bot = msg_is_bot(last_msg)
 
+    if last_from_bot and QUESTION_RE.search(last_text.strip()):
+        return verdict("keep", "bot_question_unanswered", "latest bot message is a question", "normal")
+    if not last_from_bot and not has_closure_signal(last_text):
+        return verdict("keep", "waiting_answer", "latest human message lacks a response", "normal")
+
     is_operational = (
         any(name.startswith(str(prefix)) for prefix in prefixes)
         and not has_human
@@ -172,16 +177,16 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
             return verdict("archive", "op_stale_status_no_human", "old status-only thread", "operational")
         return verdict("keep", "op_recent_status", "recent status-only thread", "operational")
 
-    if last_from_bot and QUESTION_RE.search(last_text.strip()):
-        return verdict("keep", "bot_question_unanswered", "latest bot message is a question", "normal")
-
     pending_indices: list[int] = []
     closure_indices: list[int] = []
+    request_indices: list[int] = []
     for index, message in enumerate(messages):
         text = msg_content(message)
         human_closure = not msg_is_bot(message) and has_closure_signal(text)
         if human_closure:
             closure_indices.append(index)
+        elif not msg_is_bot(message):
+            request_indices.append(index)
         if not human_closure and (
             (msg_is_bot(message) and QUESTION_RE.search(text.strip()))
             or contains_any(text, WAITING)
@@ -190,7 +195,7 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
         ):
             pending_indices.append(index)
 
-    if max(closure_indices, default=-1) > max(pending_indices, default=-1):
+    if max(closure_indices, default=-1) > max(pending_indices + request_indices, default=-1):
         return verdict("archive", "normal_closed", "human closure follows pending signals", "normal")
 
     pending_signal = bool(pending_indices)

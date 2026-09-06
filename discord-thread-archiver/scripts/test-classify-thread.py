@@ -34,6 +34,27 @@ def facts(messages: list[dict[str, object]], **overrides: object) -> dict[str, o
 
 
 class ClassifierTests(unittest.TestCase):
+    def test_old_closure_cannot_close_new_human_request(self) -> None:
+        messages = [message(1, 'done', False), message(2, 'Please add export support', False)]
+        for age in (10, 3000):
+            with self.subTest(age=age):
+                result = CLASSIFIER.classify(facts(messages, lastMessageAgeMinutes=age))
+                self.assertEqual(result['verdict'], 'keep')
+
+    def test_old_closure_cannot_bypass_new_exchange_idle_gate(self) -> None:
+        messages = [message(1, 'done', False), message(2, 'Add export support', False),
+                    message(3, 'Here is the implementation.', True)]
+        result = CLASSIFIER.classify(facts(messages, lastMessageAgeMinutes=10))
+        self.assertEqual(result['verdict'], 'keep')
+        result = CLASSIFIER.classify(facts(messages, lastMessageAgeMinutes=90))
+        self.assertEqual(result['reasonCode'], 'collab_answered_idle')
+
+    def test_operational_question_cannot_be_closed_by_old_done(self) -> None:
+        result = CLASSIFIER.classify(facts(
+            [message(1, 'completed', True), message(2, 'Continue?', True)],
+            name='🤖 maintenance', humanInitiated=False, hadHistoricalHumanParticipation=False))
+        self.assertEqual(result['verdict'], 'keep')
+
     def test_historical_human_outside_window_archives_idle_final(self) -> None:
         messages = [message(index, "tool progress", True) for index in range(101, 126)]
         messages.append(message(126, "Maintenance completed; example service checks passed.", True))

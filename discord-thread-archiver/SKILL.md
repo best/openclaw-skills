@@ -2,7 +2,7 @@
 name: "discord-thread-archiver"
 description: "Archive resolved Discord threads with deterministic history collection, classification, and reporting."
 metadata:
-  version: 1.3.2
+  version: 1.3.3
 ---
 
 # Discord Thread Archiver
@@ -99,7 +99,7 @@ Set `historyScanComplete=true` only after finding historical human participation
 python3 <skill_dir>/scripts/classify-thread.py < /tmp/thread-facts-<thread_id>.json
 ```
 
-Call the classifier at most once per thread. Never override a non-`uncertain` result. Treat `facts_invalid` and `facts_incomplete` as keep decisions. A prefixed thread is operational only when complete facts prove no historical human participation.
+Call the classifier at most once per thread. Never override a non-`uncertain` result. Treat `facts_invalid` and `facts_incomplete` as keep decisions. Keep a latest unanswered human request or bot question, including operational threads. A new human request invalidates earlier closure; a later answer still follows the normal idle gate. A prefixed thread is operational only when complete facts prove no historical human participation.
 
 ### 4. Archive
 
