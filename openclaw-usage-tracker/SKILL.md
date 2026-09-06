@@ -1,22 +1,19 @@
 ---
-name: openclaw-usage-tracker
-description: "Track OpenClaw model usage and costs with daily or weekly provider, model, session, and trend reports."
+name: "openclaw-usage-tracker"
+description: "Native OpenClaw daily and weekly usage reports with explicit completeness and missing-price checks."
 metadata:
-  version: 1.2.3
+  version: 1.4.3
 ---
 
 # OpenClaw Usage Tracker
 
-Scan OpenClaw session transcripts (`*.jsonl`) to report token usage and estimated costs.
+Query OpenClaw's native `sessions.usage` API to report token usage and estimated costs.
 Report dates use the Asia/Shanghai local day by default; override with
 `OPENCLAW_USAGE_TIMEZONE=<IANA timezone>` when needed.
 
 ## How It Works
 
-Each assistant message in `~/.openclaw/agents/<agent>/sessions/*.jsonl` carries a
-`usage` object (input, output, cache read, cache write). Cost comes from positive provider
-API response totals (`usage.cost.total`) or is estimated via per-model pricing in
-`openclaw.json`. Zero provider totals with non-zero tokens fall back to local pricing.
+Use the public Gateway API plus the public session inventory, including SQLite-backed and retained archived sessions. Refresh cold native lists in bounded batches before querying remaining same-identity gaps. Unresolved entries retain their failure reason and are reported as partial, never as zero spending. Token/model/day aggregates must reconcile before a report is accepted. No direct database reads or filesystem transcript scans are used.
 
 ## Usage
 
@@ -29,6 +26,9 @@ python3 scripts/daily-cost-report.py 2026-03-14
 
 # Date range (逐日明细 + 汇总)
 python3 scripts/daily-cost-report.py 2026-03-10 2026-03-15
+
+# Completed previous Monday-Sunday (local report timezone)
+python3 scripts/daily-cost-report.py --previous-week --top-sessions 5 --format discord
 
 # All history
 python3 scripts/daily-cost-report.py --all
@@ -47,13 +47,12 @@ JSON output. Structure adapts to mode:
 - **Single day** → `{date, total, categories, providers, models, topSessions?}`
 - **Range/all** → `{range: {from, to}, total, daily: [{date, ...}], stats, categories, providers, models, topSessions?}`
 
-`total` / each daily entry / each provider / each model / each topSession includes:
-- `cost`, `entries`, `tokens`/`tokens_fmt`
-- `input`/`input_fmt`, `output`/`output_fmt`, `cacheRead`/`cacheRead_fmt`, `cacheWrite`/`cacheWrite_fmt`
-- `pct_cost`, `pct_tokens` (share within the report scope)
+`total`, providers, models, categories and top sessions include `cost`, `entries`, `tokens`, and input/output/cache counters with formatted values. `entries` counts native usage-bearing records, excluding zero-use delivery mirrors; it is not an upstream billing-request count.
+
+Range `daily` entries include date, cost, tokens and entries; token-type breakdowns are not invented when the native daily API does not provide them. `quality` records the source, time zone, collection time, data completeness, pricing completeness, unresolved sessions and scoped repairs. Exit 0 means complete data and pricing, 2 means partial data or pricing, and 1 means unavailable/invalid. Preserve the stdout status report even on nonzero exit. If only trend acquisition fails, retain the valid daily report, mark the trend unavailable, and return exit 2; never replace known daily usage with an unavailable or zero report. Show trend pricing gaps separately.
 
 `models[]` uses a display-safe `name` that includes provider + model:
-- Example: `astralor/Opus-4.6`, `gptclub/GPT-5.4`, `minimax/M2.5`
+- Example: `provider-a/model-a`, `provider-b/model-b`
 
 ## Daily Report Template (Discord)
 
@@ -64,7 +63,7 @@ Goal: clear view (token + money), not maximum density.
 
 总计
   费用  ${total.cost}
-  调用  {total.entries} 次
+  用量记录  {total.entries} 条
   Token {total.tokens_fmt}
     In {total.input_fmt} · Out {total.output_fmt}
     Cache Read {total.cacheRead_fmt} · Write {total.cacheWrite_fmt}
@@ -91,7 +90,7 @@ Skip categories with 0 entries. Skip models/providers with `$0.00` and 0 entries
 
 ## Daily Cron Setup
 
-Recommended: isolated cron, delivery=none (agent sends via `message` tool).
+Use exactly one delivery owner. Existing agent-turn jobs may retain delivery=none and forward the complete script stdout, including partial/unavailable notices. A later command migration may use native announce only after removing explicit sends.
 
 Daily job should generate a report for **yesterday** plus a short 7-day trend summary:
 
@@ -100,18 +99,14 @@ Daily job should generate a report for **yesterday** plus a short 7-day trend su
 
 ## Session Classification
 
-1. **Session key** — `cron:` → cron, `heartbeat` → heartbeat, else → interactive
-2. **Content fallback** — orphaned sessions checked for `[cron:...]` prefix in the first user message
+Use native session identity and channel metadata. Recognized Cron and heartbeat keys keep their categories; internal/subagent keys are system tasks. Archived records without authoritative category metadata remain `unknown`. Do not infer a category from message counts or invent one to make totals look complete.
 
 ## Cost Calculation
 
-1. Positive provider-returned `usage.cost.total` (priority)
-2. Estimated when provider cost is absent, or provider cost is zero while tokens are non-zero: `(input × cost.input + output × cost.output + cacheRead × cost.cacheRead + cacheWrite × cost.cacheWrite) / 1M`
+Use the native API's cost and missing-price markers. Keep estimates separate from actual supplier charges and subscription quotas. A missing price is not free usage. Do not fail over to `usage.cost` or add its output to `sessions.usage`.
 
-Pricing: `models.providers.<provider>.models[].cost` in `openclaw.json` ($/M tokens).
+## Verification
 
-## Notes
+Run `python3 -m unittest discover -s scripts -p 'test_native_usage.py'`. Compare a fixed completed local day, a seven-day range and upgrade-spanning dates. Preserve native instance identities; do not sum family and instance results. Report partial coverage or unknown classification visibly.
 
-- Scans all agent directories (`~/.openclaw/agents/*/sessions/`)
-- Filters out `delivery-mirror` and `acp-runtime` in display output
-- Cache Read typically dominates total tokens due to prompt caching
+The acquisition budget is 120 seconds for the report and optional trend combined. Batch refresh runs at most three times; remaining same-identity queries use up to 12 workers and three full passes, retrying only not-ready results. Preserve known usage and explicit unresolved reasons when the budget expires. Invoke with Python 3.9+ and the authenticated local OpenClaw CLI; do not pass credentials in arguments or print CLI diagnostic output.

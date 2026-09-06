@@ -1,8 +1,8 @@
 ---
-name: skill-validator
+name: "skill-validator"
 description: "Review OpenClaw skills with static checks, semantic analysis, and isolated dynamic tests; produce an admission verdict."
 metadata:
-  version: 0.2.3
+  version: 0.2.5
 ---
 
 # Skill Validator — 技能实验室
@@ -34,6 +34,9 @@ python3 scripts/validate.py <skill-path> [--json] [--strict]
 - **引用完整性**：SKILL.md 中引用的文件都存在
 - **体积**：SKILL.md <500 行、总体积 <1MB
 - **垃圾文件**：`__MACOSX/`、`Thumbs.db`、`.DS_Store`
+- **Workshop 描述**：准备 create/update proposal 前确认最终 description 为 trigger-first 且 UTF-8 不超过 160 bytes；apply 后重新读取 active SKILL.md，确认 description 与 version 未被 proposal 元数据意外覆盖
+- **Workshop 支持文件**：proposal support files 全部为 non-executable；需要执行的脚本在 SKILL.md 中用 `bash`、`python3`、`node` 或 `uv` 显式调用，迁移后验证引用和运行入口仍成立
+- **Workshop ownership**：迁移完成后确认 skill source 为 `openclaw-workspace`、create provenance 已 applied、无同名 pending proposal；共享仓库保持只读，反向同步通过独立校验后的 PR
 
 静态校验 FAIL → 直接报告问题，不进入下一阶段。
 静态校验 PASS/WARN → 进入 Phase 2。
@@ -51,6 +54,7 @@ python3 scripts/validate.py <skill-path> [--json] [--strict]
 6. **跨平台语义** — 静态规则抓不到的平台问题（如 Python 用了 os-specific API）
 7. **边界情况** — 输入为空、文件不存在、网络超时等异常处理
 8. **渐进式加载** — 是否遵循了 SKILL.md 精简 + references 分离的原则
+9. **公开发布边界** — 检查待推送的每个 commit、新增/替换文件全文及 PR 描述；生产配置、日志、会话、账单、备份、真实收件人标识、个人路由及内部拓扑留在私有运行区。示例使用中性合成数据。扫描命中只报告位置和类型，不回显敏感值；Workshop 扫描通过不等于公开发布审查通过。
 
 ### 输出格式
 每个维度给出 ✅ PASS / ⚠️ WARN / ❌ FAIL + 说明。
@@ -111,7 +115,7 @@ Phase 2 全 PASS/WARN → 进入 Phase 3。
    渐进式加载    ✅ PASS
 
 🧪 Phase 3 — 动态测试
-   模型：gptclub-claude/claude-sonnet-4-6
+   模型：<provider>/<model>
    用例 1：[描述] → ✅ 通过 (3.2s)
    用例 2：[描述] → ✅ 通过 (5.1s)
    用例 3：[边界] → ⚠️ 部分通过 — ...
