@@ -2,7 +2,7 @@
 name: "openclaw-usage-tracker"
 description: "Native OpenClaw daily and weekly usage reports with explicit completeness and missing-price checks."
 metadata:
-  version: 1.4.2
+  version: 1.4.3
 ---
 
 # OpenClaw Usage Tracker
@@ -49,7 +49,7 @@ JSON output. Structure adapts to mode:
 
 `total`, providers, models, categories and top sessions include `cost`, `entries`, `tokens`, and input/output/cache counters with formatted values. `entries` counts native usage-bearing records, excluding zero-use delivery mirrors; it is not an upstream billing-request count.
 
-Range `daily` entries include date, cost, tokens and entries; token-type breakdowns are not invented when the native daily API does not provide them. `quality` records the source, time zone, collection time, data completeness, pricing completeness, unresolved sessions and scoped repairs. Exit 0 means complete data and pricing, 2 means partial data or pricing, and 1 means unavailable/invalid. Preserve the stdout status report even on nonzero exit.
+Range `daily` entries include date, cost, tokens and entries; token-type breakdowns are not invented when the native daily API does not provide them. `quality` records the source, time zone, collection time, data completeness, pricing completeness, unresolved sessions and scoped repairs. Exit 0 means complete data and pricing, 2 means partial data or pricing, and 1 means unavailable/invalid. Preserve the stdout status report even on nonzero exit. If only trend acquisition fails, retain the valid daily report, mark the trend unavailable, and return exit 2; never replace known daily usage with an unavailable or zero report. Show trend pricing gaps separately.
 
 `models[]` uses a display-safe `name` that includes provider + model:
 - Example: `provider-a/model-a`, `provider-b/model-b`

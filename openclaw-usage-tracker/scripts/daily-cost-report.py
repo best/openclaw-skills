@@ -97,9 +97,15 @@ def format_discord(report):
         lines.append(f"{index}. [{row['category']}] {row['agent']} `${row['cost']:.2f}` · `{row['tokens_fmt']}`")
     trend = report.get("trend")
     if trend:
+        if trend["quality"]["completeness"] == "unavailable":
+            lines.append("### 趋势")
+            lines.append("趋势统计不可用；以上日报用量仍有效。")
+            return "\n".join(lines)
         lines.append(f"### 近 {trend['stats']['days']} 天趋势")
         if trend["quality"]["completeness"] != "complete":
             lines.append("趋势数据不完整，仅统计已知用量。")
+        if trend["quality"]["pricingCompleteness"] != "complete":
+            lines.append(f"趋势价格不完整：{trend['quality']['missingCostEntries']} 条用量未计价。")
         s = trend["stats"]
         lines.append(f"日均 `${s['avgCost']:.2f}` · `{s['avgTokens_fmt']}`；峰值 {s['maxCost']['date']} `${s['maxCost']['cost']:.2f}`；低谷 {s['minCost']['date']} `${s['minCost']['cost']:.2f}`")
     return "\n".join(lines)
@@ -129,12 +135,17 @@ def main():
         report = project(acquire(start, end, zone, gateway, args.all), args.top_sessions)
         if args.trend_days and "date" in report:
             trend_start = (dt.date.fromisoformat(start) - dt.timedelta(days=args.trend_days - 1)).isoformat()
-            trend = project(acquire(trend_start, end, zone, gateway), 0)
-            if "stats" not in trend:
-                trend["stats"] = {"days": 1, "avgCost": trend["total"]["cost"],
-                                  "avgTokens_fmt": trend["total"]["tokens_fmt"],
-                                  "maxCost": {"date": start, "cost": trend["total"]["cost"]},
-                                  "minCost": {"date": start, "cost": trend["total"]["cost"]}}
+            try:
+                trend = project(acquire(trend_start, end, zone, gateway), 0)
+                if "stats" not in trend:
+                    trend["stats"] = {"days": 1, "avgCost": trend["total"]["cost"],
+                                      "avgTokens_fmt": trend["total"]["tokens_fmt"],
+                                      "maxCost": {"date": start, "cost": trend["total"]["cost"]},
+                                      "minCost": {"date": start, "cost": trend["total"]["cost"]}}
+            except UsageError as exc:
+                trend = {"range": {"from": trend_start, "to": end},
+                         "quality": {"source": "sessions.usage", "completeness": "unavailable",
+                                     "pricingCompleteness": "unknown", "error": str(exc)}}
             report["trend"] = trend
         print(format_discord(report) if args.format == "discord" else json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if all(r["quality"]["completeness"] == "complete" and
